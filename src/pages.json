@@ -1,0 +1,280 @@
+{
+  // InsightAction · 观止知行 页面结构
+  // 架构规则：
+  //  1. tabBar 的 5 个大厅页必须位于主包 —— 只做「轻壳」（状态栏/列表/跳转）；
+  //  2. 功能子页按区分包（subpkg-observe/pause/reflect/action/me/common），
+  //     从批次 B 起每个真实子页直接落进对应分包，控制主包体积。
+  //  3. 首页（启动默认页）= 观 · 信息大厅；未完成首次引导时由 App.vue reLaunch 到启动流程。
+  "pages": [
+    {
+      "path": "pages/observe/index",
+      "style": {
+        "navigationBarTitleText": "观 · 信息大厅"
+      }
+    },
+    {
+      "path": "pages/pause/index",
+      "style": {
+        "navigationBarTitleText": "止 · 静修大厅"
+      }
+    },
+    {
+      "path": "pages/reflect/index",
+      "style": {
+        "navigationBarTitleText": "知 · 悟道大厅"
+      }
+    },
+    {
+      "path": "pages/action/index",
+      "style": {
+        "navigationBarTitleText": "行 · 行动大厅"
+      }
+    },
+    {
+      "path": "pages/me/index",
+      "style": {
+        "navigationBarTitleText": "我 · 修行看板"
+      }
+    },
+    {
+      "path": "pages/entry/startup",
+      "style": {
+        "navigationStyle": "custom"
+      }
+    },
+    {
+      "path": "pages/entry/mode-select",
+      "style": {
+        "navigationStyle": "custom"
+      }
+    },
+    {
+      "path": "pages/entry/assessment",
+      "style": {
+        "navigationStyle": "custom",
+        "navigationBarTitleText": "首次测评"
+      }
+    },
+    {
+      "path": "pages/settings/index",
+      "style": {
+        "navigationStyle": "custom",
+        "navigationBarTitleText": "设置"
+      }
+    }
+  ],
+  "subPackages": [
+    {
+      "root": "subpkg-observe",
+      "pages": [
+        {
+          "path": "readlater/index",
+          "style": {
+            "navigationStyle": "custom",
+            "navigationBarTitleText": "稍后读"
+          }
+        },
+        {
+          "path": "qualityboard/index",
+          "style": {
+            "navigationStyle": "custom",
+            "navigationBarTitleText": "信息源质量榜"
+          }
+        },
+        {
+          "path": "seedbed/index",
+          "style": {
+            "navigationStyle": "custom",
+            "navigationBarTitleText": "概念播种"
+          }
+        }
+      ]
+    },
+    {
+      "root": "subpkg-pause",
+      "pages": [
+        {
+          "path": "sandglass/index",
+          "style": {
+            "navigationStyle": "custom",
+            "navigationBarTitleText": "禅定沙漏"
+          }
+        },
+        {
+          "path": "stats/index",
+          "style": {
+            "navigationStyle": "custom",
+            "navigationBarTitleText": "专注统计"
+          }
+        },
+        {
+          "path": "teahouse/index",
+          "style": {
+            "navigationStyle": "custom",
+            "navigationBarTitleText": "静心茶室"
+          }
+        },
+        {
+          "path": "schedule/index",
+          "style": {
+            "navigationStyle": "custom",
+            "navigationBarTitleText": "定时入定"
+          }
+        },
+        {
+          "path": "streak/index",
+          "style": {
+            "navigationStyle": "custom",
+            "navigationBarTitleText": "定力目标 · 连胜"
+          }
+        },
+        {
+          "path": "interrupt/index",
+          "style": {
+            "navigationStyle": "custom",
+            "navigationBarTitleText": "触发干预卡片"
+          }
+        }
+      ]
+    },
+    {
+      "root": "subpkg-reflect",
+      "pages": [
+        {
+          "path": "library/index",
+          "style": {
+            "navigationStyle": "custom",
+            "navigationBarTitleText": "知识库"
+          }
+        },
+        {
+          "path": "growth/index",
+          "style": {
+            "navigationStyle": "custom",
+            "navigationBarTitleText": "认知成长曲线"
+          }
+        }
+      ]
+    },
+    {
+      "root": "subpkg-action",
+      "pages": [
+        {
+          "path": "habits/index",
+          "style": {
+            "navigationStyle": "custom",
+            "navigationBarTitleText": "习惯打卡"
+          }
+        },
+        {
+          "path": "box/index",
+          "style": {
+            "navigationStyle": "custom",
+            "navigationBarTitleText": "微行动盲盒"
+          }
+        },
+        {
+          "path": "weekly/index",
+          "style": {
+            "navigationStyle": "custom",
+            "navigationBarTitleText": "行动周报"
+          }
+        },
+        {
+          "path": "wishes/index",
+          "style": {
+            "navigationStyle": "custom",
+            "navigationBarTitleText": "愿望清单"
+          }
+        }
+      ]
+    },
+    {
+      "root": "subpkg-me",
+      "pages": [
+        {
+          "path": "achievements/index",
+          "style": {
+            "navigationStyle": "custom",
+            "navigationBarTitleText": "成就墙 · 徽章"
+          }
+        },
+        {
+          "path": "calendar/index",
+          "style": {
+            "navigationStyle": "custom",
+            "navigationBarTitleText": "活跃日历"
+          }
+        },
+        {
+          "path": "timeline/index",
+          "style": {
+            "navigationStyle": "custom",
+            "navigationBarTitleText": "痕迹时间轴"
+          }
+        },
+        {
+          "path": "dailycard/index",
+          "style": {
+            "navigationStyle": "custom",
+            "navigationBarTitleText": "今日日课卡"
+          }
+        },
+        {
+          "path": "bond/index",
+          "style": {
+            "navigationStyle": "custom",
+            "navigationBarTitleText": "小枢羁绊"
+          }
+        }
+      ]
+    }
+  ],
+  "globalStyle": {
+    "navigationBarTextStyle": "black",
+    "navigationBarTitleText": "观止知行",
+    "navigationBarBackgroundColor": "#F4EFE4",
+    "backgroundColor": "#F4EFE4"
+  },
+  "tabBar": {
+    "color": "#A9A196",
+    "selectedColor": "#5F7F4E",
+    "backgroundColor": "#FCFAF4",
+    "borderStyle": "white",
+    "list": [
+      {
+        "pagePath": "pages/observe/index",
+        "text": "观",
+        "iconPath": "static/tabbar/normal/observe.png",
+        "selectedIconPath": "static/tabbar/normal/observe_on.png"
+      },
+      {
+        "pagePath": "pages/pause/index",
+        "text": "止",
+        "iconPath": "static/tabbar/normal/pause.png",
+        "selectedIconPath": "static/tabbar/normal/pause_on.png"
+      },
+      {
+        "pagePath": "pages/reflect/index",
+        "text": "知",
+        "iconPath": "static/tabbar/normal/reflect.png",
+        "selectedIconPath": "static/tabbar/normal/reflect_on.png"
+      },
+      {
+        "pagePath": "pages/action/index",
+        "text": "行",
+        "iconPath": "static/tabbar/normal/action.png",
+        "selectedIconPath": "static/tabbar/normal/action_on.png"
+      },
+      {
+        "pagePath": "pages/me/index",
+        "text": "我",
+        "iconPath": "static/tabbar/normal/me.png",
+        "selectedIconPath": "static/tabbar/normal/me_on.png"
+      }
+    ]
+  },
+  "easycom": {
+    "autoscan": true
+  }
+}

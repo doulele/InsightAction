@@ -1,0 +1,79 @@
+/**
+ * InsightAction · 观止知行 —— 设计令牌
+ *
+ * 美学原则：纸与墨 / 克制 / 留白 / 可读。
+ * 本文件中的变量会被注入到每个 <style lang="scss"> 块，可直接使用（无需 import）。
+ */
+
+/* ---------- 品牌色（不随皮肤变化：品牌印章 / 修行进度条 / rank 装饰专用） ---------- */
+$gz-brand: #a4471f; // 品牌朱砂
+$gz-brand-soft: rgba(164, 71, 31, 0.08);
+
+/* ---------- 皮肤色板：值由 .gz-skin--xxx 在 App.vue 注入；此处只引用 ---------- */
+$gz-accent: var(--gz-accent);
+$gz-accent-soft: var(--gz-accent-soft);
+$gz-ink: var(--gz-ink);
+$gz-ink-2: var(--gz-ink-2);
+$gz-ink-3: var(--gz-ink-3);
+$gz-paper: var(--gz-paper);
+$gz-paper-deep: var(--gz-paper-deep);
+$gz-surface: var(--gz-surface);
+$gz-line: var(--gz-line);
+$gz-line-soft: var(--gz-line-soft);
+$gz-surface-2: var(--gz-surface-2); // 次级面（卡片内嵌 / 分隔底）
+$gz-input-bg: var(--gz-input-bg); // 输入框底（与页面底拉开层次）
+$gz-cta-bg: var(--gz-cta-bg); // 主操作按钮底（随皮肤：绿/蓝/朱砂）
+$gz-on-cta: var(--gz-on-cta); // 主按钮上文字 / 图标
+$gz-grad-to: var(--gz-grad-to); // 进度条渐变终点
+
+/* ---------- 布局 ---------- */
+$gz-page-pad: 48rpx; // 页面左右留白
+$gz-radius-sm: 12rpx;
+$gz-radius-md: var(--gz-radius-md); // 控件/小卡圆角（随皮肤：普通圆润→科技锐利→修仙适中）
+$gz-radius-lg: var(--gz-radius-lg); // 大卡圆角（随皮肤）
+
+/* ---------- 字号 ---------- */
+$gz-fs-caption: 22rpx; // 英文小标 / 注释
+$gz-fs-small: 26rpx;
+$gz-fs-body: 28rpx;
+$gz-fs-title: 34rpx;
+$gz-fs-hero: 92rpx; // 首页大字标语
+
+/* ---------- 字距 ---------- */
+$gz-ls-wide: 0.14em; // 大写字距
+
+/*
+ * 以下为 uni-app 内置样式变量的兼容声明（供 HBuilderX 插件市场三方组件引用，请勿删除）。
+ * 颜色对齐为「动态引用 CSS 变量」，由 App.vue 的 .gz-skin--xxx 注入实际值。
+ */
+$uni-color-primary: var(--gz-accent);
+$uni-color-success: #4cd964;
+$uni-color-warning: #f0ad4e;
+$uni-color-error: #dd524d;
+$uni-text-color: var(--gz-ink);
+$uni-text-color-inverse: #fff;
+$uni-text-color-grey: var(--gz-ink-3);
+$uni-text-color-placeholder: var(--gz-ink-3);
+$uni-text-color-disable: var(--gz-ink-3);
+$uni-bg-color: var(--gz-paper);
+$uni-bg-color-grey: var(--gz-paper-deep);
+$uni-bg-color-hover: var(--gz-paper-deep);
+$uni-bg-color-mask: rgba(0, 0, 0, 0.45);
+$uni-border-color: var(--gz-line);
+$uni-font-size-sm: 12px;
+$uni-font-size-base: 14px;
+$uni-font-size-lg: 16px;
+$uni-img-size-sm: 20px;
+$uni-img-size-base: 26px;
+$uni-img-size-lg: 40px;
+$uni-border-radius-sm: 2px;
+$uni-border-radius-base: 3px;
+$uni-border-radius-lg: 6px;
+$uni-border-radius-circle: 50%;
+$uni-spacing-row-sm: 5px;
+$uni-spacing-row-base: 10px;
+$uni-spacing-row-lg: 15px;
+$uni-spacing-col-sm: 4px;
+$uni-spacing-col-base: 8px;
+$uni-spacing-col-lg: 12px;
+$uni-opacity-disabled: 0.3;
