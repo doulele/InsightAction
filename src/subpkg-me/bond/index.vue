@@ -273,7 +273,7 @@ function goBack(): void {
   width: 116rpx;
   height: 116rpx;
   border-radius: 50%;
-  background: radial-gradient(circle at 30% 24%, var(--gz-grad-to), var(--gz-accent) 70%);
+  background: linear-gradient(145deg, var(--gz-grad-to) 0%, var(--gz-accent) 70%);
   box-shadow: 0 12rpx 28rpx rgba(0, 0, 0, 0.18);
 }
 

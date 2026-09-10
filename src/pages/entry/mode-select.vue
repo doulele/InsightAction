@@ -22,6 +22,8 @@
           :src="mode.art"
           mode="aspectFill"
         />
+        <!-- 无远程横幅图时的主题兜底饰带：保持卡片顶部视觉完整 -->
+        <view v-else class="mode__art mode__art--fallback" />
         <view class="mode__top">
           <view class="mode__dot" :style="{ background: mode.accent }" />
           <text class="mode__name">{{ mode.label }}</text>
@@ -193,6 +195,24 @@ function start(): void {
   height: 200rpx;
   margin: -36rpx -30rpx 22rpx;
   border-radius: calc(var(--gz-radius-lg) - 2rpx) calc(var(--gz-radius-lg) - 2rpx) 0 0;
+}
+
+/* 无远程横幅图时的三主题兜底饰带（复用 .mode__art 尺寸/出血，保持两态版式一致） */
+.mode--normal .mode__art--fallback {
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.16) 0%, rgba(255, 255, 255, 0) 40%),
+    linear-gradient(125deg, #a9bb85 0%, #6d8b3f 46%, #46572c 100%);
+}
+
+.mode--tech .mode__art--fallback {
+  background: linear-gradient(rgba(63, 169, 255, 0.09) 1rpx, transparent 1rpx),
+    linear-gradient(90deg, rgba(63, 169, 255, 0.07) 1rpx, transparent 1rpx),
+    linear-gradient(125deg, #2a4766 0%, #14202e 52%, #0b1117 100%);
+  background-size: 44rpx 44rpx, 44rpx 44rpx, 100% 100%;
+}
+
+.mode--dao .mode__art--fallback {
+  background: linear-gradient(125deg, rgba(255, 242, 220, 0.16) 0%, rgba(255, 242, 220, 0) 42%),
+    linear-gradient(125deg, #b98a52 0%, #a4471f 40%, #6e2c12 72%, #431d0b 100%);
 }
 
 .mode__top {

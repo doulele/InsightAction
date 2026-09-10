@@ -5,6 +5,17 @@
  *      模式只改变「叫法、文案、视觉」，由 lexion.ts + 主题共同承担。
  *      未来新增模式（如极简/儿童/长辈），只需在这里加一行 + 在 lexicon 补词表。
  */
+const SKIN_BASE_URL = import.meta.env.VITE_SKIN_BASE_URL || ''
+
+/**
+ * 皮肤横幅图 URL。
+ * 原图（assets-remote/skin）已移出主包以压缩体积，只能走 CDN；
+ * 未配置 VITE_SKIN_BASE_URL 时返回 undefined → 页面不渲染横幅（避免请求坏路径导致 500/渲染层报错）。
+ */
+function artUrl(filename: string): string | undefined {
+  return SKIN_BASE_URL ? `${SKIN_BASE_URL}${filename}` : undefined
+}
+
 export type ModeId = 'normal' | 'tech' | 'dao'
 
 export interface ModeMeta {
@@ -41,7 +52,7 @@ export const MODES: readonly ModeMeta[] = [
     companionName: '伙伴',
     assistantName: '温和助手',
     accent: '#6D8B3F',
-    art: '/static/skin/normal/A_wide_horizontal_banner_illus_2026-09-09T05-35-28.png',
+    art: artUrl('A_wide_horizontal_banner_illus_2026-09-09T05-35-28.png'),
   },
   {
     id: 'tech',
@@ -53,7 +64,7 @@ export const MODES: readonly ModeMeta[] = [
     companionName: '搭档',
     assistantName: '数据分析师',
     accent: '#3FA9FF',
-    art: '/static/skin/tech/A_wide_horizontal_banner_for_a_2026-09-09T05-35-30.png',
+    art: artUrl('A_wide_horizontal_banner_for_a_2026-09-09T05-35-30.png'),
   },
   {
     id: 'dao',
@@ -65,7 +76,7 @@ export const MODES: readonly ModeMeta[] = [
     companionName: '道侣',
     assistantName: '护法灵兽',
     accent: '#A4471F',
-    art: '/static/skin/dao/A_wide_horizontal_ink_wash_ban_2026-09-09T05-05-45.png',
+    art: artUrl('A_wide_horizontal_ink_wash_ban_2026-09-09T05-05-45.png'),
   },
 ] as const
 

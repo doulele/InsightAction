@@ -216,7 +216,7 @@ const {
   width: 108rpx;
   height: 108rpx;
   border-radius: 50%;
-  background: radial-gradient(circle at 30% 24%, var(--gz-grad-to), var(--gz-accent) 68%);
+  background: linear-gradient(145deg, var(--gz-grad-to) 0%, var(--gz-accent) 68%);
   box-shadow: 0 16rpx 40rpx rgba(0, 0, 0, 0.22), 0 0 0 1rpx rgba(255, 255, 255, 0.14);
 }
 
@@ -295,7 +295,7 @@ const {
   width: 76rpx;
   height: 76rpx;
   border-radius: 50%;
-  background: radial-gradient(circle at 30% 24%, var(--gz-grad-to), var(--gz-accent) 70%);
+  background: linear-gradient(145deg, var(--gz-grad-to) 0%, var(--gz-accent) 70%);
 }
 
 .bf__orb-glyph {

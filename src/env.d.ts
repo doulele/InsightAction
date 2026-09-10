@@ -13,6 +13,8 @@ interface ImportMetaEnv {
   readonly VITE_API_BASE_URL?: string
   /** 是否强制走本地 mock：'true' | 'false'，默认 dev 且无 baseUrl 时自动开启 */
   readonly VITE_USE_MOCK?: string
+  /** 皮肤横幅图 CDN 基础地址（必须以 / 结尾） */
+  readonly VITE_SKIN_BASE_URL?: string
 }
 
 interface ImportMeta {

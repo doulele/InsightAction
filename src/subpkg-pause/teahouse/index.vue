@@ -783,8 +783,8 @@ onBackPress(() => {
   right: -60rpx;
   bottom: -90rpx;
   height: 260rpx;
-  background: radial-gradient(120% 100% at 30% 0%, rgba(64, 94, 128, 0) 60%, rgba(64, 94, 128, 0.42) 100%),
-    radial-gradient(100% 100% at 70% 0%, rgba(70, 100, 132, 0) 55%, rgba(70, 100, 132, 0.5) 100%);
+  background: linear-gradient(180deg, rgba(64, 94, 128, 0) 60%, rgba(64, 94, 128, 0.42) 100%),
+    linear-gradient(180deg, rgba(70, 100, 132, 0) 55%, rgba(70, 100, 132, 0.5) 100%);
 }
 
 /* —— 煮雪：雪青静夜 —— */
@@ -842,7 +842,7 @@ onBackPress(() => {
   height: 64rpx;
   margin-left: -100rpx;
   border-radius: 999rpx;
-  background: radial-gradient(50% 120% at 50% 50%, #ff8a4c 0%, #d85c26 60%, #7c2f14 100%);
+  background: linear-gradient(180deg, #ff8a4c 0%, #d85c26 60%, #7c2f14 100%);
   box-shadow: 0 0 46rpx rgba(255, 122, 60, 0.55);
   animation: coal-breathe 3.6s ease-in-out infinite;
 }

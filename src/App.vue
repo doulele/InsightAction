@@ -108,7 +108,7 @@ button {
 
 .gz-skin--normal {
   /* 普通 · 晨光纸：顶部一片极淡的橄榄晨光，像树影间漏下的光，让暖白不呆板 */
-  background-image: radial-gradient(120% 60% at 50% -18%, rgba(148, 169, 108, 0.12) 0%, rgba(148, 169, 108, 0) 62%);
+  background-image: linear-gradient(180deg, rgba(148, 169, 108, 0.12) 0%, rgba(148, 169, 108, 0) 62%);
 }
 
 .gz-skin--tech {
@@ -139,7 +139,7 @@ button {
   --gz-rank-shadow: 0 14rpx 40rpx rgba(0, 0, 0, 0.4), 0 0 0 1rpx rgba(63, 169, 255, 0.08);
   /* 全站背景氛围：电路网格 + 右上角一束电光辉光 */
   background-image:
-    radial-gradient(130% 70% at 82% -16%, rgba(63, 169, 255, 0.16) 0%, rgba(63, 169, 255, 0) 58%),
+    linear-gradient(225deg, rgba(63, 169, 255, 0.16) 0%, rgba(63, 169, 255, 0) 58%),
     linear-gradient(rgba(148, 197, 255, 0.045) 1rpx, transparent 1rpx),
     linear-gradient(90deg, rgba(148, 197, 255, 0.032) 1rpx, transparent 1rpx);
   background-size: auto, 72rpx 72rpx, 72rpx 72rpx;

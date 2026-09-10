@@ -8,6 +8,7 @@
         @click.stop
       >
         <image v-if="art && variant !== 'danger'" class="gd__art" :src="art" mode="aspectFill" />
+        <view v-else-if="variant !== 'danger'" class="gd__art gd__art--fallback" />
         <view class="gd__body">
           <text v-if="title" class="gd__title">{{ title }}</text>
           <text v-if="subtitle" class="gd__sub">{{ subtitle }}</text>
@@ -151,6 +152,24 @@ function onConfirm(): void {
   display: block;
   width: 100%;
   height: 240rpx;
+}
+
+/* 无远程横幅图时的主题兜底饰带（跟随当前/目标皮肤，danger 变体不渲染） */
+.gz-skin--normal .gd__art--fallback {
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.16) 0%, rgba(255, 255, 255, 0) 40%),
+    linear-gradient(125deg, #a9bb85 0%, #6d8b3f 46%, #46572c 100%);
+}
+
+.gz-skin--tech .gd__art--fallback {
+  background: linear-gradient(rgba(63, 169, 255, 0.09) 1rpx, transparent 1rpx),
+    linear-gradient(90deg, rgba(63, 169, 255, 0.07) 1rpx, transparent 1rpx),
+    linear-gradient(125deg, #2a4766 0%, #14202e 52%, #0b1117 100%);
+  background-size: 44rpx 44rpx, 44rpx 44rpx, 100% 100%;
+}
+
+.gz-skin--dao .gd__art--fallback {
+  background: linear-gradient(125deg, rgba(255, 242, 220, 0.16) 0%, rgba(255, 242, 220, 0) 42%),
+    linear-gradient(125deg, #b98a52 0%, #a4471f 40%, #6e2c12 72%, #431d0b 100%);
 }
 
 .gd__body {
