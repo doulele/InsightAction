@@ -130,7 +130,7 @@
     <GzDialog
       :show="!!pending"
       :skin="pending ?? modeStore.id"
-      :art="targetMeta.art"
+      :art="modeStore.artOf(targetMeta.id)"
       :title="targetMeta.label"
       :subtitle="switchSub"
       :content="targetMeta.tagline"

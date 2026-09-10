@@ -99,6 +99,9 @@
 
     <!-- 批次 D · 小枢全局浮层 -->
     <BuddyFloat />
+
+    <!-- 远端提示层：公告 + 版本更新（纯下行配置，无用户数据） -->
+    <RemoteNotice />
   </view>
 </template>
 

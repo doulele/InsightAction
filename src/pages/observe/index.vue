@@ -11,7 +11,7 @@
 
     <!-- 当前修行语言横幅：与模式选择卡同套艺术画，随皮肤更换 -->
     <view class="hero">
-      <image v-if="modeMeta.art" class="hero__art" :src="modeMeta.art" mode="aspectFill" />
+      <image v-if="modeStore.art" class="hero__art" :src="modeStore.art" mode="aspectFill" />
       <view class="hero__veil" />
       <view class="hero__cap">
         <text class="hero__eyebrow">今日修行 · {{ modeMeta.label }} · {{ modeMeta.labelEn }}</text>
@@ -77,6 +77,9 @@
 
     <!-- 批次 D · 小枢全局浮层 -->
     <BuddyFloat />
+
+    <!-- 远端提示层：公告 + 版本更新（纯下行配置，无用户数据） -->
+    <RemoteNotice />
   </view>
 </template>
 

@@ -17,9 +17,9 @@
         @click="pick(mode.id)"
       >
         <image
-          v-if="mode.art"
+          v-if="artOf(mode.id)"
           class="mode__art"
-          :src="mode.art"
+          :src="artOf(mode.id)"
           mode="aspectFill"
         />
         <!-- 无远程横幅图时的主题兜底饰带：保持卡片顶部视觉完整 -->
@@ -77,6 +77,11 @@ const chosen = ref<ModeId>(DEFAULT_MODE_ID)
 /** 页面皮肤跟随点击的候选模式：点谁，整页立即变成谁的风格 */
 const skinClass = computed(() => `gz-skin gz-skin--${chosen.value}`)
 const meta = computed(() => getModeMeta(chosen.value))
+
+/** 卡片横幅：优先后端下发，其次构建期静态配置，都没有则渲染主题兜底饰带 */
+function artOf(target: ModeId): string | undefined {
+  return modeStore.artOf(target)
+}
 
 function pick(id: ModeId): void {
   chosen.value = id

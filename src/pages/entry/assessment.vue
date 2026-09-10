@@ -351,17 +351,32 @@ function goBack(): void {
 /* 导航 */
 .qnav {
   display: flex;
-  align-items: center;
+  align-items: stretch; /* 上一题/下一题等高，避免一高一矮 */
   justify-content: space-between;
   gap: 20rpx;
   margin-top: 30rpx;
 }
 
+/**
+ * 上一题 / 下一题共用外观。
+ * ⚠️ App.vue 对 <button> 做了全局重置（padding / line-height / border-radius 全部清零），
+ * 所以 <button> 必须自己给 padding 或 min-height，否则高度只剩一行文字（≈48rpx），
+ * 比旁边的 <view> 矮近一半，且是直角。
+ */
+.qnav__prev,
+.qnav__next {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 92rpx; /* 与题目选项 .opt 同一视觉高度 */
+  padding: 0 40rpx;
+  border-radius: $gz-radius-md;
+  line-height: 1.4;
+}
+
 .qnav__prev {
   flex: none;
-  padding: 24rpx 40rpx;
   border: 1rpx solid $gz-line;
-  border-radius: $gz-radius-md;
   color: $gz-ink-3;
   font-size: $gz-fs-small;
 }
@@ -473,11 +488,15 @@ function goBack(): void {
 .cta {
   width: 100%;
   margin-top: 44rpx;
+  /* button 的 padding/border-radius 被 App.vue 全局重置过，这里必须显式补回（对齐 mode-select 的 .cta） */
+  padding: 28rpx 0;
+  border-radius: $gz-radius-md;
   background: $gz-cta-bg;
   color: $gz-on-cta;
   font-size: $gz-fs-body;
   font-weight: 600;
   letter-spacing: 0.14em;
+  line-height: 1.4;
 }
 
 .retake {

@@ -3,7 +3,9 @@ import { onLaunch } from '@dcloudio/uni-app'
 import { watch } from 'vue'
 import { useAppStore } from '@/stores/app'
 import { useModeStore } from '@/stores/mode'
+import { useRemoteStore } from '@/stores/remote'
 import { applySkin } from '@/utils/skin'
+import { initUpdateManager } from '@/utils/update'
 import { ROUTES } from '@/router/routes'
 
 onLaunch(() => {
@@ -19,6 +21,14 @@ onLaunch(() => {
   // tabBar / navigationBar 在首帧后才就绪，延迟一帧确保 API 可用
   const modeStore = useModeStore()
   setTimeout(() => applySkin(modeStore.id, true), 60)
+
+  // 拉取远端横幅图配置（静默失败：拿不到就用主题渐变兜底，不阻塞任何流程）
+  void modeStore.loadSkins()
+
+  // 远端配置（公告 / 版本信息 / 功能开关）+ 新版本下载监听：
+  // 纯下行、不含用户数据；失败静默，不阻塞启动
+  initUpdateManager()
+  void useRemoteStore().load()
 
   console.log(`[InsightAction] launch #${appStore.launchCount} ${appStore.firstLaunch ? '(first)' : ''}`)
 })

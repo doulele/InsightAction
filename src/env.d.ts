@@ -11,7 +11,7 @@ declare module '*.vue' {
 interface ImportMetaEnv {
   /** 后端 API 基础地址；留空时前端自动进入 mock 模式 */
   readonly VITE_API_BASE_URL?: string
-  /** 是否强制走本地 mock：'true' | 'false'，默认 dev 且无 baseUrl 时自动开启 */
+  /** 临时开关，非必填。'true' 强制走本地 mock；不配置时 dev + 无 baseUrl 自动开启，生产恒关闭 */
   readonly VITE_USE_MOCK?: string
   /** 皮肤横幅图 CDN 基础地址（必须以 / 结尾） */
   readonly VITE_SKIN_BASE_URL?: string

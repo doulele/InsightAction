@@ -52,7 +52,7 @@ export const MODES: readonly ModeMeta[] = [
     companionName: '伙伴',
     assistantName: '温和助手',
     accent: '#6D8B3F',
-    art: artUrl('A_wide_horizontal_banner_illus_2026-09-09T05-35-28.png'),
+    art: artUrl('A_wide_horizontal_banner_illus_2026-09-09T05-35-28.jpg'),
   },
   {
     id: 'tech',
@@ -64,7 +64,7 @@ export const MODES: readonly ModeMeta[] = [
     companionName: '搭档',
     assistantName: '数据分析师',
     accent: '#3FA9FF',
-    art: artUrl('A_wide_horizontal_banner_for_a_2026-09-09T05-35-30.png'),
+    art: artUrl('A_wide_horizontal_banner_for_a_2026-09-09T05-35-30.jpg'),
   },
   {
     id: 'dao',
@@ -76,7 +76,7 @@ export const MODES: readonly ModeMeta[] = [
     companionName: '道侣',
     assistantName: '护法灵兽',
     accent: '#A4471F',
-    art: artUrl('A_wide_horizontal_ink_wash_ban_2026-09-09T05-05-45.png'),
+    art: artUrl('A_wide_horizontal_ink_wash_ban_2026-09-09T05-05-45.jpg'),
   },
 ] as const
 

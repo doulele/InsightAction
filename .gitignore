@@ -12,6 +12,10 @@ node_modules
 dist
 *.local
 
+# 环境变量本地覆盖（.env / .env.development / .env.production 需要入库，只忽略本地覆盖）
+.env.local
+.env.*.local
+
 # 本地私有讨论文档（不入库，仅供本地查看）
 docs/
 
