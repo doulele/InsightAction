@@ -80,20 +80,25 @@
  */
 import { computed, ref } from 'vue'
 import { onLoad } from '@dcloudio/uni-app'
-import { getAssessmentBank, tierIndex, tierOf, type AssessmentQuestion } from '@/config/assessment'
+import { tierIndex, type AssessmentQuestion } from '@/config/assessment'
 import { useAssessmentStore, type AssessmentResult } from '@/stores/assessment'
+import { useContentStore } from '@/stores/content'
 import { useModeStore } from '@/stores/mode'
 import { useSkinClass } from '@/composables/useSkin'
 import { ROUTES } from '@/router/routes'
 
 const modeStore = useModeStore()
 const assessment = useAssessmentStore()
+const contentStore = useContentStore()
 const skinClass = useSkinClass()
 
-const MAX_SCORE = 18
 const fromOnboard = ref(false)
 
-const bank = computed(() => getAssessmentBank(modeStore.id))
+/** 题库：远端下发优先，接口不可用时回落到内置题库（见 stores/content.ts） */
+const bank = computed(() => contentStore.bankOf(modeStore.id))
+
+/** 满分跟着题量走：题数由内容运营位决定，不再是写死的 18 */
+const MAX_SCORE = computed(() => bank.value.questions.length * 3)
 const existing = computed(() => assessment.get(modeStore.id))
 
 type Screen = 'quiz' | 'result'
@@ -155,7 +160,8 @@ function next(): void {
       const v = p ?? 0
       return sum + bank.value.questions[i].options[v].score
     }, 0)
-    assessment.save(modeStore.id, score, tierOf(score))
+    // 分档阈值同样跟着内容运营位走（默认 <=6 低 / >=13 高）
+    assessment.save(modeStore.id, score, contentStore.tierOf(score))
     const r = assessment.get(modeStore.id)
     if (r) showResult(r)
   } else {

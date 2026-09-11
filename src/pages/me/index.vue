@@ -124,7 +124,8 @@ import { useTraceStore } from '@/stores/trace'
 import { poke, openDailyCard, bondLv, bondXp } from '@/composables/useBuddy'
 import { useSkinClass } from '@/composables/useSkin'
 import { applySkin, syncTabBar } from '@/utils/skin'
-import { getAssessmentBank, tierIndex } from '@/config/assessment'
+import { tierIndex } from '@/config/assessment'
+import { useContentStore } from '@/stores/content'
 import { LEVEL_NAMES, LEVEL_THRESHOLDS, levelIndexFromXp, levelProgress } from '@/config/levels'
 import { BADGE_RULES, unlockedCount } from '@/config/badges'
 import { buildBadgeContext, dayStats, monthActiveCount } from '@/utils/growth'
@@ -139,6 +140,7 @@ const modeStore = useModeStore()
 const skinClass = useSkinClass()
 const daily = useDailyStore()
 const assessment = useAssessmentStore()
+const contentStore = useContentStore()
 const xp = useXpStore()
 const focus = useFocusStore()
 const trace = useTraceStore()
@@ -223,13 +225,14 @@ const assessmentEntry = computed<{ subtitle: string; badge: EntryBadge }>(() => 
       badge: { text: '待建档', tone: 'muted' },
     }
   }
-  const bank = getAssessmentBank(modeMeta.value.id)
+  const bank = contentStore.bankOf(modeMeta.value.id)
   const tier = bank.tierNames[tierIndex(r.tier)]
   const d = new Date(r.takenAt)
   const date = `${d.getFullYear()}.${d.getMonth() + 1}.${d.getDate()}`
   const remain = assessment.retakeRemainDays(modeMeta.value.id)
   return {
-    subtitle: `${tier} · ${r.score}/18 分 · ${date} 建档`,
+    // 满分按当前题库题量算（题数可由远端内容运营位调整）
+    subtitle: `${tier} · ${r.score}/${bank.questions.length * 3} 分 · ${date} 建档`,
     badge:
       remain > 0 ? { text: `${remain} 天后可重测`, tone: 'muted' } : { text: '可重测', tone: 'accent' },
   }

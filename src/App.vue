@@ -4,6 +4,7 @@ import { watch } from 'vue'
 import { useAppStore } from '@/stores/app'
 import { useModeStore } from '@/stores/mode'
 import { useRemoteStore } from '@/stores/remote'
+import { useContentStore } from '@/stores/content'
 import { applySkin } from '@/utils/skin'
 import { initUpdateManager } from '@/utils/update'
 import { ROUTES } from '@/router/routes'
@@ -29,6 +30,8 @@ onLaunch(() => {
   // 纯下行、不含用户数据；失败静默，不阻塞启动
   initUpdateManager()
   void useRemoteStore().load()
+  // 内容下发（题库 / 分档 / 称号）：纯下行；拿不到就全程用内置题库
+  void useContentStore().load()
 
   console.log(`[InsightAction] launch #${appStore.launchCount} ${appStore.firstLaunch ? '(first)' : ''}`)
 })

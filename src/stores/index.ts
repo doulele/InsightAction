@@ -26,7 +26,11 @@ declare module 'pinia' {
   }
 }
 
-const STORE_PREFIX = 'insight:store:'
+/**
+ * 持久化键前缀（导出/恢复本地数据时也依赖它，见 src/utils/localBackup.ts）。
+ * 改这里会同时影响持久化与备份的识别范围，务必两处一起考虑。
+ */
+export const STORE_PREFIX = 'insight:store:'
 
 export function setupPinia() {
   const pinia = createPinia()

@@ -87,6 +87,20 @@
           </view>
           <text class="row__arrow">→</text>
         </view>
+        <view class="row" hover-class="gz-hover" @click="exportAllData">
+          <view class="row__body">
+            <text class="row__title">导出全部数据（备份）</text>
+            <text class="row__sub">生成备份文件并转发到聊天保存 · 全程在本机，不上传服务器</text>
+          </view>
+          <text class="row__arrow">→</text>
+        </view>
+        <view class="row" hover-class="gz-hover" @click="openRestore">
+          <view class="row__body">
+            <text class="row__title is-danger">从备份恢复</text>
+            <text class="row__sub">从聊天记录选择备份文件 · 会覆盖本机现有数据，需二次确认</text>
+          </view>
+          <text class="row__arrow">→</text>
+        </view>
         <view class="row" hover-class="gz-hover" @click="openResetToday">
           <view class="row__body">
             <text class="row__title is-danger">重置今日三件事</text>
@@ -152,6 +166,19 @@
       @cancel="dangerKind = null"
       @confirm="runDanger"
     />
+
+    <!-- 从备份恢复：覆盖本机数据属破坏性操作，复用 danger 变体 -->
+    <GzDialog
+      variant="danger"
+      :show="!!restorePayload"
+      title="用备份覆盖本机数据？"
+      :content="restoreText"
+      note="覆盖后本机现有修行数据无法找回；建议先「导出全部数据」留一份。"
+      cancel-text="取消"
+      confirm-text="覆盖恢复"
+      @cancel="restorePayload = null"
+      @confirm="runRestore"
+    />
   </view>
 </template>
 
@@ -177,6 +204,16 @@ import { useSkinClass } from '@/composables/useSkin'
 import { applySkin } from '@/utils/skin'
 import { dayStats } from '@/utils/growth'
 import { resetPracticeData } from '@/utils/localReset'
+import {
+  applyBackup,
+  collectBackup,
+  formatBackupTime,
+  pickBackupFile,
+  shareBackupFile,
+  summarize,
+  writeBackupFile,
+  type BackupPayload,
+} from '@/utils/localBackup'
 import { levelIndexFromXp } from '@/config/levels'
 import { ROUTES } from '@/router/routes'
 
@@ -281,6 +318,64 @@ function exportToday(): void {
     data: lines,
     success: () => uni.showToast({ title: '今日概览已复制', icon: 'none' }),
   })
+}
+
+/**
+ * 导出全部数据：收集本机所有 store 快照 → 写成 JSON 文件 → 转发到聊天由用户自己保存。
+ * 全程在本机完成，不上传任何服务器（也因此不涉及隐私合规）。
+ */
+function exportAllData(): void {
+  try {
+    const payload = collectBackup()
+    const { filePath, fileName } = writeBackupFile(payload)
+    const sum = summarize(payload)
+    shareBackupFile(filePath, fileName)
+      .then(() => uni.showToast({ title: `已生成备份（${sum.sizeKB} KB），选个会话保存吧`, icon: 'none' }))
+      .catch((e: Error) => {
+        uni.showModal({
+          title: '未能转发到聊天',
+          content: `${e.message}\n\n备份文件已生成：${fileName}\n可稍后在「导出全部数据」重试。`,
+          showCancel: false,
+        })
+      })
+  } catch (e) {
+    uni.showModal({ title: '导出失败', content: e instanceof Error ? e.message : '未知错误', showCancel: false })
+  }
+}
+
+/** 待恢复的备份（非空 = 弹二次确认框） */
+const restorePayload = ref<BackupPayload | null>(null)
+const restoreText = computed(() => {
+  const payload = restorePayload.value
+  if (!payload) return ''
+  const sum = summarize(payload)
+  return `备份时间：${formatBackupTime(sum.exportedAt)}\n包含 ${sum.storeCount} 项数据 · 约 ${sum.sizeKB} KB`
+})
+
+/** 从备份恢复：先从聊天记录选文件，再交给确认弹框（覆盖式操作不可撤销） */
+function openRestore(): void {
+  pickBackupFile()
+    .then((payload) => {
+      restorePayload.value = payload
+    })
+    .catch((e: Error) => {
+      if (e.message === '已取消') return
+      uni.showModal({ title: '无法读取备份', content: e.message, showCancel: false })
+    })
+}
+
+/** 确认恢复：写 storage + 回写内存 store，然后回到启动页以干净状态重开 */
+function runRestore(): void {
+  const payload = restorePayload.value
+  restorePayload.value = null
+  if (!payload) return
+  try {
+    const result = applyBackup(payload)
+    uni.showToast({ title: `已恢复 ${result.restoredStores} 项数据`, icon: 'none' })
+    setTimeout(() => uni.reLaunch({ url: ROUTES.entryStartup }), 900)
+  } catch (e) {
+    uni.showModal({ title: '恢复失败', content: e instanceof Error ? e.message : '未知错误', showCancel: false })
+  }
 }
 
 /** 弹框确认后的执行：今日只清当天待办；全部则清空所有修行/档案记录（语言与提醒偏好保留） */
