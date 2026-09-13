@@ -9,9 +9,12 @@
       <text class="hall-head__state">{{ stateText }}</text>
     </view>
 
+    <!-- 未建档提醒条：跳过建档的人，隔两天在这里温和提一次（不弹窗、不锁功能） -->
+    <AssessPrompt />
+
     <!-- 当前修行语言横幅：与模式选择卡同套艺术画，随皮肤更换 -->
     <view class="hero">
-      <image v-if="modeStore.art" class="hero__art" :src="modeStore.art" mode="aspectFill" />
+      <image class="hero__art" :src="modeMeta.art" mode="aspectFill" />
       <view class="hero__veil" />
       <view class="hero__cap">
         <text class="hero__eyebrow">今日修行 · {{ modeMeta.label }} · {{ modeMeta.labelEn }}</text>
@@ -77,9 +80,6 @@
 
     <!-- 批次 D · 小枢全局浮层 -->
     <BuddyFloat />
-
-    <!-- 远端提示层：公告 + 版本更新（纯下行配置，无用户数据） -->
-    <RemoteNotice />
   </view>
 </template>
 
@@ -275,9 +275,6 @@ const moreEntries = computed<MoreEntry[]>(() => {
   border-radius: $gz-radius-lg;
   overflow: hidden;
   box-shadow: 0 12rpx 32rpx rgba(20, 16, 10, 0.14);
-  /* 无远程横幅图时的兜底底纹（有图时被 hero__art 完全盖住） */
-  background: linear-gradient(150deg, rgba(148, 169, 108, 0.26) 0%, rgba(148, 169, 108, 0) 48%),
-    linear-gradient(150deg, #474033 0%, #2a251e 55%, #1d1813 100%);
 }
 
 .hero__art {

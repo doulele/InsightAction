@@ -60,9 +60,6 @@
 
     <!-- 批次 D · 小枢全局浮层 -->
     <BuddyFloat />
-
-    <!-- 远端提示层：公告 + 版本更新（纯下行配置，无用户数据） -->
-    <RemoteNotice />
   </view>
 </template>
 
@@ -75,6 +72,7 @@
 import { computed } from 'vue'
 import { onShow } from '@dcloudio/uni-app'
 import { useModeStore } from '@/stores/mode'
+import { useRemoteStore } from '@/stores/remote'
 import { useSkinClass } from '@/composables/useSkin'
 import { useDailyStore, todayKey, type DailyTodo } from '@/stores/daily'
 import { useKnowledgeStore } from '@/stores/knowledge'
@@ -90,6 +88,8 @@ import type { RoutePath } from '@/router/routes'
 import type { EntryBadge } from '@/components/EntryItem/EntryItem.vue'
 
 const modeStore = useModeStore()
+/** 远端功能开关（features.box / teahouse …）：入口整块可控隐藏，页面代码无需改动 */
+const remote = useRemoteStore()
 const skinClass = useSkinClass()
 const daily = useDailyStore()
 const knowledge = useKnowledgeStore()
@@ -171,15 +171,21 @@ const moreEntries = computed<MoreEntry[]>(() => {
           : { text: '去建习惯', tone: 'muted' },
       url: ROUTES.actionHabits,
     },
-    {
-      mark: '盒',
-      title: '微行动盲盒',
-      subtitle: '随机 3 分钟线下行动，给身体一个开关',
-      badge: daily.allDone
-        ? { text: '可开启', tone: 'accent' }
-        : { text: '先完成三件事', tone: 'muted' },
-      url: ROUTES.actionBox,
-    },
+    // 功能开关（远端可关，默认开）：关掉「微行动盲盒」时整条入口消失，页面代码无需改动
+    // 注意 as MoreEntry[]：条件展开会让 badge.tone 的字面量类型被放宽成 string
+    ...((remote.feature('box')
+      ? [
+          {
+            mark: '盒',
+            title: '微行动盲盒',
+            subtitle: '随机 3 分钟线下行动，给身体一个开关',
+            badge: daily.allDone
+              ? { text: '可开启', tone: 'accent' }
+              : { text: '先完成三件事', tone: 'muted' },
+            url: ROUTES.actionBox,
+          },
+        ]
+      : []) as MoreEntry[]),
     {
       mark: '迹',
       title: '行动周报 · 痕迹时间轴',

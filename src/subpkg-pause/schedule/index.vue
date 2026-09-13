@@ -550,6 +550,10 @@ onBeforeUnmount(() => {
 
 .add__btn {
   margin-top: 22rpx;
+  /* button 被 App.vue 全局重置过 padding/border-radius，必须补回，否则高度塌成一行文字 */
+  padding: 26rpx 0;
+  border-radius: $gz-radius-md;
+  line-height: 1.4;
   background: $gz-accent;
   color: $gz-on-cta;
   font-size: $gz-fs-body;

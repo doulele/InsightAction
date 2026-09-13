@@ -48,8 +48,8 @@
         </view>
       </view>
       <view v-else class="void">
-        <text class="void__title">尚无专注记录</text>
-        <text class="void__desc">走完一段沙漏，这里就会长出第一根柱子。</text>
+        <text class="void__title">{{ $p('empty.stats.title') }}</text>
+        <text class="void__desc">{{ $p('empty.stats.desc') }}</text>
         <button class="void__cta" hover-class="gz-hover" @click="toSandglass">
           去翻转沙漏
         </button>

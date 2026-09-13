@@ -46,9 +46,9 @@
 
     <!-- 习惯列表 -->
     <view v-if="!habit.habits.length" class="empty">
-      <view class="empty__seal">惯</view>
-      <text class="empty__title">还没有习惯</text>
-      <text class="empty__desc">习惯别贪多。先守住一两个，\n等它长成身体的一部分，再加新的。</text>
+      <view class="empty__seal gz-motion">惯</view>
+      <text class="empty__title">{{ $p('empty.habits.title') }}</text>
+      <text class="empty__desc">{{ $p('empty.habits.desc') }}</text>
     </view>
     <view v-else class="list">
       <view v-for="h in list" :key="h.id" class="card">

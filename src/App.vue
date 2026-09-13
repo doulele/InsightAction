@@ -7,6 +7,7 @@ import { useRemoteStore } from '@/stores/remote'
 import { useContentStore } from '@/stores/content'
 import { applySkin } from '@/utils/skin'
 import { initUpdateManager } from '@/utils/update'
+import { autoBackupIfDue } from '@/utils/cloudBackup'
 import { ROUTES } from '@/router/routes'
 
 onLaunch(() => {
@@ -32,6 +33,10 @@ onLaunch(() => {
   void useRemoteStore().load()
   // 内容下发（题库 / 分档 / 称号）：纯下行；拿不到就全程用内置题库
   void useContentStore().load()
+
+  // 云备份自动触发（仅在你开启过云备份之后生效）：
+  // 距上次备份超过 24 小时才跑，服务端还有缩水保护兜底；失败静默，不打扰启动。
+  setTimeout(() => void autoBackupIfDue(), 3000)
 
   console.log(`[InsightAction] launch #${appStore.launchCount} ${appStore.firstLaunch ? '(first)' : ''}`)
 })
@@ -104,6 +109,83 @@ button {
   }
 }
 
+/* ---------- C3 · 模式专属微动效 ----------
+ * 一个类 `.gz-motion` 挂在关键元素上，具体动画由当前皮肤决定：
+ *   普通 · 盖印   —— 元素像印章落下（一次性，不循环）
+ *   科技 · 扫描线 —— 周期性细线扫过（用 ::after 画，不占布局）
+ *   修仙 · 呼吸   —— 极轻的光晕呼吸（循环，不抢内容）
+ * 只用 transform / opacity / box-shadow，不触发重排；动效都刻意做得轻，
+ * 避免在"专注"这件事上反而制造噪音。
+ */
+@keyframes gz-stamp {
+  0% {
+    opacity: 0;
+    transform: scale(1.1) translateY(-8rpx);
+  }
+  60% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+  }
+}
+
+@keyframes gz-scan {
+  0% {
+    transform: translateY(-110%);
+    opacity: 0;
+  }
+  15% {
+    opacity: 0.85;
+  }
+  60% {
+    opacity: 0.5;
+  }
+  100% {
+    transform: translateY(330%);
+    opacity: 0;
+  }
+}
+
+@keyframes gz-halo {
+  0%,
+  100% {
+    box-shadow: 0 0 0 0 var(--gz-accent-soft);
+  }
+  50% {
+    box-shadow: 0 0 26rpx 6rpx var(--gz-accent-soft);
+  }
+}
+
+/* 普通：温润盖印（落到位即停） */
+.gz-skin--normal .gz-motion {
+  animation: gz-stamp 0.52s cubic-bezier(0.2, 0.85, 0.3, 1) both;
+}
+
+/* 科技：扫描线（相对定位 + 裁切，线条不溢出容器） */
+.gz-skin--tech .gz-motion {
+  position: relative;
+  overflow: hidden;
+
+  &::after {
+    content: '';
+    position: absolute;
+    left: 0;
+    right: 0;
+    top: 0;
+    height: 42%;
+    pointer-events: none;
+    background: linear-gradient(180deg, transparent, var(--gz-accent-soft), transparent);
+    animation: gz-scan 5.6s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+  }
+}
+
+/* 修仙：呼吸光晕 */
+.gz-skin--dao .gz-motion {
+  animation: gz-halo 4.8s ease-in-out infinite;
+}
+
 /* 通用按压反馈：配合 hover-class="gz-hover" 使用（微信小程序 hover 类需全局定义） */
 .gz-hover {
   opacity: 0.72;
@@ -111,7 +193,15 @@ button {
 }
 
 /* ---------- 三套皮肤 CSS 变量 ---------- */
-/* 用类名挂在页面根 view：<view class="page gz-skin gz-skin--tech"> */
+/**
+ * 用类名挂在**页面根 view**：<view class="page gz-skin gz-skin--tech">。
+ *
+ * ⚠️ 这个类自带 `min-height: 100vh`（页面要铺满一屏）。它是个全局类，
+ * 任何**非页面根节点**（卡片、弹框面板…）为了取皮肤变量而挂上它时，
+ * 必须自己 `min-height: 0` 清零 —— 否则会被静默地撑成一屏高。
+ * 更坑的是 CSS 规则「min-height > max-height 时 min 胜」，
+ * 所以连"加个 max-height 兜住"都拦不住它（GzDialog 踩过这个坑，见其 `.gd` 注释）。
+ */
 .gz-skin {
   min-height: 100vh;
   background-color: var(--gz-paper);
@@ -119,9 +209,32 @@ button {
   transition: background-color 0.25s ease, color 0.25s ease;
 }
 
+/**
+ * 普通 · 手账纸
+ * 材质 = 纸 + 帘纹：手工纸在抄纸时留下的竖密横疏细纹（帘纹），
+ * 加上顶部一片极淡的橄榄晨光。目标是"翻开一本本子"的手感，
+ * 而不是纯色背景 —— 但强度压到几乎察觉不到，只负责让暖白不呆板。
+ */
 .gz-skin--normal {
-  /* 普通 · 晨光纸：顶部一片极淡的橄榄晨光，像树影间漏下的光，让暖白不呆板 */
-  background-image: linear-gradient(180deg, rgba(148, 169, 108, 0.12) 0%, rgba(148, 169, 108, 0) 62%);
+  background-image:
+    /* 帘纹 · 竖（密） */
+    repeating-linear-gradient(
+      90deg,
+      rgba(38, 35, 30, 0.026) 0,
+      rgba(38, 35, 30, 0.026) 1rpx,
+      transparent 1rpx,
+      transparent 10rpx
+    ),
+    /* 帘纹 · 横（疏） */
+    repeating-linear-gradient(
+      0deg,
+      rgba(38, 35, 30, 0.015) 0,
+      rgba(38, 35, 30, 0.015) 1rpx,
+      transparent 1rpx,
+      transparent 14rpx
+    ),
+    /* 顶部晨光（树影间漏下的光） */
+    linear-gradient(180deg, rgba(148, 169, 108, 0.14) 0%, rgba(148, 169, 108, 0) 58%);
 }
 
 .gz-skin--tech {
@@ -150,13 +263,20 @@ button {
   --gz-rank-sub: #9AA7B8;
   --gz-rank-track: rgba(234, 241, 249, 0.12);
   --gz-rank-shadow: 0 14rpx 40rpx rgba(0, 0, 0, 0.4), 0 0 0 1rpx rgba(63, 169, 255, 0.08);
-  /* 全站背景氛围：电路网格 + 右上角一束电光辉光 */
+  /* 全站背景氛围：双密度网格（仪表盘）+ 右上辉光 + 底部地平光 */
+  /* 两级网格是关键：粗网格给"结构"，细网格给"仪器刻度感"，比单一网格更像实验室 */
   background-image:
-    linear-gradient(225deg, rgba(63, 169, 255, 0.16) 0%, rgba(63, 169, 255, 0) 58%),
-    linear-gradient(rgba(148, 197, 255, 0.045) 1rpx, transparent 1rpx),
-    linear-gradient(90deg, rgba(148, 197, 255, 0.032) 1rpx, transparent 1rpx);
-  background-size: auto, 72rpx 72rpx, 72rpx 72rpx;
-  background-position: 0 0, 0 0, 0 0;
+    /* 底部地平光（像屏幕下方的环境光） */
+    linear-gradient(0deg, rgba(63, 169, 255, 0.07) 0%, rgba(63, 169, 255, 0) 38%),
+    /* 右上角一束电光辉光 */
+    linear-gradient(225deg, rgba(63, 169, 255, 0.18) 0%, rgba(63, 169, 255, 0) 54%),
+    /* 粗网格 72rpx */
+    linear-gradient(rgba(148, 197, 255, 0.05) 1rpx, transparent 1rpx),
+    linear-gradient(90deg, rgba(148, 197, 255, 0.036) 1rpx, transparent 1rpx),
+    /* 细网格 24rpx（刻度） */
+    linear-gradient(rgba(148, 197, 255, 0.018) 1rpx, transparent 1rpx),
+    linear-gradient(90deg, rgba(148, 197, 255, 0.012) 1rpx, transparent 1rpx);
+  background-size: auto, auto, 72rpx 72rpx, 72rpx 72rpx, 24rpx 24rpx, 24rpx 24rpx;
 }
 
 .gz-skin--dao {
@@ -185,7 +305,34 @@ button {
   --gz-rank-sub: #6E6759;
   --gz-rank-track: rgba(42, 37, 30, 0.11);
   --gz-rank-shadow: 0 10rpx 28rpx rgba(42, 37, 30, 0.12);
-  /* 旧纸做旧感：纸面自上而下微微加深，像岁月浸染 */
-  background-image: linear-gradient(180deg, #EAE2CC 0%, var(--gz-paper) 45%, #E2D8BF 100%);
+  /**
+   * 修仙 · 宣纸水墨
+   * 材质 = 宣纸（双向纤维）+ 纸上未干的一痕墨（右下墨晕）+ 左上一点水色 + 纸面渐深。
+   * 与普通的区别在"纤维走向"：普通是抄纸的**帘纹**（正交细线），
+   * 这里是宣纸的**斜向纤维**，加上墨晕，所以两张纸一眼能分清。
+   */
+  background-image:
+    /* 宣纸纤维 · 斜向一 */
+    repeating-linear-gradient(
+      45deg,
+      rgba(42, 37, 30, 0.022) 0,
+      rgba(42, 37, 30, 0.022) 1rpx,
+      transparent 1rpx,
+      transparent 9rpx
+    ),
+    /* 宣纸纤维 · 斜向二（交错，避免变成规则网纹） */
+    repeating-linear-gradient(
+      -45deg,
+      rgba(42, 37, 30, 0.015) 0,
+      rgba(42, 37, 30, 0.015) 1rpx,
+      transparent 1rpx,
+      transparent 13rpx
+    ),
+    /* 右下角墨晕（一痕淡墨，像纸上未干） */
+    radial-gradient(120% 95% at 100% 100%, rgba(42, 37, 30, 0.075) 0%, rgba(42, 37, 30, 0) 56%),
+    /* 左上角水色（极淡朱砂，呼应印章） */
+    radial-gradient(85% 60% at 8% 0%, rgba(164, 71, 31, 0.05) 0%, rgba(164, 71, 31, 0) 60%),
+    /* 底：纸面自上而下微微加深，像岁月浸染 */
+    linear-gradient(180deg, #eae2cc 0%, var(--gz-paper) 45%, #e2d8bf 100%);
 }
 </style>

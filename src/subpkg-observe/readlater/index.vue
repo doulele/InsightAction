@@ -36,9 +36,9 @@
 
     <!-- 列表 / 空态 -->
     <view v-if="!store.items.length" class="empty">
-      <view class="empty__seal">存</view>
-      <text class="empty__title">此刻空空如也</text>
-      <text class="empty__desc">读到舍不得放下的，先存一句在这。\n24 小时内读掉，读不掉的会被时间带走。</text>
+      <view class="empty__seal gz-motion">存</view>
+      <text class="empty__title">{{ $p('empty.readlater.title') }}</text>
+      <text class="empty__desc">{{ $p('empty.readlater.desc') }}</text>
     </view>
     <view v-else class="list">
       <view v-for="it in store.items" :key="it.createdAt" class="card">

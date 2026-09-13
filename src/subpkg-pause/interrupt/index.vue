@@ -108,17 +108,6 @@
         </view>
       </view>
     </view>
-
-    <!-- 放弃确认：主题随当前模式 -->
-    <GzDialog
-      :show="abortOpen"
-      title="现在就想放弃？"
-      content="再陪自己最后 10 个呼吸，冲动常常就这么过去了。仍要退出就点「退出」。"
-      confirm-text="继续停"
-      cancel-text="退出"
-      @cancel="onAbortCancel"
-      @confirm="onAbortKeep"
-    />
   </view>
 </template>
 
@@ -231,23 +220,21 @@ function settle(held: boolean): void {
   }
 }
 
-const abortOpen = ref(false)
-
 function abort(): void {
   clearTimer()
-  abortOpen.value = true
-}
-
-/** 选「继续停」：接着呼吸计时 */
-function onAbortKeep(): void {
-  abortOpen.value = false
-  start()
-}
-
-/** 选「退出」：诚实计数，不算守住 */
-function onAbortCancel(): void {
-  abortOpen.value = false
-  settle(false)
+  uni.showModal({
+    title: '现在就想放弃？',
+    content: '再陪自己最后 10 个呼吸，冲动常常就这么过去了。仍要退出就点「退出」。',
+    confirmText: '继续停',
+    cancelText: '退出',
+    success: (res) => {
+      if (res.confirm) {
+        start()
+      } else {
+        settle(false)
+      }
+    },
+  })
 }
 
 onUnmounted(clearTimer)

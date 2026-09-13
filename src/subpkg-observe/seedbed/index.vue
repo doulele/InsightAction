@@ -90,9 +90,9 @@
     <!-- 已收成 -->
     <view v-else>
       <view v-if="!done.length" class="empty">
-        <view class="empty__seal">果</view>
-        <text class="empty__title">还没有收成</text>
-        <text class="empty__desc">第一颗种子满七天后，来这写下它长出了什么。</text>
+        <view class="empty__seal gz-motion">果</view>
+        <text class="empty__title">{{ $p('empty.seedbed.title') }}</text>
+        <text class="empty__desc">{{ $p('empty.seedbed.desc') }}</text>
       </view>
       <view v-else class="list">
         <view v-for="s in done" :key="s.plantedAt" class="card card--done">
@@ -373,6 +373,10 @@ function goBack(): void {
 
 .plant__btn {
   margin-top: 20rpx;
+  /* button 被 App.vue 全局重置过 padding/border-radius，必须补回，否则高度塌成一行文字 */
+  padding: 26rpx 0;
+  border-radius: $gz-radius-md;
+  line-height: 1.4;
   background: $gz-accent;
   color: $gz-on-cta;
   font-size: $gz-fs-body;
@@ -631,6 +635,10 @@ function goBack(): void {
 
 .sheet__btn {
   margin-top: 22rpx;
+  /* button 被 App.vue 全局重置过 padding/border-radius，必须补回，否则高度塌成一行文字 */
+  padding: 26rpx 0;
+  border-radius: $gz-radius-md;
+  line-height: 1.4;
   background: $gz-accent;
   color: $gz-on-cta;
   font-size: $gz-fs-body;

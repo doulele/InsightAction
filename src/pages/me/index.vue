@@ -21,6 +21,15 @@
         <view class="bar__fill" :style="{ width: `${lvPct}%` }" />
       </view>
       <view class="rank__next">{{ nextHint }}</view>
+
+      <!-- 起点基线：建档结果直接长在等级卡里；未建档时这一行本身就是入口 -->
+      <view class="rank__base" hover-class="gz-hover" @click="openAssessment">
+        <text class="rank__base-label">{{ p('baseline.title') }}</text>
+        <text class="rank__base-text" :class="{ 'is-missing': !baselineReady }">
+          {{ baselineReady ? baselineText : p('baseline.missing') }}
+        </text>
+        <text v-if="!baselineReady" class="rank__base-cta">{{ p('baseline.cta') }}</text>
+      </view>
     </view>
 
     <!-- 修行语言切换：三模式共用一套修行数据，只换「叫法 + 视觉」 -->
@@ -97,11 +106,23 @@
       <text class="foot__text is-dim">InsightAction v{{ appStore.versionName }}</text>
     </view>
 
+    <!-- 切换修行语言确认：面板整套预览目标模式的配色/文案/横幅，并明确"修行数据不受影响" -->
+    <GzDialog
+      :show="!!pendingMode"
+      :skin="pendingMode ?? modeStore.id"
+      :art="modeStore.artOf(pendingMeta.id)"
+      :title="p('switch.title', pendingMeta.id)"
+      :subtitle="switchSub"
+      :content="pendingMeta.tagline"
+      :note="switchNote"
+      :cancel-text="p('switch.cancel', pendingMeta.id)"
+      :confirm-text="p('switch.confirm', pendingMeta.id)"
+      @cancel="pendingMode = null"
+      @confirm="confirmSwitch"
+    />
+
     <!-- 批次 D · 小枢全局浮层 -->
     <BuddyFloat />
-
-    <!-- 远端提示层：公告 + 版本更新（纯下行配置，无用户数据） -->
-    <RemoteNotice />
   </view>
 </template>
 
@@ -112,7 +133,7 @@
  * - 今日四维：观=今日辨源、止=今日静修、知=今日产出、行=今日三件事，全部读真实 store；
  * - 修行档案：测评建档 / 成就墙 / 活跃日历 / 痕迹时间轴 / 设置均为可进入的真实子页。
  */
-import { computed } from 'vue'
+import { computed, ref } from 'vue'
 import { onShow } from '@dcloudio/uni-app'
 import { useAppStore } from '@/stores/app'
 import { useModeStore } from '@/stores/mode'
@@ -124,15 +145,16 @@ import { useTraceStore } from '@/stores/trace'
 import { poke, openDailyCard, bondLv, bondXp } from '@/composables/useBuddy'
 import { useSkinClass } from '@/composables/useSkin'
 import { applySkin, syncTabBar } from '@/utils/skin'
-import { tierIndex } from '@/config/assessment'
-import { useContentStore } from '@/stores/content'
+import { getAssessmentBank, tierIndex } from '@/config/assessment'
 import { LEVEL_NAMES, LEVEL_THRESHOLDS, levelIndexFromXp, levelProgress } from '@/config/levels'
 import { BADGE_RULES, unlockedCount } from '@/config/badges'
 import { buildBadgeContext, dayStats, monthActiveCount } from '@/utils/growth'
-import { MODES } from '@/config/modes'
+import { useContentStore } from '@/stores/content'
+import { getModeMeta, MODES } from '@/config/modes'
 import type { ModeId } from '@/config/modes'
 import type { RoutePath } from '@/router/routes'
-import { ROUTES } from '@/router/routes'
+import { navigateTo, ROUTES } from '@/router/routes'
+import type { PhraseKey } from '@/config/phrases'
 import type { EntryBadge } from '@/components/EntryItem/EntryItem.vue'
 
 const appStore = useAppStore()
@@ -140,10 +162,13 @@ const modeStore = useModeStore()
 const skinClass = useSkinClass()
 const daily = useDailyStore()
 const assessment = useAssessmentStore()
-const contentStore = useContentStore()
 const xp = useXpStore()
 const focus = useFocusStore()
 const trace = useTraceStore()
+const contentStore = useContentStore()
+
+/** 主题化取词：远端运营位优先、内置兜底（与页面皮肤同一套词） */
+const p = (key: PhraseKey, mode: ModeId = modeStore.id): string => contentStore.phraseOf(key, mode)
 
 onShow(() => {
   daily.ensureToday()
@@ -156,6 +181,9 @@ onShow(() => {
 /**
  * 切换修行语言（三模式）：产品约定——换皮肤绝不清数据，
  * 普通/科技/修仙共用同一份修行记录；如需清空当天进度，去「设置 → 重置今日三件事」。
+ *
+ * 注意：选中后**不立即切换**，而是先弹确认框把「会换掉什么、不会动什么」讲清
+ * （面板整套预览目标模式的配色与横幅），确认后才真正换皮。
  */
 function switchLanguage(): void {
   uni.showActionSheet({
@@ -163,10 +191,7 @@ function switchLanguage(): void {
     success: (res) => {
       const next: ModeId = MODES[res.tapIndex].id
       if (next === modeStore.id) return
-      modeStore.setMode(next)
-      applySkin(next)
-      syncTabBar(next)
-      uni.showToast({ title: `已切换：${MODES[res.tapIndex].label} · 修行数据保留`, icon: 'none' })
+      pendingMode.value = next
     },
     fail: () => {
       /* 用户取消 */
@@ -174,7 +199,44 @@ function switchLanguage(): void {
   })
 }
 
+/** 待切换的目标模式（null = 没有待确认的切换） */
+const pendingMode = ref<ModeId | null>(null)
+const pendingMeta = computed(() => getModeMeta(pendingMode.value ?? modeStore.id))
+/** 目标模式的称谓对照：切换前先让用户看清"会换掉哪些叫法" */
+const switchSub = computed(
+  () =>
+    `${pendingMeta.value.label} · ${pendingMeta.value.labelEn} · 成长称「${pendingMeta.value.growthName}」· 同行称「${pendingMeta.value.companionName}」`,
+)
+const switchNote = computed(() => p('switch.note', pendingMeta.value.id))
+
+/** 确认切换：只重挂主题与 tabBar，不碰任何修行数据 */
+function confirmSwitch(): void {
+  const next = pendingMode.value
+  if (!next) return
+  modeStore.setMode(next)
+  applySkin(next)
+  syncTabBar(next)
+  pendingMode.value = null
+  uni.showToast({ title: p('switch.done', next), icon: 'none' })
+}
+
 const modeMeta = computed(() => modeStore.meta)
+
+/* —— 起点基线：把「建档」结果固定展示在等级卡里（未建档则显示入口） —— */
+const baselineReady = computed(() => Boolean(assessment.get(modeMeta.value.id)))
+const baselineText = computed(() => {
+  const r = assessment.get(modeMeta.value.id)
+  if (!r) return ''
+  const bank = contentStore.bankOf(modeMeta.value.id)
+  const d = new Date(r.takenAt)
+  const date = `${d.getFullYear()}.${d.getMonth() + 1}.${d.getDate()}`
+  return `${bank.tierNames[tierIndex(r.tier)]} · ${Math.round(r.ratio * 100)}% · ${date} 建档`
+})
+
+/** 未建档时基线行本身就是入口；已建档则去档案入口重测（30 天冷却） */
+function openAssessment(): void {
+  navigateTo(ROUTES.entryAssessment)
+}
 
 /* —— 等级卡：修为 store 真实累计 → 三模式九级 —— */
 const lvIndex = computed(() => levelIndexFromXp(xp.total))
@@ -225,14 +287,13 @@ const assessmentEntry = computed<{ subtitle: string; badge: EntryBadge }>(() => 
       badge: { text: '待建档', tone: 'muted' },
     }
   }
-  const bank = contentStore.bankOf(modeMeta.value.id)
+  const bank = getAssessmentBank(modeMeta.value.id)
   const tier = bank.tierNames[tierIndex(r.tier)]
   const d = new Date(r.takenAt)
   const date = `${d.getFullYear()}.${d.getMonth() + 1}.${d.getDate()}`
   const remain = assessment.retakeRemainDays(modeMeta.value.id)
   return {
-    // 满分按当前题库题量算（题数可由远端内容运营位调整）
-    subtitle: `${tier} · ${r.score}/${bank.questions.length * 3} 分 · ${date} 建档`,
+    subtitle: `${tier} · ${r.score}/18 分 · ${date} 建档`,
     badge:
       remain > 0 ? { text: `${remain} 天后可重测`, tone: 'muted' } : { text: '可重测', tone: 'accent' },
   }
@@ -417,6 +478,42 @@ const moreEntries = computed<MoreEntry[]>(() => [
   margin-top: 16rpx;
   font-size: $gz-fs-caption;
   color: var(--gz-rank-sub);
+}
+
+/* 起点基线：建档结果（称号 · 得分率 · 建档日期）；未建档时这一行本身就是入口 */
+.rank__base {
+  display: flex;
+  align-items: center;
+  gap: 14rpx;
+  margin-top: 18rpx;
+  padding-top: 18rpx;
+  border-top: 1rpx solid var(--gz-rank-border);
+}
+
+.rank__base-label {
+  flex: none;
+  font-size: $gz-fs-caption;
+  letter-spacing: 0.06em;
+  color: var(--gz-rank-sub);
+}
+
+.rank__base-text {
+  flex: 1;
+  font-size: $gz-fs-caption;
+  color: var(--gz-rank-ink);
+
+  &.is-missing {
+    color: var(--gz-rank-sub);
+  }
+}
+
+.rank__base-cta {
+  flex: none;
+  padding: 4rpx 16rpx;
+  border-radius: 999rpx;
+  border: 1rpx solid var(--gz-rank-border);
+  font-size: $gz-fs-caption;
+  color: var(--gz-accent);
 }
 
 /* 修行语言切换行 */

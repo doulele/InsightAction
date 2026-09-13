@@ -5,8 +5,11 @@
       <view class="nav__side" hover-class="gz-hover" @click="goBack">
         <text class="nav__back">‹</text>
       </view>
-      <text class="nav__title">首次测评 · {{ bank.title }}</text>
-      <view class="nav__side nav__skip" hover-class="gz-hover" @click="skip">{{ skipLabel }}</view>
+      <text class="nav__title">{{ navTitle }}</text>
+      <!-- 答题全程都有出口（结果屏不再显示，免得误点） -->
+      <view v-if="screen === 'quiz'" class="nav__side nav__skip" hover-class="gz-hover" @click="skip">
+        {{ skipLabel }}
+      </view>
     </view>
 
     <!-- ===== 答题中 ===== -->
@@ -16,7 +19,10 @@
         <view class="prog__bar">
           <view class="prog__fill" :style="{ width: `${progressPct}%` }" />
         </view>
-        <text class="prog__text">第 {{ qIndex + 1 }} / {{ bank.questions.length }} 题 · {{ bank.intro }}</text>
+        <!-- 「约 1 分钟」写在每一屏上：把"又一堆题"的预期压到最低 -->
+        <text class="prog__text">
+          第 {{ qIndex + 1 }} / {{ bank.questions.length }} 题 · {{ p('assess.cost') }} · {{ bank.intro }}
+        </text>
       </view>
 
       <!-- 题目卡 -->
@@ -41,35 +47,84 @@
 
       <!-- 导航 -->
       <view class="qnav">
-        <view v-if="qIndex > 0" class="qnav__prev" hover-class="gz-hover" @click="prev">上一题</view>
+        <view v-if="qIndex > 0" class="qnav__prev" hover-class="gz-hover" @click="prev">
+          {{ p('assess.prev') }}
+        </view>
         <button class="qnav__next" :class="{ 'is-off': picked === null }" hover-class="gz-hover" @click="next">
-          {{ isLast ? '建档完成' : '下一题' }}
+          {{ isLast ? submitLabel : p('assess.next') }}
         </button>
+      </view>
+
+      <!-- 第一题下方再给一个看得见的出口：右上角的小字太容易被忽略 -->
+      <view v-if="qIndex === 0" class="qskip" hover-class="gz-hover" @click="skip">
+        {{ p('assess.skipBottom') }}
       </view>
     </template>
 
     <!-- ===== 结果 ===== -->
     <template v-else>
       <view class="done">
-        <view class="done__seal" :class="`is-${result?.tier}`">{{ sealChar }}</view>
+        <view class="done__seal gz-motion" :class="`is-${result?.tier}`">{{ sealChar }}</view>
         <text class="done__eyebrow">{{ bank.title }} · 已建档</text>
         <text class="done__tier">{{ tierName }}</text>
         <view class="done__score">
           <text class="done__score-n">{{ result?.score }}</text>
-          <text class="done__score-cap">/ {{ MAX_SCORE }} 分</text>
+          <text class="done__score-cap">/ {{ maxScore }} 分 · {{ scorePct }}%</text>
         </view>
         <text class="done__desc">{{ tierDesc }}</text>
+
+        <!-- 维度分布：同样是 6 次点击，给出一张图而不只是一个数字 —— 直接指向「下一步练哪一维」 -->
+        <view v-if="dimRows.length" class="dims">
+          <text class="dims__title">{{ p('assess.dimTitle') }}</text>
+          <view v-for="d in dimRows" :key="d.key" class="dimrow">
+            <view class="dimrow__head">
+              <text class="dimrow__label">{{ d.label }}</text>
+              <text class="dimrow__val">{{ d.score }} / {{ d.max }}</text>
+            </view>
+            <view class="dimrow__bar">
+              <view class="dimrow__fill" :style="{ width: `${d.pct}%` }" />
+            </view>
+          </view>
+        </view>
+
+        <!-- 与上次对比：两次以上建档才有；比的是归一化得分，题库改版后照样能比 -->
+        <text v-if="trendText" class="done__trend">{{ trendText }}</text>
+
+        <!-- 作答质量提示：低质量不判废、不清零，只提示并建议 30 天后重测 -->
+        <view v-if="qualityNote" class="done__qual">
+          <text class="done__qual-text">{{ qualityNote }}</text>
+        </view>
+
         <text v-if="dateText" class="done__date">{{ dateText }} 建档</text>
 
         <view v-if="!canRetakeNow" class="done__cooldown">还剩 {{ remainDays }} 天可重测 · 这段时间先修行</view>
         <view v-else class="done__cooldown is-ok">间隔已满 · 可以重测一次看变化</view>
 
         <button class="cta" hover-class="gz-hover" @click="enterApp">
-          {{ fromOnboard ? '开始修行' : '返回' }}
+          {{ fromOnboard ? p('start.cta') : p('back.cta') }}
         </button>
-        <view v-if="canRetakeNow" class="retake" hover-class="gz-hover" @click="retake">重新测评一次</view>
+        <view v-if="canRetakeNow" class="retake" hover-class="gz-hover" @click="retake">
+          {{ p('retake.cta') }}
+        </view>
       </view>
     </template>
+
+    <!--
+      跳过建档的二次确认。
+      产品取舍：不拦人，但要把「不建档也能用」和「会缺什么、怎么补」一次讲清 ——
+      含糊的"确定要跳过吗"会让人以为整款应用被锁住，反而更焦虑。
+    -->
+    <GzDialog
+      :show="askSkip"
+      :skin="modeStore.id"
+      :banner="false"
+      :title="p('assess.skipTitle')"
+      :note="p('assess.skipNote')"
+      :cancel-text="p('assess.skipCancel')"
+      :confirm-text="p('assess.skipConfirm')"
+      @cancel="askSkip = false"
+      @confirm="confirmSkip"
+    />
   </view>
 </template>
 
@@ -80,7 +135,8 @@
  */
 import { computed, ref } from 'vue'
 import { onLoad } from '@dcloudio/uni-app'
-import { tierIndex, type AssessmentQuestion } from '@/config/assessment'
+import { ASSESS_DIMS, bankMax, evaluate, tierIndex, type AssessmentQuestion } from '@/config/assessment'
+import type { PhraseKey } from '@/config/phrases'
 import { useAssessmentStore, type AssessmentResult } from '@/stores/assessment'
 import { useContentStore } from '@/stores/content'
 import { useModeStore } from '@/stores/mode'
@@ -97,9 +153,11 @@ const fromOnboard = ref(false)
 /** 题库：远端下发优先，接口不可用时回落到内置题库（见 stores/content.ts） */
 const bank = computed(() => contentStore.bankOf(modeStore.id))
 
-/** 满分跟着题量走：题数由内容运营位决定，不再是写死的 18 */
-const MAX_SCORE = computed(() => bank.value.questions.length * 3)
-const existing = computed(() => assessment.get(modeStore.id))
+/** 主题化取词：答题按钮与结果页动作随模式换说法（下一题/下一项/继续问心 …） */
+const p = (key: PhraseKey): string => contentStore.phraseOf(key, modeStore.id)
+
+/** 满分跟着题库走：各题选项最高分之和（允许运营侧写 0-2 分的题，不再假定每题 3 分） */
+const maxScore = computed(() => bankMax(bank.value))
 
 type Screen = 'quiz' | 'result'
 const screen = ref<Screen>('quiz')
@@ -116,15 +174,73 @@ const picked = computed<number | null>({
   },
 })
 const isLast = computed(() => qIndex.value === bank.value.questions.length - 1)
+
+/** 最后一题的提交按钮文案：三模式不同（远端可改，缺省「建档完成」） */
+const submitLabel = computed(() => bank.value.submitLabel || '建档完成')
+
+/**
+ * 顶部标题：直接用题库名（三模式天然不同：生活基线 / 数字画像 / 灵根检测）。
+ * 已有的档案重新作答时标「重测」——不再一律写「首次测评」（那在重测场景是错的）。
+ */
+const isRetake = computed(() => screen.value === 'quiz' && !!assessment.get(modeStore.id))
+const navTitle = computed(() => `${bank.value.title}${isRetake.value ? ' · 重测' : ''}`)
 const progressPct = computed(() => Math.round(((qIndex.value + 1) / bank.value.questions.length) * 100))
 
-const skipLabel = computed(() => (fromOnboard.value ? '跳过' : ''))
+/**
+ * 「跳过」也随模式换说法（跳过 / 略过 / 不测也罢）。
+ *
+ * ⚠️ 只看"是否在答题中"，**不再依赖 `?from=onboard`** ——
+ * 之前靠这个参数决定显不显示，一旦参数缺失（开发者工具直接编译到本页、
+ * 或从「我」页进来补测），按钮就变成一个看不见的空条，等于没有跳过入口。
+ * 参数现在的唯一作用是决定跳过之后去哪（引导流程 → 大厅；补测 → 退回原页）。
+ */
+const skipLabel = computed(() => p('assess.skip'))
 
 /* —— 结果展示（来自存档或刚完成） —— */
 const result = ref<AssessmentResult | null>(null)
 const canRetakeNow = ref(true)
 const remainDays = ref(0)
 const dateText = ref('')
+/** 跳过确认弹窗是否打开 */
+const askSkip = ref(false)
+
+/** 得分率：用存档里的满分算（老存档按 18 分归档），题库换版后也说得通 */
+const scorePct = computed(() => {
+  const r = result.value
+  if (!r) return 0
+  const max = r.maxScore || maxScore.value
+  return max > 0 ? Math.round((r.score / max) * 100) : 0
+})
+
+/** 维度分布（固定按「观止知行」排序；老存档没有维度数据 → 空数组，模板自动不渲染） */
+const dimRows = computed(() =>
+  (result.value?.dims ?? []).map((d) => {
+    const meta = ASSESS_DIMS.find((m) => m.key === d.dim)
+    return {
+      key: d.dim,
+      label: meta?.label ?? d.dim,
+      score: d.score,
+      max: d.max,
+      pct: d.max > 0 ? Math.round((d.score / d.max) * 100) : 0,
+    }
+  }),
+)
+
+/** 与上次对比：比的是归一化得分之差（题库改版后唯一仍可比的量） */
+const trendText = computed(() => {
+  const t = assessment.trendOf(modeStore.id)
+  if (!t) return p('assess.trendFirst')
+  const dPct = Math.round(t.deltaRatio * 100)
+  return `${p('assess.trend')} ${dPct > 0 ? '+' : ''}${dPct}%`
+})
+
+/** 作答质量提示：低质量不判废、不清零，只提示并建议 30 天后重测 */
+const qualityNote = computed(() => {
+  const q = result.value?.quality
+  if (q === 'straight') return p('assess.qualityStraight')
+  if (q === 'inconsistent') return p('assess.qualityInconsistent')
+  return ''
+})
 
 const tierName = computed(() => bank.value.tierNames[tierIndex(result.value?.tier ?? 'low')])
 const tierDesc = computed(() => bank.value.tierDescs[tierIndex(result.value?.tier ?? 'low')])
@@ -156,14 +272,12 @@ function showResult(r: AssessmentResult): void {
 function next(): void {
   if (picked.value === null) return
   if (isLast.value) {
-    const score = picks.value.reduce<number>((sum, p, i) => {
-      const v = p ?? 0
-      return sum + bank.value.questions[i].options[v].score
-    }, 0)
-    // 分档阈值同样跟着内容运营位走（默认 <=6 低 / >=13 高）
-    assessment.save(modeStore.id, score, contentStore.tierOf(score))
-    const r = assessment.get(modeStore.id)
-    if (r) showResult(r)
+    /*
+     * 计分统一走 evaluate()：比例分档 + 逐题满分 + 维度分布 + 作答质量一次算清。
+     * 结果页、「我」页入口、历史对比都读同一份结论，不会再出现"各处各算一套"。
+     */
+    const evaluated = evaluate(bank.value, picks.value, contentStore.tiers())
+    showResult(assessment.save(modeStore.id, evaluated))
   } else {
     qIndex.value += 1
   }
@@ -192,9 +306,25 @@ function enterApp(): void {
   }
 }
 
+/**
+ * 跳过：先弹确认，把「不建档也能用」与「会缺什么、怎么补」一次讲清。
+ * 注意这里**不设任何功能锁** —— 产品态度是「少即是多」，不是「不填就惩罚」。
+ * 含糊的「确定要跳过吗」会让人以为整款应用被锁住，反而更焦虑。
+ */
 function skip(): void {
-  if (!fromOnboard.value) return
-  uni.switchTab({ url: ROUTES.tabObserve })
+  askSkip.value = true
+}
+
+function confirmSkip(): void {
+  askSkip.value = false
+  // 记一笔跳过时间：之后只温和提醒（隔 2 天起、每 3 天一次），不做每日骚扰
+  assessment.markSkipped(modeStore.id)
+  uni.showToast({ title: p('assess.skipDone'), icon: 'none', duration: 2200 })
+  setTimeout(() => {
+    // 引导流程来 → 直接进大厅；从「我」页来补测 → 退回原页（保持来路）
+    if (fromOnboard.value) uni.switchTab({ url: ROUTES.tabObserve })
+    else goBack()
+  }, 420)
 }
 
 function goBack(): void {
@@ -400,6 +530,17 @@ function goBack(): void {
   opacity: 0.45;
 }
 
+/* 第一题下方的跳过出口：弱化为文字按钮，但保证一眼看得见 */
+.qskip {
+  margin-top: 24rpx;
+  padding: 20rpx 0;
+  border-radius: $gz-radius-md;
+  background: var(--gz-line-soft);
+  text-align: center;
+  font-size: $gz-fs-small;
+  color: $gz-ink-3;
+}
+
 /* 结果 */
 .done {
   display: flex;
@@ -468,6 +609,84 @@ function goBack(): void {
   font-size: $gz-fs-small;
   line-height: 1.9;
   text-align: center;
+  color: $gz-ink-2;
+}
+
+/* 维度分布 */
+.dims {
+  align-self: stretch;
+  margin-top: 32rpx;
+  padding: 26rpx 28rpx;
+  border: 1rpx solid $gz-line;
+  border-radius: $gz-radius-md;
+  background: $gz-surface;
+}
+
+.dims__title {
+  display: block;
+  font-size: $gz-fs-caption;
+  letter-spacing: 0.14em;
+  color: $gz-ink-3;
+}
+
+.dimrow {
+  margin-top: 20rpx;
+}
+
+.dimrow__head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+}
+
+.dimrow__label {
+  font-size: $gz-fs-small;
+  color: $gz-ink-2;
+}
+
+.dimrow__val {
+  font-size: $gz-fs-caption;
+  color: $gz-ink-3;
+}
+
+.dimrow__bar {
+  margin-top: 10rpx;
+  height: 10rpx;
+  border-radius: 999rpx;
+  background: var(--gz-line-soft);
+  overflow: hidden;
+}
+
+.dimrow__fill {
+  height: 100%;
+  border-radius: 999rpx;
+  background: linear-gradient(90deg, $gz-accent, $gz-grad-to);
+  transition: width 0.4s ease;
+}
+
+/* 与上次对比 */
+.done__trend {
+  margin-top: 24rpx;
+  padding: 10rpx 26rpx;
+  border-radius: 999rpx;
+  background: $gz-accent-soft;
+  font-size: $gz-fs-caption;
+  color: $gz-accent;
+}
+
+/* 作答质量提示（低质量不判废，只提示 + 建议 30 天后重测） */
+.done__qual {
+  align-self: stretch;
+  margin-top: 24rpx;
+  padding: 22rpx 26rpx;
+  border: 1rpx solid $gz-line;
+  border-radius: $gz-radius-md;
+  background: var(--gz-line-soft);
+}
+
+.done__qual-text {
+  font-size: $gz-fs-caption;
+  line-height: 1.8;
   color: $gz-ink-2;
 }
 

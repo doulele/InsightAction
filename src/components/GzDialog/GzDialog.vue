@@ -7,8 +7,8 @@
         :class="[skinClass, { 'is-danger': variant === 'danger' }]"
         @click.stop
       >
-        <image v-if="art && variant !== 'danger'" class="gd__art" :src="art" mode="aspectFill" />
-        <view v-else-if="variant !== 'danger'" class="gd__art gd__art--fallback" />
+        <image v-if="banner && art && variant !== 'danger'" class="gd__art" :src="art" mode="aspectFill" />
+        <view v-else-if="banner && variant !== 'danger'" class="gd__art gd__art--fallback" />
         <view class="gd__body">
           <text v-if="title" class="gd__title">{{ title }}</text>
           <text v-if="subtitle" class="gd__sub">{{ subtitle }}</text>
@@ -87,6 +87,11 @@ interface Props {
   showCancel?: boolean
   /** 点遮罩 = 取消 */
   maskClosable?: boolean
+  /**
+   * 是否显示顶部装饰横幅（远程横幅图 / 主题兜底饰带）。
+   * 信息说明类弹框建议关掉：省下 240rpx，面板更紧凑，不会显得"占满屏幕"。
+   */
+  banner?: boolean
   zIndex?: number
 }
 
@@ -96,6 +101,7 @@ const props = withDefaults(defineProps<Props>(), {
   confirmText: '确认',
   showCancel: true,
   maskClosable: true,
+  banner: true,
   zIndex: 300,
 })
 
@@ -124,9 +130,17 @@ function onConfirm(): void {
 </script>
 
 <style lang="scss" scoped>
+/**
+ * 遮罩：显式写 width/height:100vh，而不是只靠 top/bottom 拉伸 ——
+ * 后者在小程序里一旦某条声明没生效，遮罩和面板就会塌成"内容高度"或反过来铺满整屏。
+ */
 .gd-mask {
   position: fixed;
-  inset: 0;
+  left: 0;
+  top: 0;
+  width: 100%;
+  height: 100vh;
+  box-sizing: border-box;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -137,10 +151,29 @@ function onConfirm(): void {
 
 .gd__holder {
   width: 100%;
+  max-height: 100%;
 }
 
+/**
+ * 面板：**给死上限**并自己管内部排布 ——
+ * 这样即使外层居中行为异常，面板最坏也只有 76vh，不会变成"整屏白页"。
+ */
 .gd {
+  width: 100%;
+  /**
+   * ★ 必须显式清零 min-height。
+   * 面板为了随皮肤换主题挂着 `gz-skin` 类，而 App.vue 里全局的
+   * `.gz-skin { min-height: 100vh }`（给页面根节点用的）会一起作用到面板上；
+   * CSS 规定 min-height 大于 max-height 时 **min 赢**，于是下面的 76vh 上限
+   * 会被静默抵消，面板永远至少一屏高（表现为"弹框铺满屏幕 + 大片空白"）。
+   * 本选择器带 data-v 属性，优先级高于全局的 `.gz-skin`，所以这里清零一定生效。
+   */
+  min-height: 0;
+  max-height: 76vh;
+  display: flex;
+  flex-direction: column;
   overflow: hidden;
+  box-sizing: border-box;
   background: $gz-surface;
   border: 1rpx solid $gz-line;
   border-radius: $gz-radius-lg;
@@ -149,6 +182,7 @@ function onConfirm(): void {
 }
 
 .gd__art {
+  flex: none;
   display: block;
   width: 100%;
   height: 240rpx;
@@ -172,7 +206,12 @@ function onConfirm(): void {
     linear-gradient(125deg, #b98a52 0%, #a4471f 40%, #6e2c12 72%, #431d0b 100%);
 }
 
+/* 正文区：长文案在面板内部滚动，而不是把面板撑到整屏 */
 .gd__body {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
   padding: 32rpx 30rpx 4rpx;
 }
 
@@ -215,6 +254,7 @@ function onConfirm(): void {
 }
 
 .gd__acts {
+  flex: none;
   display: flex;
   gap: 18rpx;
   padding: 28rpx 30rpx calc(32rpx + env(safe-area-inset-bottom) / 2);

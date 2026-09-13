@@ -28,7 +28,7 @@ export function resetPracticeData(): void {
   useHabitStore().$patch({ habits: [], records: {} })
   useBoxStore().$patch({ drawn: null })
   useTraceStore().$patch({ traces: [] })
-  useAssessmentStore().$patch({ results: {} })
+  useAssessmentStore().$patch({ results: {}, history: {}, skipped: {}, promptSnoozeUntil: 0 })
   const daily = useDailyStore()
   daily.$patch({ dateKey: todayKey(), todos: freshTodos() })
   useReminderStore().$patch({ reminders: [] })

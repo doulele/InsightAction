@@ -107,18 +107,6 @@
         </view>
       </view>
     </view>
-
-    <!-- 移除确认：主题随当前模式，破坏性键语义红 -->
-    <GzDialog
-      variant="danger"
-      :show="removeOpen"
-      title="划掉这个愿望？"
-      :content="removeText()"
-      confirm-text="移除"
-      cancel-text="再想想"
-      @cancel="removeOpen = false"
-      @confirm="dropWish"
-    />
   </view>
 </template>
 
@@ -154,26 +142,16 @@ function claimWish(w: Wish): void {
   }
 }
 
-/** 待移除愿望（null = 弹框关闭） */
-const removing = ref<Wish | null>(null)
-const removeOpen = ref(false)
-
-function removeText(): string {
-  const w = removing.value
-  if (!w) return ''
-  return w.claimedAt ? '已兑现的愿望也可从清单移除。' : '它会从清单里消失，攒的修为不受影响。'
-}
-
 function confirmRemove(w: Wish): void {
-  removing.value = w
-  removeOpen.value = true
-}
-
-function dropWish(): void {
-  removeOpen.value = false
-  const target = removing.value
-  removing.value = null
-  if (target) wishStore.remove(target.id)
+  uni.showModal({
+    title: '划掉这个愿望？',
+    content: w.claimedAt ? '已兑现的愿望也可从清单移除。' : '它会从清单里消失，攒的修为不受影响。',
+    confirmText: '移除',
+    cancelText: '再想想',
+    success: (res) => {
+      if (res.confirm) wishStore.remove(w.id)
+    },
+  })
 }
 
 const pad = (n: number): string => String(n).padStart(2, '0')

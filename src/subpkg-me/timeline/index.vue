@@ -30,9 +30,9 @@
 
     <!-- 时间轴 -->
     <view v-if="!groups.length" class="empty">
-      <view class="empty__seal">痕</view>
-      <text class="empty__title">还没有痕迹</text>
-      <text class="empty__desc">去行厅完成一件三件事，或打一次卡 —— 从第一笔开始。\n观止知行只记录真实发生过的事。</text>
+      <view class="empty__seal gz-motion">痕</view>
+      <text class="empty__title">{{ $p('empty.timeline.title') }}</text>
+      <text class="empty__desc">{{ $p('empty.timeline.desc') }}</text>
     </view>
 
     <view v-else class="axis">

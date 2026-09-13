@@ -51,9 +51,9 @@
 
     <!-- 对话录 -->
     <view v-if="tab === 'lines'" class="sec">
-      <view v-if="groups.length === 0" class="empty">
-        <text class="empty__title">还没有对话</text>
-        <text class="empty__text">去大厅走一走、等一次早晚问候，与小枢的每一次见面都会记在这里。</text>
+      <view v-if="groups.length === 0" class="empty gz-motion">
+        <text class="empty__title">{{ $p('empty.bond.title') }}</text>
+        <text class="empty__text">{{ $p('empty.bond.desc') }}</text>
       </view>
       <view v-for="g in groups" :key="g.label" class="grp">
         <text class="grp__label">{{ g.label }}</text>
@@ -273,7 +273,7 @@ function goBack(): void {
   width: 116rpx;
   height: 116rpx;
   border-radius: 50%;
-  background: linear-gradient(145deg, var(--gz-grad-to) 0%, var(--gz-accent) 70%);
+  background: radial-gradient(circle at 30% 24%, var(--gz-grad-to), var(--gz-accent) 70%);
   box-shadow: 0 12rpx 28rpx rgba(0, 0, 0, 0.18);
 }
 

@@ -46,8 +46,8 @@
       </button>
     </view>
 
-    <!-- 静心茶室 -->
-    <view class="section">
+    <!-- 静心茶室（受远端功能开关控制：features.teahouse = false 时整块隐藏） -->
+    <view v-if="remote.feature('teahouse')" class="section">
       <view class="section__head">
         <text class="section__title">静心茶室</text>
         <text class="section__hint">五种方式 · 每次 5 分钟</text>
@@ -82,9 +82,6 @@
 
     <!-- 批次 D · 小枢全局浮层 -->
     <BuddyFloat />
-
-    <!-- 远端提示层：公告 + 版本更新（纯下行配置，无用户数据） -->
-    <RemoteNotice />
   </view>
 </template>
 
@@ -96,6 +93,7 @@
 import { computed, ref } from 'vue'
 import { onShow } from '@dcloudio/uni-app'
 import { useModeStore } from '@/stores/mode'
+import { useRemoteStore } from '@/stores/remote'
 import { useFocusStore } from '@/stores/focus'
 import { useReminderStore } from '@/stores/reminder'
 import { useInterruptStore } from '@/stores/interrupt'
@@ -109,6 +107,8 @@ import type { RoutePath } from '@/router/routes'
 import type { EntryBadge } from '@/components/EntryItem/EntryItem.vue'
 
 const modeStore = useModeStore()
+/** 远端功能开关（features.teahouse 等）：整块入口可控隐藏 */
+const remote = useRemoteStore()
 const skinClass = useSkinClass()
 const focus = useFocusStore()
 const reminder = useReminderStore()

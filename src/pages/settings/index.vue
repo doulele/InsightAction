@@ -77,41 +77,94 @@
     <view class="section">
       <view class="section__head">
         <text class="section__title">数据</text>
-        <text class="section__hint">本机存储 · 不做云端同步</text>
+        <text class="section__hint">本机存储 · 可导出 · 可恢复</text>
       </view>
       <view class="cards">
         <view class="row" hover-class="gz-hover" @click="exportToday">
           <view class="row__body">
             <text class="row__title">导出今日概览</text>
-            <text class="row__sub">复制一份今日修行摘要到剪贴板</text>
+            <text class="row__sub">{{ $p('settings.exportToday.sub') }}</text>
           </view>
           <text class="row__arrow">→</text>
         </view>
-        <view class="row" hover-class="gz-hover" @click="exportAllData">
+        <view class="row" hover-class="gz-hover" @click="exportAll">
           <view class="row__body">
-            <text class="row__title">导出全部数据（备份）</text>
-            <text class="row__sub">生成备份文件并转发到聊天保存 · 全程在本机，不上传服务器</text>
+            <text class="row__title">导出全部数据</text>
+            <text class="row__sub">{{ $p('settings.exportAll.sub') }}</text>
           </view>
           <text class="row__arrow">→</text>
         </view>
-        <view class="row" hover-class="gz-hover" @click="openRestore">
+        <view class="row" hover-class="gz-hover" @click="importFromFile">
           <view class="row__body">
-            <text class="row__title is-danger">从备份恢复</text>
-            <text class="row__sub">从聊天记录选择备份文件 · 会覆盖本机现有数据，需二次确认</text>
+            <text class="row__title">从备份恢复</text>
+            <text class="row__sub">{{ $p('settings.importFile.sub') }}</text>
           </view>
           <text class="row__arrow">→</text>
         </view>
-        <view class="row" hover-class="gz-hover" @click="openResetToday">
+        <view class="row" hover-class="gz-hover" @click="resetToday">
           <view class="row__body">
             <text class="row__title is-danger">重置今日三件事</text>
-            <text class="row__sub">清空今日待办与完成状态，需二次确认</text>
+            <text class="row__sub">{{ $p('settings.resetToday.sub') }}</text>
           </view>
           <text class="row__arrow">→</text>
         </view>
-        <view class="row" hover-class="gz-hover" @click="openResetAll">
+        <view class="row" hover-class="gz-hover" @click="resetAll">
           <view class="row__body">
             <text class="row__title is-danger">重置全部修行数据</text>
-            <text class="row__sub">清空修为/等级/徽章/知识卡/习惯/痕迹等所有修行记录 · 保留语言与提醒偏好</text>
+            <text class="row__sub">{{ $p('settings.resetAll.sub') }}</text>
+          </view>
+          <text class="row__arrow">→</text>
+        </view>
+      </view>
+    </view>
+
+    <!-- 4 · 云备份：默认关闭；开启后才与服务器交互用户数据（微信标识匿名） -->
+    <view class="section">
+      <view class="section__head">
+        <text class="section__title">云备份</text>
+        <text class="section__hint">换机不丢 · 默认关闭</text>
+      </view>
+      <view class="cards">
+        <view class="row">
+          <view class="row__body">
+            <text class="row__title">开启云备份</text>
+            <text class="row__sub">{{ cloudSub }}</text>
+          </view>
+          <switch
+            class="row__switch"
+            :checked="account.cloudEnabled"
+            :color="modeMeta.accent"
+            @change="onCloudToggle"
+          />
+        </view>
+        <view v-if="account.cloudEnabled" class="row" hover-class="gz-hover" @click="backupToCloud">
+          <view class="row__body">
+            <text class="row__title">立即备份</text>
+            <text class="row__sub">把本机当前进度上传一份（手动备份不做缩水拦截）</text>
+          </view>
+          <text class="row__arrow">→</text>
+        </view>
+        <view
+          v-if="account.cloudEnabled && cloudHasSnapshot"
+          class="row"
+          hover-class="gz-hover"
+          @click="restoreFromCloud('latest')"
+        >
+          <view class="row__body">
+            <text class="row__title">从云端恢复</text>
+            <text class="row__sub">取回最近一次云端快照（覆盖本机，需二次确认）</text>
+          </view>
+          <text class="row__arrow">→</text>
+        </view>
+        <view
+          v-if="account.cloudEnabled && cloudHasSnapshot"
+          class="row"
+          hover-class="gz-hover"
+          @click="restoreFromCloud('prev')"
+        >
+          <view class="row__body">
+            <text class="row__title">恢复上一版</text>
+            <text class="row__sub">误覆盖时的救援入口 · 服务器只保留一份上一版</text>
           </view>
           <text class="row__arrow">→</text>
         </view>
@@ -140,44 +193,67 @@
       <text class="foot__text">本地存储 · 不入云 · 数据属于你</text>
     </view>
 
-    <!-- 通用主题弹框（components/GzDialog，easycom）：skin 传「目标模式」→ 面板整套预览目标皮肤 -->
+    <!-- 换肤确认：面板随「目标模式」整套预览（含主色/纸底/圆角与专属横幅） -->
     <GzDialog
       :show="!!pending"
       :skin="pending ?? modeStore.id"
       :art="modeStore.artOf(targetMeta.id)"
-      :title="targetMeta.label"
+      :title="p('switch.title', targetMeta.id)"
       :subtitle="switchSub"
       :content="targetMeta.tagline"
       :note="switchNote"
-      cancel-text="暂不切换"
-      confirm-text="确认切换"
+      :cancel-text="p('switch.cancel', targetMeta.id)"
+      :confirm-text="p('switch.confirm', targetMeta.id)"
       @cancel="pending = null"
       @confirm="confirmSwitch"
     />
 
-    <!-- 危险动作确认：面板跟随当前模式主题，破坏性主键固定语义红 -->
+    <!-- 危险动作确认：破坏性主键固定语义红 -->
     <GzDialog
       variant="danger"
       :show="dangerKind !== null"
       :title="dangerTitle"
-      :content="dangerContent"
+      :note="dangerNote"
       cancel-text="再想想"
-      :confirm-text="dangerKind === 'all' ? '全部清空' : '重置'"
+      confirm-text="确认清空"
       @cancel="dangerKind = null"
       @confirm="runDanger"
     />
 
-    <!-- 从备份恢复：覆盖本机数据属破坏性操作，复用 danger 变体 -->
+    <!-- 开启云备份：数据会离开本机，必须先讲清楚（由用户主动授权） -->
+    <GzDialog
+      :show="cloudIntroOpen"
+      title="开启云备份？"
+      content="开启后会：① 用你的微信标识（匿名，不含昵称头像手机号）区分数据，仅用于找回你自己的备份；② 把你的修行数据加密上传到我的服务器；③ 每次启动若距上次超过 24 小时，会自动备份一次。"
+      note="随时可在这里关闭，关闭会同时删除云端数据。"
+      cancel-text="暂不开启"
+      confirm-text="同意并开启"
+      @cancel="cloudIntroOpen = false"
+      @confirm="enableCloud"
+    />
+
+    <!-- 关闭云备份：删除云端数据（本机不动，但换机就恢复不了了） -->
+    <GzDialog
+      variant="danger"
+      :show="cloudDeleteOpen"
+      :title="'删除云端备份？'"
+      note="将删除服务器上的全部备份数据，本机进度不受影响。删除后换手机或清缓存，进度就再也找不回来了。"
+      cancel-text="保留"
+      confirm-text="删除云端"
+      @cancel="cloudDeleteOpen = false"
+      @confirm="confirmDeleteCloud"
+    />
+
+    <!-- 覆盖恢复确认：备份文件与云端快照共用（覆盖式操作，必须二次确认） -->
     <GzDialog
       variant="danger"
       :show="!!restorePayload"
-      title="用备份覆盖本机数据？"
-      :content="restoreText"
-      note="覆盖后本机现有修行数据无法找回；建议先「导出全部数据」留一份。"
+      :title="restoreTitle"
+      :note="restoreNote"
       cancel-text="取消"
       confirm-text="覆盖恢复"
-      @cancel="restorePayload = null"
-      @confirm="runRestore"
+      @cancel="cancelRestore"
+      @confirm="applyRestore"
     />
   </view>
 </template>
@@ -191,7 +267,6 @@
  *  - 数据：导出今日概览（真实可用）/ 重置今日（二次确认）/ 重置全部修行数据。
  */
 import { computed, ref } from 'vue'
-import GzDialog from '@/components/GzDialog/GzDialog.vue'
 import { onShow } from '@dcloudio/uni-app'
 import { MODES, getModeMeta } from '@/config/modes'
 import type { ModeId } from '@/config/modes'
@@ -204,6 +279,11 @@ import { useSkinClass } from '@/composables/useSkin'
 import { applySkin } from '@/utils/skin'
 import { dayStats } from '@/utils/growth'
 import { resetPracticeData } from '@/utils/localReset'
+import { levelIndexFromXp } from '@/config/levels'
+import { ROUTES } from '@/router/routes'
+import { useContentStore } from '@/stores/content'
+import { useAccountStore } from '@/stores/account'
+import type { PhraseKey } from '@/config/phrases'
 import {
   applyBackup,
   collectBackup,
@@ -212,10 +292,9 @@ import {
   shareBackupFile,
   summarize,
   writeBackupFile,
-  type BackupPayload,
 } from '@/utils/localBackup'
-import { levelIndexFromXp } from '@/config/levels'
-import { ROUTES } from '@/router/routes'
+import type { BackupPayload } from '@/utils/localBackup'
+import { backupNow, disableCloudBackup, fetchCloudSnapshot } from '@/utils/cloudBackup'
 
 const modeStore = useModeStore()
 const appStore = useAppStore()
@@ -223,7 +302,12 @@ const settings = useSettingsStore()
 const daily = useDailyStore()
 const xp = useXpStore()
 const skinClass = useSkinClass()
+const contentStore = useContentStore()
+const account = useAccountStore()
 const modeMeta = computed(() => modeStore.meta)
+
+/** 主题化取词：远端运营位优先、内置兜底（与页面皮肤同一套词） */
+const p = (key: PhraseKey, mode: ModeId = modeStore.id): string => contentStore.phraseOf(key, mode)
 
 onShow(() => {
   /* 供「导出 / 重置」读取当日最新计数（跨天由 ensureToday 处理） */
@@ -240,35 +324,9 @@ function goBack(): void {
   }
 }
 
-/** 待确认切换的模式（null = 无弹框）；确认框皮肤预览目标模式（components/GzDialog :skin） */
+/** 待确认切换的模式（null = 无弹框）；弹框面板整体套用目标皮肤预览 */
 const pending = ref<ModeId | null>(null)
 const targetMeta = computed(() => getModeMeta(pending.value ?? modeStore.id))
-const switchSub = computed(
-  () =>
-    `${targetMeta.value.labelEn} · 成长称「${targetMeta.value.growthName}」 · 同行称「${targetMeta.value.companionName}」`,
-)
-const switchNote = computed(
-  () =>
-    `确认切到「${targetMeta.value.label}」？只换叫法与视觉；修行数据只有一份，不会清空，随时可换回。`,
-)
-
-/** 危险动作（重置）：统一走主题弹框的 danger 变体 */
-type DangerKind = 'all' | 'today'
-const dangerKind = ref<DangerKind | null>(null)
-const dangerTitle = computed(() =>
-  dangerKind.value === 'all' ? '重置全部修行数据？' : '重置今日三件事',
-)
-const dangerContent = computed(() =>
-  dangerKind.value === 'all'
-    ? '将清空：修为、等级、徽章、知识卡、习惯、痕迹、盲盒、测评、定时与收藏等全部修行记录。此操作不可撤销，语言与提醒偏好会保留。'
-    : '将清空今天的三条待办与完成状态。跨天本就会自动重置，此操作仅影响今天。',
-)
-function openResetAll(): void {
-  dangerKind.value = 'all'
-}
-function openResetToday(): void {
-  dangerKind.value = 'today'
-}
 
 /**
  * 切换修行语言：先弹「目标模式皮肤」的确认框，确认后才落地（即时换肤并保存）。
@@ -284,9 +342,167 @@ function confirmSwitch(): void {
   const id = pending.value
   modeStore.setMode(id)
   applySkin(id)
-  const label = MODES.find((m) => m.id === id)?.label ?? ''
   pending.value = null
-  uni.showToast({ title: `已切换：${label} · 修行数据保留`, icon: 'none' })
+  uni.showToast({ title: p('switch.done', id), icon: 'none' })
+}
+
+/** 目标模式称谓对照（弹框副标题：切换前先让用户看清"会换掉哪些叫法"） */
+const switchSub = computed(
+  () =>
+    `${targetMeta.value.label} · ${targetMeta.value.labelEn} · 成长称「${targetMeta.value.growthName}」· 同行称「${targetMeta.value.companionName}」`,
+)
+/** 切换说明（三模式各自措辞，讲清"数据不受影响"） */
+const switchNote = computed(() => p('switch.note', targetMeta.value.id))
+
+/* ---------------- 危险动作（统一走 GzDialog danger 变体） ---------------- */
+
+const dangerKind = ref<'resetToday' | 'resetAll' | null>(null)
+const dangerTitle = computed(() => (dangerKind.value === 'resetToday' ? '重置今日三件事？' : '重置全部修行数据？'))
+const dangerNote = computed(() =>
+  dangerKind.value === 'resetToday'
+    ? '将清空今天的三条待办与完成状态。跨天本就会自动重置，此操作仅影响今天。'
+    : '将清空：修为、等级、徽章、知识卡、习惯、痕迹、盲盒、测评、定时与收藏等全部修行记录。此操作不可撤销，语言与提醒偏好会保留。',
+)
+
+function resetToday(): void {
+  dangerKind.value = 'resetToday'
+}
+
+function resetAll(): void {
+  dangerKind.value = 'resetAll'
+}
+
+function runDanger(): void {
+  const kind = dangerKind.value
+  dangerKind.value = null
+  if (kind === 'resetToday') {
+    daily.$patch((s) => {
+      s.todos = freshTodos()
+    })
+    uni.showToast({ title: p('toast.resetDone'), icon: 'none' })
+    return
+  }
+  resetPracticeData()
+  uni.showToast({ title: p('toast.resetDone'), icon: 'none' })
+}
+
+/* ---------------- 本地备份：导出 / 恢复 ---------------- */
+
+/** 待应用的备份（文件或云端），非空即弹覆盖确认 */
+const restorePayload = ref<BackupPayload | null>(null)
+const restoreFrom = ref<'file' | 'cloud-latest' | 'cloud-prev'>('file')
+const restoreSummary = computed(() => (restorePayload.value ? summarize(restorePayload.value) : null))
+const restoreTitle = computed(() => (restoreFrom.value === 'file' ? '用这份备份覆盖本机？' : '用云端备份覆盖本机？'))
+const restoreNote = computed(() => {
+  const s = restoreSummary.value
+  if (!s) return ''
+  const src = restoreFrom.value === 'file' ? '备份文件' : restoreFrom.value === 'cloud-prev' ? '云端上一版' : '云端快照'
+  return `将用${src}覆盖本机 ${s.storeCount} 项数据（约 ${s.sizeKB}KB，导出于 ${formatBackupTime(s.exportedAt)}）。覆盖后本机现有进度会被替换，且无法撤销。`
+})
+
+/** 导出全部数据：写成备份文件 → 转发到聊天（用户自己保存，全程无上行数据） */
+async function exportAll(): Promise<void> {
+  try {
+    const payload = collectBackup()
+    const sum = summarize(payload)
+    const { filePath, fileName } = writeBackupFile(payload)
+    await shareBackupFile(filePath, fileName)
+    uni.showToast({ title: `已导出 ${sum.storeCount} 项 · 请把文件留存在聊天里`, icon: 'none' })
+  } catch (e) {
+    uni.showModal({ title: '导出失败', content: e instanceof Error ? e.message : '未知错误', showCancel: false })
+  }
+}
+
+/** 从备份文件恢复：选文件 → 解析校验 → 二次确认 → 覆盖本机 */
+async function importFromFile(): Promise<void> {
+  try {
+    restorePayload.value = await pickBackupFile()
+    restoreFrom.value = 'file'
+  } catch (e) {
+    const msg = e instanceof Error ? e.message : '选择文件失败'
+    if (msg !== '已取消') uni.showModal({ title: '无法读取备份', content: msg, showCancel: false })
+  }
+}
+
+function cancelRestore(): void {
+  restorePayload.value = null
+}
+
+/** 真正落地恢复：写 storage + 回写内存 store，然后重启到启动页（让所有页面吃上新数据） */
+function applyRestore(): void {
+  const payload = restorePayload.value
+  restorePayload.value = null
+  if (!payload) return
+  try {
+    const result = applyBackup(payload)
+    uni.showToast({ title: `${p('toast.restored')} · ${result.restoredStores} 项`, icon: 'none' })
+    setTimeout(() => uni.reLaunch({ url: ROUTES.entryStartup }), 900)
+  } catch (e) {
+    uni.showModal({ title: '恢复失败', content: e instanceof Error ? e.message : '未知错误', showCancel: false })
+  }
+}
+
+/* ---------------- 云备份（默认关闭；开启才与服务器交互） ---------------- */
+
+/** 开启云备份的明示说明（数据会离开本机，必须先讲清楚） */
+const cloudIntroOpen = ref(false)
+/** 关闭云备份（删除云端数据）确认 */
+const cloudDeleteOpen = ref(false)
+/** 云端是否有可恢复的快照（未备份过则为 false） */
+const cloudHasSnapshot = computed(() => Boolean(account.lastBackupAt))
+
+const cloudSub = computed(() =>
+  account.cloudEnabled
+    ? account.lastBackupAt
+      ? `已开启 · 上次备份 ${formatBackupTime(account.lastBackupAt)} · ${account.lastBackupStores} 项`
+      : '已开启 · 尚未备份过，点「立即备份」上传一次'
+    : '关闭时数据只在本机 · 开启后仅用微信标识（匿名）区分你自己的备份',
+)
+
+/** 开关：开 → 先看说明；关 → 先确认删除云端数据 */
+function onCloudToggle(e: Event & { detail?: { value?: boolean } }): void {
+  if (e.detail?.value) cloudIntroOpen.value = true
+  else cloudDeleteOpen.value = true
+}
+
+async function enableCloud(): Promise<void> {
+  cloudIntroOpen.value = false
+  account.cloudEnabled = true
+  await backupToCloud()
+}
+
+async function backupToCloud(): Promise<void> {
+  try {
+    const outcome = await backupNow()
+    if (outcome.saved) {
+      uni.showToast({ title: '已备份到云端', icon: 'none' })
+    } else {
+      uni.showModal({ title: '未能备份', content: outcome.reason || '本次备份被跳过', showCancel: false })
+    }
+  } catch (e) {
+    uni.showModal({ title: '备份失败', content: e instanceof Error ? e.message : '未知错误', showCancel: false })
+  }
+}
+
+async function confirmDeleteCloud(): Promise<void> {
+  try {
+    const removed = await disableCloudBackup()
+    cloudDeleteOpen.value = false
+    uni.showToast({ title: `已删除云端 ${removed} 项数据`, icon: 'none' })
+  } catch (e) {
+    cloudDeleteOpen.value = false
+    uni.showModal({ title: '删除失败', content: e instanceof Error ? e.message : '未知错误', showCancel: false })
+  }
+}
+
+/** 取回云端快照（latest / prev）→ 交给统一的覆盖确认 */
+async function restoreFromCloud(which: 'latest' | 'prev'): Promise<void> {
+  try {
+    restorePayload.value = await fetchCloudSnapshot(which)
+    restoreFrom.value = which === 'prev' ? 'cloud-prev' : 'cloud-latest'
+  } catch (e) {
+    uni.showModal({ title: '取回失败', content: e instanceof Error ? e.message : '未知错误', showCancel: false })
+  }
 }
 
 type RemindKey = 'eveningRemind' | 'streakRemind'
@@ -316,83 +532,11 @@ function exportToday(): void {
   ].join('\n')
   uni.setClipboardData({
     data: lines,
-    success: () => uni.showToast({ title: '今日概览已复制', icon: 'none' }),
+    success: () => uni.showToast({ title: p('toast.copied'), icon: 'none' }),
   })
 }
 
-/**
- * 导出全部数据：收集本机所有 store 快照 → 写成 JSON 文件 → 转发到聊天由用户自己保存。
- * 全程在本机完成，不上传任何服务器（也因此不涉及隐私合规）。
- */
-function exportAllData(): void {
-  try {
-    const payload = collectBackup()
-    const { filePath, fileName } = writeBackupFile(payload)
-    const sum = summarize(payload)
-    shareBackupFile(filePath, fileName)
-      .then(() => uni.showToast({ title: `已生成备份（${sum.sizeKB} KB），选个会话保存吧`, icon: 'none' }))
-      .catch((e: Error) => {
-        uni.showModal({
-          title: '未能转发到聊天',
-          content: `${e.message}\n\n备份文件已生成：${fileName}\n可稍后在「导出全部数据」重试。`,
-          showCancel: false,
-        })
-      })
-  } catch (e) {
-    uni.showModal({ title: '导出失败', content: e instanceof Error ? e.message : '未知错误', showCancel: false })
-  }
-}
-
-/** 待恢复的备份（非空 = 弹二次确认框） */
-const restorePayload = ref<BackupPayload | null>(null)
-const restoreText = computed(() => {
-  const payload = restorePayload.value
-  if (!payload) return ''
-  const sum = summarize(payload)
-  return `备份时间：${formatBackupTime(sum.exportedAt)}\n包含 ${sum.storeCount} 项数据 · 约 ${sum.sizeKB} KB`
-})
-
-/** 从备份恢复：先从聊天记录选文件，再交给确认弹框（覆盖式操作不可撤销） */
-function openRestore(): void {
-  pickBackupFile()
-    .then((payload) => {
-      restorePayload.value = payload
-    })
-    .catch((e: Error) => {
-      if (e.message === '已取消') return
-      uni.showModal({ title: '无法读取备份', content: e.message, showCancel: false })
-    })
-}
-
-/** 确认恢复：写 storage + 回写内存 store，然后回到启动页以干净状态重开 */
-function runRestore(): void {
-  const payload = restorePayload.value
-  restorePayload.value = null
-  if (!payload) return
-  try {
-    const result = applyBackup(payload)
-    uni.showToast({ title: `已恢复 ${result.restoredStores} 项数据`, icon: 'none' })
-    setTimeout(() => uni.reLaunch({ url: ROUTES.entryStartup }), 900)
-  } catch (e) {
-    uni.showModal({ title: '恢复失败', content: e instanceof Error ? e.message : '未知错误', showCancel: false })
-  }
-}
-
-/** 弹框确认后的执行：今日只清当天待办；全部则清空所有修行/档案记录（语言与提醒偏好保留） */
-function runDanger(): void {
-  if (dangerKind.value === null) return
-  const kind = dangerKind.value
-  dangerKind.value = null
-  if (kind === 'all') {
-    resetPracticeData()
-    uni.showToast({ title: '修行数据已清空', icon: 'none' })
-    return
-  }
-  daily.$patch((s) => {
-    s.todos = freshTodos()
-  })
-  uni.showToast({ title: '今日已重置', icon: 'none' })
-}
+/** 重置全部修行数据：二次确认后清空所有修行/档案记录，语言与提醒偏好保留 */
 </script>
 
 <style lang="scss" scoped>
@@ -637,5 +781,99 @@ function runDanger(): void {
   color: $gz-ink-3;
 }
 
-/* 弹框视觉已收敛到通用组件 components/GzDialog（皮肤随模式自动换） */
+/* 换肤确认框：面板自身挂 gz-skin--<目标>，整套变量来自目标皮肤 */
+.mask {
+  position: fixed;
+  inset: 0;
+  z-index: 50;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0 56rpx;
+  background: rgba(0, 0, 0, 0.48);
+}
+
+.dialog {
+  width: 100%;
+  overflow: hidden;
+  background: $gz-surface;
+  border: 1rpx solid $gz-line;
+  border-radius: $gz-radius-lg;
+  box-shadow: 0 24rpx 80rpx rgba(0, 0, 0, 0.28);
+}
+
+.dialog__art {
+  display: block;
+  width: 100%;
+  height: 240rpx;
+}
+
+.dialog__body {
+  padding: 28rpx 30rpx 4rpx;
+}
+
+.dialog__head {
+  display: flex;
+  flex-direction: column;
+  gap: 8rpx;
+}
+
+.dialog__name {
+  font-size: 40rpx;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  color: $gz-ink;
+}
+
+.dialog__en {
+  font-size: $gz-fs-caption;
+  color: $gz-ink-3;
+}
+
+.dialog__tag {
+  display: block;
+  margin-top: 14rpx;
+  font-size: $gz-fs-small;
+  line-height: 1.7;
+  color: $gz-ink-2;
+}
+
+.dialog__note {
+  margin-top: 22rpx;
+  padding: 20rpx 22rpx;
+  border-radius: $gz-radius-sm;
+  background: $gz-accent-soft;
+  font-size: $gz-fs-caption;
+  line-height: 1.7;
+  color: $gz-ink-2;
+}
+
+.dialog__acts {
+  display: flex;
+  gap: 18rpx;
+  padding: 26rpx 30rpx 32rpx;
+}
+
+.dbtn {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 84rpx;
+  border-radius: $gz-radius-md;
+  font-size: $gz-fs-body;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+}
+
+.dbtn--ghost {
+  background: transparent;
+  border: 1rpx solid $gz-line;
+  color: $gz-ink-2;
+}
+
+.dbtn--main {
+  background: $gz-accent;
+  color: $gz-on-cta;
+}
 </style>

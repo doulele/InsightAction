@@ -12,11 +12,20 @@ import { http } from '@/api/http'
 import type { AssessmentBank } from '@/config/assessment'
 import type { ModeId } from '@/config/modes'
 
+/**
+ * 分档阈值。**推荐用比例**（lowRatio / highRatio）：题库题量或分值一变，
+ * 绝对分阈值就会整体错位（旧版踩过这个坑）。
+ * lowMax / highMin 保留作兼容：按旧版 18 分标定换算成比例（见 stores/content.ts 的 tiers()）。
+ */
 export interface AssessmentScoring {
-  /** 总分 <= lowMax 判为低档 */
-  lowMax: number
-  /** 总分 >= highMin 判为高档 */
-  highMin: number
+  /** 得分率 <= lowRatio 判为低档（推荐，如 0.35） */
+  lowRatio?: number
+  /** 得分率 >= highRatio 判为高档（推荐，如 0.7） */
+  highRatio?: number
+  /** 旧字段：总分 <= lowMax 判为低档（按 6 题 18 分标定） */
+  lowMax?: number
+  /** 旧字段：总分 >= highMin 判为高档 */
+  highMin?: number
 }
 
 export interface RemoteAssessment {
@@ -30,7 +39,11 @@ export interface RemoteContent {
   assessment?: RemoteAssessment
   /** 状态栏文案模板：hall → mode → 带占位符的模板串 */
   lexicon?: LexiconPayload
+  /** 主题化短语：短语键 → mode → 固定短语（按钮/确认框/toast） */
+  phrases?: PhrasesPayload
 }
+
+export type PhrasesPayload = Record<string, Partial<Record<ModeId, string>>>
 
 export type HallId = 'observe' | 'pause' | 'reflect' | 'action'
 

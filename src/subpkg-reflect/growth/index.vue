@@ -40,9 +40,9 @@
       </view>
 
       <view v-if="!weeks.length" class="empty">
-        <view class="empty__seal">线</view>
-        <text class="empty__title">还没有数据</text>
-        <text class="empty__desc">先答几次灵魂拷问、存几张卡片。\n每周沉淀会在这里长成一条向上的曲线。</text>
+        <view class="empty__seal gz-motion">线</view>
+        <text class="empty__title">{{ $p('empty.growth.title') }}</text>
+        <text class="empty__desc">{{ $p('empty.growth.desc') }}</text>
       </view>
       <view v-else class="chart">
         <view v-for="(w, wi) in weeks" :key="w.label" class="row">

@@ -3,9 +3,7 @@
  *
  * 思路：与 http 层同构 —— MockHandler 返回统一 ApiResult 外壳，
  * 请求函数代码无需区分真实/模拟，仅在 http 内部做一次分发。
- * 退场方式：填上 VITE_API_BASE_URL 即自动退场（生产构建恒不启用），页面代码零改动。
- * 特例：baseUrl 已配、但本地仍想用假数据时，临时加 VITE_USE_MOCK=true ——
- *      此时为混合模式：命中本表的接口返回假数据，其余照常请求真后端。
+ * 后端就绪后：填上 VITE_API_BASE_URL + VITE_USE_MOCK=false，mock 自动退场，页面代码零改动。
  */
 import type { ApiResult } from '@/types/api'
 import type { HttpMethod } from '@/api/http'

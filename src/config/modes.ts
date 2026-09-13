@@ -27,7 +27,11 @@ export interface ModeMeta {
   labelEn: string
   /** 一句话气质（模式选择页副文案） */
   tagline: string
-  /** 首次测评名称 */
+  /**
+   * 首次测评名称 —— **仅作内置兜底**。
+   * ⚠️ 界面展示以题库 title 为准（src/config/assessment.ts，可被远端 content.json 覆盖），
+   * 所以改测评名请改题库，不要只改这里，否则会出现两处不一致。
+   */
   assessmentName: string
   /** 成长体系名称（「我」页展示） */
   growthName: string
@@ -85,4 +89,15 @@ export const DEFAULT_MODE_ID: ModeId = 'normal'
 
 export function getModeMeta(id: ModeId): ModeMeta {
   return MODES.find((m) => m.id === id) ?? MODES[0]
+}
+
+/**
+ * 切换弹窗副标题：模式名 + 该模式的叫法差异（成长体系 / 同行称呼），三模式一眼可辨。
+ *
+ * 注意：确认框的**标题与提示正文**随模式的说话口吻变化（温润 / 实验室 / 修真），
+ * 那些属于可远端下发的主题化短语，见 src/config/phrases.ts；
+ * 这里只负责"结构化的差异说明"，不掺入口吻，避免两处职责混淆。
+ */
+export function modeSwitchSubtitle(meta: ModeMeta): string {
+  return `${meta.label} · ${meta.labelEn} · 成长称「${meta.growthName}」· 同行称「${meta.companionName}」`
 }

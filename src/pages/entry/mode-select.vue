@@ -35,7 +35,7 @@
         </view>
 
         <view class="mode__chips">
-          <text class="chip">测评 · {{ mode.assessmentName }}</text>
+          <text class="chip">测评 · {{ bankOf(mode.id).title }}</text>
           <text class="chip">成长 · {{ mode.growthName }}</text>
           <text class="chip">{{ mode.assistantName }}</text>
         </view>
@@ -48,10 +48,14 @@
 
     <!-- 行动 -->
     <view class="foot">
-      <button class="cta" hover-class="gz-hover" @click="start">
-        以此开始修行
+      <button class="cta gz-motion" hover-class="gz-hover" @click="start">
+        {{ p('start.cta', chosen) }}
       </button>
-      <text class="foot__note">选定后先完成一次 6 题「{{ meta.assessmentName }}」建档，可随时跳过</text>
+      <text class="foot__note">
+        选定后可做一次 {{ bankOf(chosen).questions.length }} 题「{{ bankOf(chosen).title }}」建档（{{ p('assess.cost', chosen) }}）；
+        只想先逛逛，也可以直接跳过，之后在「我」里随时补上。
+        配色、文案与图标会整套随所选语言变化，之后可在设置里随时换回。
+      </text>
     </view>
   </view>
 </template>
@@ -64,19 +68,30 @@
 import { computed, ref } from 'vue'
 import { DEFAULT_MODE_ID, MODES } from '@/config/modes'
 import type { ModeId } from '@/config/modes'
-import { getModeMeta } from '@/config/modes'
+import type { PhraseKey } from '@/config/phrases'
 import { useModeStore } from '@/stores/mode'
 import { useAppStore } from '@/stores/app'
+import { useContentStore } from '@/stores/content'
 import { applySkin } from '@/utils/skin'
 import { ROUTES } from '@/router/routes'
 
 const modeStore = useModeStore()
 const appStore = useAppStore()
+const contentStore = useContentStore()
+
+/** 题库（测评名与题数都取它；远端可改，故 chip 与说明文案会随之变化） */
+function bankOf(id: ModeId) {
+  return contentStore.bankOf(id)
+}
+
+/** 主题化取词：主按钮随所选模式换说法（就从今天开始 / 初始化并开始 / 择日不如就今日） */
+function p(key: PhraseKey, mode: ModeId): string {
+  return contentStore.phraseOf(key, mode)
+}
 
 const chosen = ref<ModeId>(DEFAULT_MODE_ID)
 /** 页面皮肤跟随点击的候选模式：点谁，整页立即变成谁的风格 */
 const skinClass = computed(() => `gz-skin gz-skin--${chosen.value}`)
-const meta = computed(() => getModeMeta(chosen.value))
 
 /** 卡片横幅：优先后端下发，其次构建期静态配置，都没有则渲染主题兜底饰带 */
 function artOf(target: ModeId): string | undefined {

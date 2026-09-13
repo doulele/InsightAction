@@ -41,11 +41,9 @@
       </view>
 
       <view v-if="!cards.length" class="empty">
-        <view class="empty__seal">悟</view>
-        <text class="empty__title">还没有所悟</text>
-        <text class="empty__desc">
-          从今天的灵魂拷问写起，或在观里种的概念收成后导入。\n每一条都会按「转述 → 重构 → 内化」标注深度。
-        </text>
+        <view class="empty__seal gz-motion">悟</view>
+        <text class="empty__title">{{ $p('empty.reflect.title') }}</text>
+        <text class="empty__desc">{{ $p('empty.reflect.desc') }}</text>
       </view>
       <view v-else class="list">
         <view
@@ -116,21 +114,6 @@
 
     <!-- 批次 D · 小枢全局浮层 -->
     <BuddyFloat />
-
-    <!-- 远端提示层：公告 + 版本更新（纯下行配置，无用户数据） -->
-    <RemoteNotice />
-
-    <!-- 移除确认：主题随当前模式，破坏性键语义红 -->
-    <GzDialog
-      variant="danger"
-      :show="dropOpen"
-      title="移除这张卡？"
-      content="它会从你的知识库消失，不可找回。"
-      confirm-text="移除"
-      cancel-text="留着"
-      @cancel="dropOpen = false"
-      @confirm="dropConfirm"
-    />
   </view>
 </template>
 
@@ -142,7 +125,6 @@
  * - 知识库 / 成长曲线为真实子页；费曼速记（AI 语音转写）需后端，保持规划态。
  */
 import { computed, ref } from 'vue'
-import GzDialog from '@/components/GzDialog/GzDialog.vue'
 import { onShow } from '@dcloudio/uni-app'
 import { useModeStore } from '@/stores/mode'
 import { useQuestionStore, rolloverRemainMin } from '@/stores/question'
@@ -297,19 +279,20 @@ function deepen(): void {
   }
 }
 
-const dropOpen = ref(false)
-
 function dropCard(): void {
   if (!active.value?.raw) return
-  dropOpen.value = true
-}
-
-function dropConfirm(): void {
-  dropOpen.value = false
-  const raw = active.value?.raw
-  if (!raw) return
-  knowledge.remove(raw.createdAt)
-  closeSheet()
+  uni.showModal({
+    title: '移除这张卡？',
+    content: '它会从你的知识库消失，不可找回。',
+    confirmText: '移除',
+    confirmColor: '#C4602E',
+    success: (res) => {
+      if (res.confirm && active.value?.raw) {
+        knowledge.remove(active.value.raw.createdAt)
+        closeSheet()
+      }
+    },
+  })
 }
 
 /* —— 工具入口 —— */
