@@ -76,8 +76,21 @@ export const PHRASE_KEYS = [
   'assess.dimTitle',
   'assess.qualityStraight',
   'assess.qualityInconsistent',
+  /* 作答过快（平均每题不足 1.2 秒，判定见 config/assessment.ts 的 isHasty） */
+  'assess.qualityHasty',
   'assess.trend',
   'assess.trendFirst',
+  /* 结果可信度（由完整性/变异度/一致性/作答节奏合成，见 signals） */
+  'assess.confLabel',
+  'assess.confHigh',
+  'assess.confMid',
+  'assess.confLow',
+  /* 结果页的「下一步」：只看最弱的那一维，一次只给一条 */
+  'assess.nextStep',
+  'advice.observe',
+  'advice.pause',
+  'advice.reflect',
+  'advice.action',
   /* 起点基线（我页等级卡下方那行） */
   'baseline.title',
   'baseline.missing',
@@ -87,11 +100,25 @@ export const PHRASE_KEYS = [
   'prompt.note',
   'prompt.cta',
   'prompt.later',
+
+  /* 四维（观/止/知/行）的职能名：符号「观止知行」固定，职能词随模式变 */
+  'dim.observe',
+  'dim.pause',
+  'dim.reflect',
+  'dim.action',
 ] as const
 
 export type PhraseKey = (typeof PHRASE_KEYS)[number]
 
 type PhraseTable = Record<PhraseKey, Record<ModeId, string>>
+
+/**
+ * 内置短语版本号 —— 与 config/assessment.ts 的 LOCAL_ASSESS_VERSION 同理：
+ * 远端 content.json 的 version 低于它，说明服务器上的文案比代码还旧
+ * （例如线上仍写着「6 题 · 约 1 分钟」，而本地已改为 8 题），此时整体忽略远端 phrases。
+ * 运营侧更新文案后把 version 提到 ≥ 此值即可重新生效。每次改本地短语，请 +1。
+ */
+export const LOCAL_PHRASE_VERSION = 3
 
 const LOCAL_PHRASES: PhraseTable = {
   /* ---------- 模式切换确认框 ---------- */
@@ -301,8 +328,8 @@ const LOCAL_PHRASES: PhraseTable = {
 
   /* ---------- 测评：耗时说明（降低"一进来就要答题"的心理负担） ---------- */
   'assess.cost': {
-    normal: '约 1 分钟',
-    tech: '约 60 秒',
+    normal: '约 90 秒',
+    tech: '约 90 秒',
     dao: '一盏茶功夫',
   },
 
@@ -369,6 +396,63 @@ const LOCAL_PHRASES: PhraseTable = {
     tech: '首次采样完成。30 天后可再次采样，此处将显示环比变化。',
     dao: '初次立档。此后每三十日可测一次，此处自会显出进退。',
   },
+  /* 作答过快：不判废、不改分，只说明「为什么这次结论要打个折」 */
+  'assess.qualityHasty': {
+    normal:
+      '这次答得比读题还快，有几题可能没看清就选了。分数照算不清零，30 天后重测一次会更准。',
+    tech:
+      '平均每题作答不足 1.2 秒，低于有效阅读所需时间。数据照常保留，建议 30 天后重新采样。',
+    dao: '此番应答甚疾，恐未及细读。录之以为参考，三十日后再测方准。',
+  },
+  /* 结果可信度：告诉用户「这份结论能多当真」——比只给一个数字诚实得多 */
+  'assess.confLabel': {
+    normal: '结果可信度',
+    tech: '数据置信度',
+    dao: '此测可信几分',
+  },
+  'assess.confHigh': {
+    normal: '前后作答自洽，也没有漏题。这份结果可以当真。',
+    tech: '各维度自洽、作答完整，本次采样可作为后续对比的基准。',
+    dao: '前后应答如一，条目无缺。此番测定，可作凭据。',
+  },
+  'assess.confMid': {
+    normal: '大体可用，有几处答得偏快或不太一致。看趋势就好，别拿它当精确值。',
+    tech: '存在轻微不自洽或遗漏，结论可作趋势参考，不宜当作精确指标。',
+    dao: '大体可信，然有数处前后参差。观其大略则可，勿据此细较。',
+  },
+  'assess.confLow': {
+    normal: '这次作答明显偏快或前后矛盾，只当个大概印象。30 天后再测一次会准很多。',
+    tech: '本次采样存在作答惯性、过快或自相矛盾，数据不足以支撑结论，建议 30 天后重采样。',
+    dao: '此番应答或过急促，或前后相悖，难以为凭。待三十日后重测方准。',
+  },
+  /* 下一步：只给最弱的一维，一次一条。给四条等于没给 */
+  'assess.nextStep': {
+    normal: '接下来，先练这一项',
+    tech: '优先优化的指标',
+    dao: '此后当先修此道',
+  },
+  'advice.observe': {
+    normal:
+      '拿手机之前先停一秒。下一步不是少用，是先看清自己因什么拿起来——在「观」里记一条触发原因就够了。',
+    tech: '点亮屏幕前先记录触发源（内部情绪 / 外部通知 / 无目的），一周后看占比，就能定位真正的干扰源。',
+    dao: '念起之时先观其来处。于「观」中记下此念因何而起，日久自能辨其根由。',
+  },
+  'advice.pause': {
+    normal:
+      '从每天一段 15 分钟的沙漏开始，这段时间手机不在手边。能坐住的天数比一次坐多久更要紧。',
+    tech: '先做连续 45 分钟的单任务窗口：通知全关、一次只开一个应用。用专注计时验证它是否真的没被打断。',
+    dao: '每日行一炷香入定之功，收起外物。初时心猿意马不足虑，坐得住的日子比坐得久更要紧。',
+  },
+  'advice.reflect': {
+    normal: '每天写一句就好，不必长——记下「今天哪件事值得记住」，一周后回头看。',
+    tech: '读完立刻记一句要点（十个字也行），把「读过就忘」转成可检索的沉淀。',
+    dao: '每夜记一句当日功过。不必洋洋万言，日积月累自有可观。',
+  },
+  'advice.action': {
+    normal: '挑一件「本周就该做」的事，拆到今天能动的最小一步，今天就做完它。',
+    tech: '把本周目标拆成当天可完成的原子任务（≤25 分钟），每日完成率比总进度更能预测成败。',
+    dao: '取一件当下该为之事，分作今日可行的一小步。先行为上，勿待机缘。',
+  },
 
   /* ---------- 起点基线（我页等级卡下方） ---------- */
   'baseline.title': {
@@ -395,9 +479,9 @@ const LOCAL_PHRASES: PhraseTable = {
   },
   'prompt.note': {
     normal:
-      '6 题 · 约 1 分钟。建档后我页会显示你的起点基线与称号；不建档也照常用。',
-    tech: '6 题 · 约 60 秒。建立后可看到基线参数与分档；不建档不影响使用。',
-    dao: '六问 · 一盏茶功夫。立档后洞府中便有根骨与称号可看；不测亦无妨。',
+      '8 题 · 约 90 秒。建档后我页会显示你的起点基线与称号；不建档也照常用。',
+    tech: '8 项 · 约 90 秒。建立后可看到基线参数与分档；不建档不影响使用。',
+    dao: '八问 · 一盏茶功夫。立档后洞府中便有根骨与称号可看；不测亦无妨。',
   },
   'prompt.cta': {
     normal: '现在补上',
@@ -408,6 +492,28 @@ const LOCAL_PHRASES: PhraseTable = {
     normal: '三天后再提醒',
     tech: '稍后提醒',
     dao: '过几日再说',
+  },
+
+  /* ---------- 四维职能名（大厅符号「观止知行」固定，只有职能词换说法） ---------- */
+  'dim.observe': {
+    normal: '辨源',
+    tech: '摄入',
+    dao: '鉴源',
+  },
+  'dim.pause': {
+    normal: '静修',
+    tech: '专注',
+    dao: '定力',
+  },
+  'dim.reflect': {
+    normal: '产出',
+    tech: '沉淀',
+    dao: '悟道',
+  },
+  'dim.action': {
+    normal: '完成',
+    tech: '执行',
+    dao: '功德',
   },
 }
 

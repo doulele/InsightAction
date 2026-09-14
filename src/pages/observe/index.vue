@@ -14,7 +14,12 @@
 
     <!-- 当前修行语言横幅：与模式选择卡同套艺术画，随皮肤更换 -->
     <view class="hero">
-      <image class="hero__art" :src="modeMeta.art" mode="aspectFill" />
+      <!--
+        ⚠️ 必须走 modeStore.art（后端 /skins 下发 → 带版本号 → 命中本地缓存读盘），
+        不能用 modeMeta.art：那是构建期变量 VITE_SKIN_BASE_URL 拼的静态地址，
+        没配该变量时恒为 undefined ✗ → 图永远不出现（「观」页顶部空白就是这个原因）。
+      -->
+      <image v-if="modeStore.art" class="hero__art" :src="modeStore.art" mode="aspectFill" />
       <view class="hero__veil" />
       <view class="hero__cap">
         <text class="hero__eyebrow">今日修行 · {{ modeMeta.label }} · {{ modeMeta.labelEn }}</text>
@@ -275,6 +280,8 @@ const moreEntries = computed<MoreEntry[]>(() => {
   border-radius: $gz-radius-lg;
   overflow: hidden;
   box-shadow: 0 12rpx 32rpx rgba(20, 16, 10, 0.14);
+  /* 图还没到（首屏弱网 / 下发未就绪）时的兜底：主题渐变占住画面，不让它是个空框 */
+  background: linear-gradient(135deg, $gz-accent-soft, $gz-accent);
 }
 
 .hero__art {

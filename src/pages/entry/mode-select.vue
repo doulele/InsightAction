@@ -63,7 +63,7 @@
 <script setup lang="ts">
 /**
  * 模式选择页：首次引导第 2 步（第 1 步为启动箴言页）。
- * 选定后写入 mode store 并标记引导完成，随后进入「首次测评 · 6 题建档」（批次 C）。
+ * 选定后写入 mode store 并标记引导完成，随后进入「首次测评 · 8 题建档」（批次 C）。
  */
 import { computed, ref } from 'vue'
 import { DEFAULT_MODE_ID, MODES } from '@/config/modes'

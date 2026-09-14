@@ -29,7 +29,7 @@
     <view v-if="open" class="bf__mask" @click="close" />
     <view v-if="open" class="bf__panel">
       <view class="bf__panel-head">
-        <view class="bf__orb">
+        <view class="bf__orb" :class="shapeClass">
           <text class="bf__orb-glyph">{{ buddyGlyph }}</text>
         </view>
         <view class="bf__panel-id">
@@ -71,7 +71,7 @@
     <view
       v-if="!open"
       class="bf__fob"
-      :class="{ 'has-tip': tip && tip.kind === 'reminder' }"
+      :class="[shapeClass, { 'has-tip': tip && tip.kind === 'reminder' }]"
       hover-class="gz-hover"
       @click="open = true"
     >
@@ -88,7 +88,17 @@
  * UI 薄壳 —— 所有状态与触发逻辑在 composables/useBuddy.ts（模块级单例），
  * 由宿主大厅页在自身 onShow 里调用 poke() 驱动（早/晚到点激励、入定到点、面板数据）。
  */
+import { computed } from 'vue'
 import { useBuddy } from '@/composables/useBuddy'
+import { useModeStore } from '@/stores/mode'
+
+const modeStore = useModeStore()
+/**
+ * 小枢的三套外形（只换形状与描边，位置/尺寸/交互一律不动）：
+ *   普通 = 圆润纸印 / 科技 = 切角面板 / 修仙 = 双环道印。
+ * 颜色本来就随 --gz-accent 变，这里补上"形"，模式才有质感级的区别。
+ */
+const shapeClass = computed(() => `is-${modeStore.id}`)
 
 const {
   open,
@@ -257,6 +267,50 @@ const {
   border-radius: 50%;
   background: #e04f3f;
   border: 3rpx solid var(--gz-surface);
+}
+
+/* ---- 小枢的三套外形 ----
+ * 颜色本来就随 --gz-accent 变，缺的是"形"；这里只改形状、描边与光环动效，
+ * 位置、尺寸、点击行为一律不动（所以不会影响任何页面的布局与可用性）。
+ *   普通 · 圆润纸印：圆形 + 柔和外晕（即默认样式，无需覆盖）
+ *   科技 · 切角面板：方形切角 + 硬描边 + 光环上下扫描（仪表指示灯）
+ *   修仙 · 双环道印：圆形 + 墨线双环 + 更慢的呼吸（道场灯）
+ */
+.bf__fob.is-tech,
+.bf__orb.is-tech {
+  border-radius: 16rpx;
+  box-shadow: 0 0 0 1rpx rgba(63, 169, 255, 0.5), 0 10rpx 26rpx rgba(0, 0, 0, 0.45);
+}
+
+.bf__fob.is-tech .bf__fob-halo {
+  border-radius: 16rpx;
+  border-color: rgba(63, 169, 255, 0.35);
+  animation: bf-scan-y 3.6s ease-in-out infinite;
+}
+
+.bf__fob.is-dao,
+.bf__orb.is-dao {
+  box-shadow: 0 0 0 1rpx rgba(42, 37, 30, 0.28), 0 0 0 8rpx var(--gz-accent-soft),
+    0 12rpx 28rpx rgba(42, 37, 30, 0.18);
+}
+
+.bf__fob.is-dao .bf__fob-halo {
+  inset: -12rpx;
+  border-width: 2rpx;
+  border-color: rgba(164, 71, 31, 0.32);
+  animation-duration: 5.4s;
+}
+
+@keyframes bf-scan-y {
+  0%,
+  100% {
+    transform: translateY(-6rpx);
+    opacity: 0.35;
+  }
+  50% {
+    transform: translateY(6rpx);
+    opacity: 0.9;
+  }
 }
 
 /* ---- 展开面板 ---- */

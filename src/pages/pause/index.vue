@@ -98,6 +98,7 @@ import { useFocusStore } from '@/stores/focus'
 import { useReminderStore } from '@/stores/reminder'
 import { useInterruptStore } from '@/stores/interrupt'
 import { todayKey } from '@/stores/daily'
+import { useDimLabel } from '@/composables/usePhrase'
 import { poke } from '@/composables/useBuddy'
 import { useSkinClass } from '@/composables/useSkin'
 import { syncTabBar } from '@/utils/skin'
@@ -113,12 +114,19 @@ const skinClass = useSkinClass()
 const focus = useFocusStore()
 const reminder = useReminderStore()
 const interrupt = useInterruptStore()
+/** 四维取词：大厅标题用「止 · 静修 / 专注 / 定力」 */
+const dl = useDimLabel()
 
 /* tabBar 原生样式/图标只能在本类大厅页上同步 */
 onShow(() => {
   /* 批次 D · 小枢：评估到点激励 / 入定到点提醒 */
   poke()
   syncTabBar(modeStore.id)
+  /**
+   * 大厅标题随模式换说法：止 · 静修 / 止 · 专注 / 止 · 定力大厅。
+   * pages.json 里的静态标题只作首帧兜底（它不是动态的），这行让冷启动后立刻对上。
+   */
+  uni.setNavigationBarTitle({ title: `${dl('pause')}大厅` })
 })
 
 /** 今日定力：真实专注累计（沙漏/茶室子页写入）；连胜按自然日真实统计 */

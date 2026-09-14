@@ -9,6 +9,9 @@
       <text class="hall-head__state">{{ stateText }}</text>
     </view>
 
+    <!-- 模式专属标志物：纸卡 / 终端窗口 / 问心签（图缺失时整块隐身） -->
+    <ModuleMark mark="reflect.card" size="md" />
+
     <!-- 每日灵魂拷问 -->
     <view class="question">
       <view class="question__head">

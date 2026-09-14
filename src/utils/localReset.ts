@@ -17,6 +17,7 @@ import { useAssessmentStore } from '@/stores/assessment'
 import { useDailyStore, freshTodos, todayKey } from '@/stores/daily'
 import { useReminderStore } from '@/stores/reminder'
 import { useReadLaterStore } from '@/stores/readLater'
+import { useProverbStore } from '@/stores/proverb'
 
 export function resetPracticeData(): void {
   useXpStore().$patch({ total: 0 })
@@ -33,4 +34,5 @@ export function resetPracticeData(): void {
   daily.$patch({ dateKey: todayKey(), todos: freshTodos() })
   useReminderStore().$patch({ reminders: [] })
   useReadLaterStore().$patch({ items: [] })
+  useProverbStore().$patch({ items: [] })
 }

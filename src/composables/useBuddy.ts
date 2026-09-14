@@ -18,15 +18,20 @@ import { useReminderStore } from '@/stores/reminder'
 import { useDailyStore, todayKey } from '@/stores/daily'
 import { useSettingsStore } from '@/stores/settings'
 import { useQuestionStore } from '@/stores/question'
+import { useProverbStore, parseQuote, type ProverbSource } from '@/stores/proverb'
 import { dayStats } from '@/utils/growth'
 import { getItem, setItem } from '@/utils/storage'
 import { navigateTo, ROUTES } from '@/router/routes'
+import { useDimLabel } from '@/composables/usePhrase'
 
 const modeStore = useModeStore()
 const reminderStore = useReminderStore()
 const settings = useSettingsStore()
 const question = useQuestionStore()
 const daily = useDailyStore()
+
+/** 四维标签（与各大厅同一套取词：符号固定，职能词随模式） */
+const dl = useDimLabel()
 
 const open = ref(false)
 
@@ -57,16 +62,16 @@ export const dims = computed<BuddyDim[]>(() => {
   const done = daily.doneCount
   const plan = daily.planCount || 3
   return [
-    { key: 'observe', label: '观 · 辨源', value: `${st.value.marks} 次`, on: st.value.marks > 0, color: '#6D8B3F' },
-    { key: 'pause', label: '止 · 静修', value: `${st.value.focusMin} 分`, on: st.value.focusMin > 0, color: '#C4602E' },
+    { key: 'observe', label: dl('observe'), value: `${st.value.marks} 次`, on: st.value.marks > 0, color: '#6D8B3F' },
+    { key: 'pause', label: dl('pause'), value: `${st.value.focusMin} 分`, on: st.value.focusMin > 0, color: '#C4602E' },
     {
       key: 'reflect',
-      label: '知 · 产出',
+      label: dl('reflect'),
       value: `${st.value.cards} 卡`,
       on: st.value.cards > 0 || st.value.answered,
       color: '#4E8FD4',
     },
-    { key: 'action', label: '行 · 完成', value: `${done}/${plan} 件`, on: done > 0, color: '#7AA0B2' },
+    { key: 'action', label: dl('action'), value: `${done}/${plan} 件`, on: done > 0, color: '#7AA0B2' },
   ]
 })
 
@@ -177,22 +182,24 @@ export const greeting = computed(() => {
  * 记录与「小枢」的每一次见面与问候 → 羁绊等级 Lv.1-20 随见面次数渐进；
  * 任一对话可收藏进「箴言墙」。全部数据本机留存，云端同步留待登录期。
  */
-export type BuddyLineKind = 'greet' | 'guard' | 'remind' | 'meet'
+export type BuddyLineKind = 'greet' | 'guard' | 'remind' | 'meet' | 'proverb'
 
 export interface BuddyLine {
   /** 时间戳 */
   at: number
   kind: BuddyLineKind
   text: string
+  /** 箴言墙视图专用：收藏项主键（用于精确移除） */
+  id?: number
 }
 
 const LINES_KEY = 'buddy-lines'
-const FAVS_KEY = 'buddy-favs'
 const LINES_CAP = 400
-const FAVS_CAP = 99
 
 const lines = ref<BuddyLine[]>(getItem<BuddyLine[]>(LINES_KEY, []) ?? [])
-const favs = ref<BuddyLine[]>(getItem<BuddyLine[]>(FAVS_KEY, []) ?? [])
+
+/* 收藏统一落在 proverb store（可备份、可同步、字段完整）；这里是它的「对话录视角」 */
+const proverbs = useProverbStore()
 
 /** 记一次见面/对话（新在前，超出上限丢最旧） */
 function recordLine(kind: BuddyLineKind, text: string): void {
@@ -201,23 +208,43 @@ function recordLine(kind: BuddyLineKind, text: string): void {
   setItem(LINES_KEY, lines.value)
 }
 
-const favId = (l: BuddyLine): string => `${l.kind}:${l.text}`
-
-export const isFav = (l: BuddyLine): boolean => favs.value.some((f) => favId(f) === favId(l))
-
-/** 收藏 / 取消收藏一句话（kind+内容相同即视为同一条，箴言墙去重） */
-export function toggleFav(line: BuddyLine): void {
-  const id = favId(line)
-  const hit = favs.value.findIndex((f) => favId(f) === id)
-  if (hit >= 0) {
-    favs.value.splice(hit, 1)
-    uni.showToast({ title: '已移出箴言墙', icon: 'none' })
-  } else {
-    favs.value.unshift(line)
-    if (favs.value.length > FAVS_CAP) favs.value = favs.value.slice(0, FAVS_CAP)
-    uni.showToast({ title: '已收进箴言墙', icon: 'none' })
+/** 对话录的一行 → 收藏入参（把「正文」——「出处」拆开存结构化） */
+function toFavInput(l: BuddyLine): { text: string; from?: string; source: ProverbSource; at: number } {
+  const p = parseQuote(l.text)
+  return {
+    text: p.text,
+    from: p.from,
+    source: l.kind === 'proverb' ? 'startup' : 'buddy',
+    at: l.at,
   }
-  setItem(FAVS_KEY, favs.value)
+}
+
+/** 箴言墙：proverb store 的对话录视图（新在前，带 id 便于精确移除） */
+const favs = computed<BuddyLine[]>(() =>
+  proverbs.items.map((it) => ({
+    id: it.id,
+    at: it.createdAt,
+    kind: it.source === 'startup' ? ('proverb' as BuddyLineKind) : ('meet' as BuddyLineKind),
+    text: it.from ? `「${it.text}」 —— ${it.from}` : it.text,
+  })),
+)
+
+export const isFav = (l: BuddyLine): boolean => {
+  if (l.id !== undefined) return proverbs.items.some((it) => it.id === l.id)
+  const inp = toFavInput(l)
+  return proverbs.has(inp.text, inp.source)
+}
+
+/**
+ * 收藏 / 取消收藏一句话（kind+内容相同即视为同一条，箴言墙去重）。
+ * silent=true 时不弹 toast——调用方想用自己的文案时用（如开屏页「记住这句」）。
+ * 返回收藏后的状态：true=已收藏，false=已移除。
+ */
+export function toggleFav(line: BuddyLine, silent = false): boolean {
+  const known = line.id !== undefined && proverbs.items.some((it) => it.id === line.id)
+  const on = known ? ((proverbs.remove(line.id as number), false)) : proverbs.add(toFavInput(line)) !== null
+  if (!silent) uni.showToast({ title: on ? '已收进箴言墙' : '已移出箴言墙', icon: 'none' })
+  return on
 }
 
 /* 羁绊称谓（20 级，跨模式通用：小枢是同一位的修行同伴） */

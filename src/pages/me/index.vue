@@ -142,6 +142,7 @@ import { useAssessmentStore } from '@/stores/assessment'
 import { useDailyStore, todayKey } from '@/stores/daily'
 import { useFocusStore } from '@/stores/focus'
 import { useTraceStore } from '@/stores/trace'
+import { useProverbStore } from '@/stores/proverb'
 import { poke, openDailyCard, bondLv, bondXp } from '@/composables/useBuddy'
 import { useSkinClass } from '@/composables/useSkin'
 import { applySkin, syncTabBar } from '@/utils/skin'
@@ -155,6 +156,7 @@ import type { ModeId } from '@/config/modes'
 import type { RoutePath } from '@/router/routes'
 import { navigateTo, ROUTES } from '@/router/routes'
 import type { PhraseKey } from '@/config/phrases'
+import { useDimLabel } from '@/composables/usePhrase'
 import type { EntryBadge } from '@/components/EntryItem/EntryItem.vue'
 
 const appStore = useAppStore()
@@ -166,9 +168,14 @@ const xp = useXpStore()
 const focus = useFocusStore()
 const trace = useTraceStore()
 const contentStore = useContentStore()
+/** 记住的句子（开屏箴言 / 小枢对话 / 日课三处来源都汇到这里） */
+const proverbs = useProverbStore()
 
 /** 主题化取词：远端运营位优先、内置兜底（与页面皮肤同一套词） */
 const p = (key: PhraseKey, mode: ModeId = modeStore.id): string => contentStore.phraseOf(key, mode)
+
+/** 四维标签（观 · 辨源 / 观 · 摄入 / 观 · 鉴源）：大厅符号固定，职能词随模式 */
+const dl = useDimLabel()
 
 onShow(() => {
   daily.ensureToday()
@@ -263,10 +270,10 @@ const dims = computed(() => {
   /* 今日知识产出 = 新建卡片 + 今日拷问作答（答卡即时 Lv.3，未落库故并列计入） */
   const know = st.cards + (st.answered ? 1 : 0)
   return [
-    { label: '观 · 辨源', value: `${st.marks} 次`, pct: Math.min(100, Math.round((st.marks / 5) * 100)), color: '#4E8FD4' },
-    { label: '止 · 静修', value: `${st.focusMin} 分`, pct: Math.min(100, Math.round((st.focusMin / focusGoal) * 100)), color: '#84A268' },
-    { label: '知 · 产出', value: `${know} 条`, pct: Math.min(100, Math.round((know / 3) * 100)), color: '#9C8AC4' },
-    { label: '行 · 完成', value: `${daily.doneCount}/${plan} 件`, pct: Math.round((daily.doneCount / plan) * 100), color: '#C4602E' },
+    { label: dl('observe'), value: `${st.marks} 次`, pct: Math.min(100, Math.round((st.marks / 5) * 100)), color: '#4E8FD4' },
+    { label: dl('pause'), value: `${st.focusMin} 分`, pct: Math.min(100, Math.round((st.focusMin / focusGoal) * 100)), color: '#84A268' },
+    { label: dl('reflect'), value: `${know} 条`, pct: Math.min(100, Math.round((know / 3) * 100)), color: '#9C8AC4' },
+    { label: dl('action'), value: `${daily.doneCount}/${plan} 件`, pct: Math.round((daily.doneCount / plan) * 100), color: '#C4602E' },
   ]
 })
 
@@ -293,7 +300,8 @@ const assessmentEntry = computed<{ subtitle: string; badge: EntryBadge }>(() => 
   const date = `${d.getFullYear()}.${d.getMonth() + 1}.${d.getDate()}`
   const remain = assessment.retakeRemainDays(modeMeta.value.id)
   return {
-    subtitle: `${tier} · ${r.score}/18 分 · ${date} 建档`,
+    /* 满分用存档里的 maxScore（老存档 18、新版 24）——写死会造成"分数没变，比例却变了"的困惑 */
+    subtitle: `${tier} · ${r.score}/${r.maxScore} 分 · ${date} 建档`,
     badge:
       remain > 0 ? { text: `${remain} 天后可重测`, tone: 'muted' } : { text: '可重测', tone: 'accent' },
   }
@@ -335,6 +343,16 @@ const moreEntries = computed<MoreEntry[]>(() => [
     subtitle: trace.traces.length > 0 ? `累计留下 ${trace.traces.length} 条痕迹 · 在真实世界的回响` : '从今天的第一件小事开始留痕',
     badge: trace.traces.length > 0 ? { text: `${trace.traces.length} 条`, tone: 'accent' } : undefined,
     url: ROUTES.meTimeline,
+  },
+  {
+    mark: '言',
+    title: '我的箴言',
+    subtitle:
+      proverbs.count > 0
+        ? `已记住 ${proverbs.count} 句 · 开屏 ${proverbs.countBySource.startup} · 小枢 ${proverbs.countBySource.buddy}`
+        : '遇到想留住的句子，点亮「记住这句」就收进这里',
+    badge: proverbs.count > 0 ? { text: `${proverbs.count} 句`, tone: 'accent' } : undefined,
+    url: ROUTES.meProverbs,
   },
   {
     mark: '羁',

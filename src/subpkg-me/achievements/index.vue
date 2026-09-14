@@ -9,6 +9,9 @@
       <view class="nav__side" />
     </view>
 
+    <!-- 模式专属标志物：盖章册 / 解锁矩阵 / 功勋碑（图缺失时整块隐身） -->
+    <ModuleMark mark="me.achievement" size="md" />
+
     <!-- 总况 -->
     <view class="head">
       <view class="head__left">
@@ -24,7 +27,7 @@
     <view class="next" :class="{ 'is-full': unlockedN === list.length }">
       <text class="next__cap">{{ unlockedN === list.length ? '已是全收集' : '下一枚' }}</text>
       <text class="next__title">{{ nextRule ? nextRule.rule.name : '所有徽章都已点亮' }}</text>
-      <text class="next__desc">{{ nextRule ? nextRule.rule.desc : '继续修行，守住日常' }}</text>
+      <text class="next__desc">{{ nextRule ? badgeDesc(nextRule.rule, dl) : '继续修行，守住日常' }}</text>
     </view>
 
     <!-- 徽章墙 -->
@@ -58,7 +61,7 @@
         </view>
         <text class="sheet__title">{{ currentRule.name }}</text>
         <text class="sheet__cap">{{ activeUnlocked ? '已解锁' : '未达成 · 达成条件' }}</text>
-        <text class="sheet__desc">{{ currentRule.desc }}</text>
+        <text class="sheet__desc">{{ badgeDesc(currentRule, dl) }}</text>
         <view class="sheet__close" hover-class="gz-hover" @click="detailOpen = false">知道了</view>
       </view>
     </view>
@@ -72,12 +75,15 @@
  * 与「我」页入口的已解锁数同源；点击徽章可看达成条件。
  */
 import { computed, ref } from 'vue'
-import { evaluateBadges, type BadgeRule } from '@/config/badges'
+import { badgeDesc, evaluateBadges, type BadgeRule } from '@/config/badges'
 import { buildBadgeContext } from '@/utils/growth'
 import { useSkinClass } from '@/composables/useSkin'
+import { useDimLabel } from '@/composables/usePhrase'
 import { ROUTES } from '@/router/routes'
 
 const skinClass = useSkinClass()
+/** 徽章描述里的四维职能词随模式变（累计静修 / 专注 / 定力满 60 分钟） */
+const dl = useDimLabel()
 
 interface BadgeItem {
   rule: BadgeRule

@@ -23,6 +23,7 @@ import { useKnowledgeStore } from '@/stores/knowledge'
 import { useModeStore } from '@/stores/mode'
 import { useQualityStore } from '@/stores/quality'
 import { useQuestionStore } from '@/stores/question'
+import { useProverbStore } from '@/stores/proverb'
 import { useReadLaterStore } from '@/stores/readLater'
 import { useRemoteStore } from '@/stores/remote'
 import { useReminderStore } from '@/stores/reminder'
@@ -88,6 +89,7 @@ const HYDRATORS: Array<{ key: string; use: () => Patchable }> = [
   { key: 'knowledge', use: () => useKnowledgeStore() },
   { key: 'mode', use: () => useModeStore() },
   { key: 'quality', use: () => useQualityStore() },
+  { key: 'proverb', use: () => useProverbStore() },
   { key: 'question', use: () => useQuestionStore() },
   { key: 'readLater', use: () => useReadLaterStore() },
   { key: 'remote', use: () => useRemoteStore() },

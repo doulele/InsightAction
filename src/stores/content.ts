@@ -1,19 +1,21 @@
 /**
- * 内容 store：题库 / 计分分档 / 称号（远端优先，内置兜底）。
+ * 内容 store：题库 / 计分分档 / 称号（远端优先，内置兜底 —— 但**过期的远端会被丢弃**）。
  *
- * 两条硬约束：
+ * 三条硬约束：
  *  1. **兜底不可缺**：测评是核心流程，绝不能因接口抖动而无法答题或算分 ——
  *     远端只做「覆盖」，任何缺失字段都回落到 src/config/assessment.ts 的内置值；
+ *  2. **不支持旧版本覆盖新版本**：远端 version 低于内置版本时忽略该部分
+ *     （详见 load() 里的「新鲜度闸门」）—— 否则会出现"代码已改、真机照旧"；
  *  2. **不做持久化**：内容每次冷启动拉一次即可（几百字节），
  *     持久化反而容易把过时题库留在本地，得不偿失。
  */
 import { defineStore } from 'pinia'
 import { ref } from 'vue'
 import { fetchContent } from '@/api/modules/content'
-import { getAssessmentBank, DEFAULT_TIER_THRESHOLDS } from '@/config/assessment'
+import { getAssessmentBank, DEFAULT_TIER_THRESHOLDS, LOCAL_ASSESS_VERSION } from '@/config/assessment'
 import type { AssessmentBank, TierThresholds } from '@/config/assessment'
 import type { AssessmentScoring, HallId, LexiconPayload, PhrasesPayload } from '@/api/modules/content'
-import { localPhrase } from '@/config/phrases'
+import { localPhrase, LOCAL_PHRASE_VERSION } from '@/config/phrases'
 import type { PhraseKey } from '@/config/phrases'
 import type { ModeId } from '@/config/modes'
 
@@ -76,19 +78,55 @@ export const useContentStore = defineStore('content', () => {
       const cfg = await fetchContent()
       const banks = cfg?.assessment?.banks ?? []
 
+      /*
+       * 新鲜度闸门：远端 version 低于内置版本 → 这份远端内容是**旧版本**，整体忽略。
+       *
+       * 为什么要这道闸：运营位在服务器上，代码也在天天改。若服务器上的 content.json
+       * 停留在旧版本（历史上真实发生过：本地已改 8 题，线上仍是 6 题 + 「约 1 分钟」），
+       * 它会在运行时把本地新内容**整体覆盖**回去 —— 明明产物是对的，真机却显示旧内容，
+       * 且没有任何报错，极难排查。
+       *
+       * 于是约定：每次改内置题库/短语都 +1（LOCAL_ASSESS_VERSION / LOCAL_PHRASE_VERSION），
+       * 运营侧想重新接管时把 content.json 的 version 提到 >= 内置值即可 —— 不改发版能力。
+       * 缺 version 字段视为 0（一定比内置旧）。
+       */
+      const remoteVersion = Number(cfg?.version)
+      const fresh = Number.isFinite(remoteVersion) ? remoteVersion : 0
+      const bankFresh = fresh >= LOCAL_ASSESS_VERSION
+      const phraseFresh = fresh >= LOCAL_PHRASE_VERSION
+
       const map: Partial<Record<ModeId, AssessmentBank>> = {}
       for (const b of banks) {
-        // 二次校验：后端已清洗过，这里再挡一次「半包」内容
-        if (b?.mode && Array.isArray(b.questions) && b.questions.length) map[b.mode] = b
+        /**
+         * 二次校验：后端已清洗过，这里再挡一次「半包」内容。
+         *
+         * 除了题量，还必须要求**标题与三档称号**存在 —— 否则一份"有题但没标题/没称号"
+         * 的题库会把内置题库顶掉，结果页就会出现「· 已建档」「/ 分」这种空壳 ✗。
+         * 校验不过就整体丢弃 → 该模式继续用内置题库（宁可旧，不可残）。
+         */
+        const usable =
+          b?.mode &&
+          typeof b.title === 'string' &&
+          b.title.trim() !== '' &&
+          Array.isArray(b.questions) &&
+          b.questions.length > 0 &&
+          Array.isArray(b.tierNames) &&
+          b.tierNames.some((t) => typeof t === 'string' && t.trim() !== '')
+        if (usable) map[b.mode] = b
       }
       // 只有拿到至少一套有效题才覆盖，避免把三套题覆盖成一套
-      if (Object.keys(map).length) remoteBanks.value = map
+      if (bankFresh && Object.keys(map).length) remoteBanks.value = map
 
       const s = cfg?.assessment?.scoring
       if (s && (Number.isFinite(s.lowRatio) || Number.isFinite(s.lowMax))) scoring.value = s
 
+      /*
+       * 状态栏模板不受版本闸门限制：只是带占位符的陈述模板，
+       * 改了不影响计分口径，运营侧随时可调。
+       */
       if (cfg?.lexicon && typeof cfg.lexicon === 'object') lexicon.value = cfg.lexicon
-      if (cfg?.phrases && typeof cfg.phrases === 'object') phrases.value = cfg.phrases
+      // 短语与题库同为「解释型内容」，口径变了必须整套跟进 → 一并受闸门保护
+      if (phraseFresh && cfg?.phrases && typeof cfg.phrases === 'object') phrases.value = cfg.phrases
 
       loaded.value = true
     } catch {

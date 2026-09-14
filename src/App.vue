@@ -5,6 +5,8 @@ import { useAppStore } from '@/stores/app'
 import { useModeStore } from '@/stores/mode'
 import { useRemoteStore } from '@/stores/remote'
 import { useContentStore } from '@/stores/content'
+import { useImageStore } from '@/stores/images'
+import { useProverbStore } from '@/stores/proverb'
 import { applySkin } from '@/utils/skin'
 import { initUpdateManager } from '@/utils/update'
 import { autoBackupIfDue } from '@/utils/cloudBackup'
@@ -15,7 +17,7 @@ onLaunch(() => {
   const appStore = useAppStore()
   appStore.recordLaunch()
 
-  // 打开仪式：每次冷启动一律先进启动箴言页（约 2 秒，点按即跳过）。
+  // 打开仪式：每次冷启动一律先进启动箴言页（约 4 秒，点按即跳过）。
   // 该页随用户上次选择的模式皮肤出现；模式已持久化，无需重复选择。
   // 分流（已完成引导 → 主界面 / 首次 → 模式选择）由该页自身负责。
   uni.reLaunch({ url: ROUTES.entryStartup })
@@ -24,8 +26,26 @@ onLaunch(() => {
   const modeStore = useModeStore()
   setTimeout(() => applySkin(modeStore.id, true), 60)
 
+  // 箴言收藏迁移：旧版本把收藏存在 insight:buddy-favs（不在备份体系内），
+  // 这里一次性搬进 proverb store（幂等，仅首次生效；之后随备份/云备份一起走）
+  useProverbStore().migrateLegacy()
+
+  // 图片缓存：先校验持久化下来的本地文件是否还在（临时目录会被系统清理），
+  // 失效的条目会被剔除，用到时会自动重新下载，不会出现"指向空文件"的坏图
+  const images = useImageStore()
+  void images.verifyExisting()
+
   // 拉取远端横幅图配置（静默失败：拿不到就用主题渐变兜底，不阻塞任何流程）
-  void modeStore.loadSkins()
+  void modeStore.loadSkins().then(() => {
+    /**
+     * 只预热当前模式的**横幅**（1 张）。
+     *
+     * 为什么不连模块标志物一起预热：那 4 张都在子页里，用户可能一次都不去，
+     * 启动就下属于白花流量（也会让人疑惑"还没进那页怎么先请求了"）。
+     * 标志物由 ModuleMark 组件挂载时按需下载 —— 一次下载、之后本地直读。
+     */
+    images.warmBanner(modeStore.remoteArtOf(modeStore.id))
+  })
 
   // 远端配置（公告 / 版本信息 / 功能开关）+ 新版本下载监听：
   // 纯下行、不含用户数据；失败静默，不阻塞启动
@@ -45,7 +65,11 @@ onLaunch(() => {
 const modeStore = useModeStore()
 watch(
   () => modeStore.id,
-  (id) => applySkin(id),
+  (id) => {
+    applySkin(id)
+    /* 切模式 = 换一套图 → 顺手预热新横幅（标志物仍由各页面用到时再下载） */
+    useImageStore().warmBanner(modeStore.remoteArtOf(id))
+  },
 )
 </script>
 
@@ -76,7 +100,7 @@ page {
   --gz-rank-ink: #26231E;
   --gz-rank-sub: #6E675C;
   --gz-rank-track: rgba(38, 35, 30, 0.09);
-  --gz-rank-shadow: 0 10rpx 30rpx rgba(38, 35, 30, 0.05);
+  --gz-rank-shadow: 0 10rpx 30rpx rgba(38, 35, 30, 0.07);
   --gz-radius-lg: 32rpx;
 
   background-color: var(--gz-paper);
@@ -212,29 +236,31 @@ button {
 /**
  * 普通 · 手账纸
  * 材质 = 纸 + 帘纹：手工纸在抄纸时留下的竖密横疏细纹（帘纹），
- * 加上顶部一片极淡的橄榄晨光。目标是"翻开一本本子"的手感，
- * 而不是纯色背景 —— 但强度压到几乎察觉不到，只负责让暖白不呆板。
+ * 加上顶部一片橄榄晨光。目标是"翻开一本本子"的手感，而不是纯色背景。
+ *
+ * 强度标定：**能感知、但不抢内容**（2026-09 提升过一次：旧值压得太狠，
+ * 三模式切换时几乎看不出材质差异，等于白做）。判据是"切模式时一眼能看出纸不同"。
  */
 .gz-skin--normal {
   background-image:
     /* 帘纹 · 竖（密） */
     repeating-linear-gradient(
       90deg,
-      rgba(38, 35, 30, 0.026) 0,
-      rgba(38, 35, 30, 0.026) 1rpx,
+      rgba(38, 35, 30, 0.05) 0,
+      rgba(38, 35, 30, 0.05) 1rpx,
       transparent 1rpx,
       transparent 10rpx
     ),
     /* 帘纹 · 横（疏） */
     repeating-linear-gradient(
       0deg,
-      rgba(38, 35, 30, 0.015) 0,
-      rgba(38, 35, 30, 0.015) 1rpx,
+      rgba(38, 35, 30, 0.03) 0,
+      rgba(38, 35, 30, 0.03) 1rpx,
       transparent 1rpx,
       transparent 14rpx
     ),
     /* 顶部晨光（树影间漏下的光） */
-    linear-gradient(180deg, rgba(148, 169, 108, 0.14) 0%, rgba(148, 169, 108, 0) 58%);
+    linear-gradient(180deg, rgba(148, 169, 108, 0.22) 0%, rgba(148, 169, 108, 0) 58%);
 }
 
 .gz-skin--tech {
@@ -262,20 +288,20 @@ button {
   --gz-rank-ink: #EAF1F9;
   --gz-rank-sub: #9AA7B8;
   --gz-rank-track: rgba(234, 241, 249, 0.12);
-  --gz-rank-shadow: 0 14rpx 40rpx rgba(0, 0, 0, 0.4), 0 0 0 1rpx rgba(63, 169, 255, 0.08);
+  --gz-rank-shadow: 0 0 0 1rpx rgba(63, 169, 255, 0.3), 0 0 26rpx rgba(63, 169, 255, 0.12);
   /* 全站背景氛围：双密度网格（仪表盘）+ 右上辉光 + 底部地平光 */
   /* 两级网格是关键：粗网格给"结构"，细网格给"仪器刻度感"，比单一网格更像实验室 */
   background-image:
     /* 底部地平光（像屏幕下方的环境光） */
-    linear-gradient(0deg, rgba(63, 169, 255, 0.07) 0%, rgba(63, 169, 255, 0) 38%),
+    linear-gradient(0deg, rgba(63, 169, 255, 0.11) 0%, rgba(63, 169, 255, 0) 38%),
     /* 右上角一束电光辉光 */
-    linear-gradient(225deg, rgba(63, 169, 255, 0.18) 0%, rgba(63, 169, 255, 0) 54%),
+    linear-gradient(225deg, rgba(63, 169, 255, 0.26) 0%, rgba(63, 169, 255, 0) 54%),
     /* 粗网格 72rpx */
-    linear-gradient(rgba(148, 197, 255, 0.05) 1rpx, transparent 1rpx),
-    linear-gradient(90deg, rgba(148, 197, 255, 0.036) 1rpx, transparent 1rpx),
+    linear-gradient(rgba(148, 197, 255, 0.09) 1rpx, transparent 1rpx),
+    linear-gradient(90deg, rgba(148, 197, 255, 0.07) 1rpx, transparent 1rpx),
     /* 细网格 24rpx（刻度） */
-    linear-gradient(rgba(148, 197, 255, 0.018) 1rpx, transparent 1rpx),
-    linear-gradient(90deg, rgba(148, 197, 255, 0.012) 1rpx, transparent 1rpx);
+    linear-gradient(rgba(148, 197, 255, 0.035) 1rpx, transparent 1rpx),
+    linear-gradient(90deg, rgba(148, 197, 255, 0.024) 1rpx, transparent 1rpx);
   background-size: auto, auto, 72rpx 72rpx, 72rpx 72rpx, 24rpx 24rpx, 24rpx 24rpx;
 }
 
@@ -304,7 +330,7 @@ button {
   --gz-rank-ink: #2A251E;
   --gz-rank-sub: #6E6759;
   --gz-rank-track: rgba(42, 37, 30, 0.11);
-  --gz-rank-shadow: 0 10rpx 28rpx rgba(42, 37, 30, 0.12);
+  --gz-rank-shadow: 0 0 0 1rpx rgba(42, 37, 30, 0.12), 0 8rpx 20rpx rgba(42, 37, 30, 0.1);
   /**
    * 修仙 · 宣纸水墨
    * 材质 = 宣纸（双向纤维）+ 纸上未干的一痕墨（右下墨晕）+ 左上一点水色 + 纸面渐深。
@@ -315,24 +341,47 @@ button {
     /* 宣纸纤维 · 斜向一 */
     repeating-linear-gradient(
       45deg,
-      rgba(42, 37, 30, 0.022) 0,
-      rgba(42, 37, 30, 0.022) 1rpx,
+      rgba(42, 37, 30, 0.045) 0,
+      rgba(42, 37, 30, 0.045) 1rpx,
       transparent 1rpx,
       transparent 9rpx
     ),
     /* 宣纸纤维 · 斜向二（交错，避免变成规则网纹） */
     repeating-linear-gradient(
       -45deg,
-      rgba(42, 37, 30, 0.015) 0,
-      rgba(42, 37, 30, 0.015) 1rpx,
+      rgba(42, 37, 30, 0.032) 0,
+      rgba(42, 37, 30, 0.032) 1rpx,
       transparent 1rpx,
       transparent 13rpx
     ),
     /* 右下角墨晕（一痕淡墨，像纸上未干） */
-    radial-gradient(120% 95% at 100% 100%, rgba(42, 37, 30, 0.075) 0%, rgba(42, 37, 30, 0) 56%),
-    /* 左上角水色（极淡朱砂，呼应印章） */
-    radial-gradient(85% 60% at 8% 0%, rgba(164, 71, 31, 0.05) 0%, rgba(164, 71, 31, 0) 60%),
+    radial-gradient(120% 95% at 100% 100%, rgba(42, 37, 30, 0.13) 0%, rgba(42, 37, 30, 0) 56%),
+    /* 左上角水色（淡朱砂，呼应印章） */
+    radial-gradient(85% 60% at 8% 0%, rgba(164, 71, 31, 0.09) 0%, rgba(164, 71, 31, 0) 60%),
     /* 底：纸面自上而下微微加深，像岁月浸染 */
-    linear-gradient(180deg, #eae2cc 0%, var(--gz-paper) 45%, #e2d8bf 100%);
+    linear-gradient(180deg, #e8dfc7 0%, var(--gz-paper) 45%, #ded2b7 100%);
+}
+
+/* ---------- C4 · 模式专属排印语汇 ----------
+ * 同一行字，三种"读法"。只调字距与数字形态，不动字号/字重体系 ——
+ * 既有版式一处不改，但切模式时读感明显不同：
+ *   普通 —— 温润（默认字距，纸本阅读感）
+ *   科技 —— 收紧 + 数字等宽（仪表读数：数字列不跳动，标题像标签）
+ *   修仙 —— 放宽（题跋/卷轴感，字与字之间留出气口）
+ * 选择器是各大厅头部与子页顶栏共用的类名（22 个页面），所以一处生效、全站统一。
+ */
+.gz-skin--tech {
+  /* 表格数字：计时、统计、进度里的数字等宽 → 读数不抖，这是"仪器感"最便宜的一刀 */
+  font-variant-numeric: tabular-nums;
+}
+
+.gz-skin--tech .hall-head__title,
+.gz-skin--tech .nav__title {
+  letter-spacing: 0.02em;
+}
+
+.gz-skin--dao .hall-head__title,
+.gz-skin--dao .nav__title {
+  letter-spacing: 0.14em;
 }
 </style>

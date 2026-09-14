@@ -6,6 +6,7 @@
  */
 import { http } from '@/api/http'
 import type { ModeId } from '@/config/modes'
+import type { MarkKey } from '@/config/marks'
 
 export interface SkinItem {
   /** 对应模式 id：normal / tech / dao */
@@ -24,6 +25,14 @@ export interface SkinConfig {
   /** 图片目录前缀 */
   baseUrl?: string
   skins: SkinItem[]
+  /**
+   * 模块标志物地址（可选）：`{ 'pause.focus': { normal: url, tech: url, dao: url } }`。
+   *
+   * 为什么标成可选：后端下发最稳（换目录 / 上 CDN / 带签名参数都不会错 ✓），
+   * 但没配时前端会退回"横幅同目录 + 固定文件名"推导（见 config/marks.ts ✓）——
+   * 这样两端能独立升级，谁先上都不影响对方 ✓
+   */
+  marks?: Partial<Record<MarkKey, Partial<Record<ModeId, string>>>>
 }
 
 /**

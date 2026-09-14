@@ -212,6 +212,13 @@
             "navigationStyle": "custom",
             "navigationBarTitleText": "小枢羁绊"
           }
+        },
+        {
+          "path": "proverbs/index",
+          "style": {
+            "navigationStyle": "custom",
+            "navigationBarTitleText": "我的箴言"
+          }
         }
       ]
     }

@@ -284,6 +284,7 @@ import { ROUTES } from '@/router/routes'
 import { useContentStore } from '@/stores/content'
 import { useAccountStore } from '@/stores/account'
 import type { PhraseKey } from '@/config/phrases'
+import { useDimLabel } from '@/composables/usePhrase'
 import {
   applyBackup,
   collectBackup,
@@ -308,6 +309,9 @@ const modeMeta = computed(() => modeStore.meta)
 
 /** 主题化取词：远端运营位优先、内置兜底（与页面皮肤同一套词） */
 const p = (key: PhraseKey, mode: ModeId = modeStore.id): string => contentStore.phraseOf(key, mode)
+
+/** 四维标签（观 · 辨源 / 观 · 摄入 / 观 · 鉴源）：导出文本里也用同一套说法 */
+const dl = useDimLabel()
 
 onShow(() => {
   /* 供「导出 / 重置」读取当日最新计数（跨天由 ensureToday 处理） */
@@ -522,10 +526,10 @@ function exportToday(): void {
     '观止知行 · 今日概览',
     `修行语言：${modeMeta.value.label} · ${modeMeta.value.labelEn}`,
     `日期：${k}`,
-    `观 · 辨源：${st.marks} 次标注`,
-    `止 · 静修：${st.focusMin} 分钟`,
-    `知 · 产出：${st.cards} 张卡片${st.answered ? ' · 拷问已答' : ' · 拷问未答'}`,
-    `行 · 完成：${daily.doneCount}/${plan} 件 · 习惯打卡 ${st.habitDone} 次`,
+    `${dl('observe')}：${st.marks} 次标注`,
+    `${dl('pause')}：${st.focusMin} 分钟`,
+    `${dl('reflect')}：${st.cards} 张卡片${st.answered ? ' · 拷问已答' : ' · 拷问未答'}`,
+    `${dl('action')}：${daily.doneCount}/${plan} 件 · 习惯打卡 ${st.habitDone} 次`,
     `修为：累计 ${xp.total} 点 · Lv.${lv}`,
     '',
     '—— 数字修行 · 数据属于你自己',

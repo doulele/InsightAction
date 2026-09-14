@@ -12,7 +12,7 @@
 import { defineStore } from 'pinia'
 import { ref } from 'vue'
 import type { ModeId } from '@/config/modes'
-import type { EvaluatedAssessment } from '@/config/assessment'
+import type { AssessConfidence, AssessSignals, EvaluatedAssessment } from '@/config/assessment'
 
 /** 一次建档（= 评估结果 + 模式 + 时间） */
 export interface AssessmentResult extends EvaluatedAssessment {
@@ -37,10 +37,25 @@ export const PROMPT_SNOOZE_DAYS = 3
 const DAY_MS = 24 * 60 * 60 * 1000
 
 /**
- * 旧版存档没有 maxScore / ratio / dims / quality（本批次新增）。
+ * 旧版存档没有 maxScore / ratio / dims / quality（v2 新增），
+ * 也没有 answered / confidence / signals（v3「可信度」新增）。
  * 读取时按当时的题库规格（6 题 × 3 分 = 18）补齐，避免结果页出现 undefined。
  */
 const LEGACY_MAX_SCORE = 18
+/** 老版是 6 题制 */
+const LEGACY_QUESTION_COUNT = 6
+
+/**
+ * 老存档查不到任何可信度证据（当时没有这项检测），因此**不宣称高可信**。
+ * 那是最诚实的一种降级：既不抹掉用户的结果，也不给一个我们证明不了的「高」。
+ */
+const UNKNOWN_SIGNALS: AssessSignals = {
+  completeness: 1,
+  variability: 1,
+  coherence: 1,
+  pacing: 1,
+  hasTiming: false,
+}
 
 type ResultMap = Record<ModeId, AssessmentResult | null>
 type HistoryMap = Record<ModeId, AssessmentResult[]>
@@ -55,6 +70,12 @@ function normalizeResult(raw: Partial<AssessmentResult> | null | undefined): Ass
   if (!raw || !raw.mode) return null
   const score = Number(raw.score) || 0
   const maxScore = Number(raw.maxScore) || LEGACY_MAX_SCORE
+  /* dims 里的 count（每维题数）是 v3 新增，老存档没有 → 记为 0，
+     结果页据此不显示「N 题」的说明（不知道就说不知道，不猜） */
+  const dims = Array.isArray(raw.dims)
+    ? raw.dims.map((d) => ({ ...d, count: Number(d?.count) || 0 }))
+    : []
+  const hasSignals = Boolean(raw.signals)
   return {
     mode: raw.mode,
     takenAt: Number(raw.takenAt) || 0,
@@ -62,8 +83,12 @@ function normalizeResult(raw: Partial<AssessmentResult> | null | undefined): Ass
     maxScore,
     ratio: Number.isFinite(raw.ratio as number) ? (raw.ratio as number) : score / maxScore,
     tier: raw.tier ?? 'mid',
-    dims: Array.isArray(raw.dims) ? raw.dims : [],
+    dims,
     quality: raw.quality ?? 'ok',
+    answered: Number(raw.answered) || LEGACY_QUESTION_COUNT,
+    total: Number(raw.total) || LEGACY_QUESTION_COUNT,
+    confidence: (raw.confidence as AssessConfidence) || (hasSignals ? 'high' : 'mid'),
+    signals: (raw.signals as AssessSignals) || { ...UNKNOWN_SIGNALS },
   }
 }
 

@@ -81,6 +81,9 @@
         <text class="empty__title">箴言墙还空着</text>
         <text class="empty__text">遇到想留住的句子，点亮 ♡ 就会收进这里，时时回看。</text>
       </view>
+      <view v-else class="tip">
+        <text class="tip__text">收藏的句子也可以在「我 · 我的箴言」集中查看、搜索与置顶。</text>
+      </view>
       <view v-for="f in favsView" :key="f.key" class="fav">
         <text class="fav__mark">「</text>
         <view class="fav__body">
@@ -122,6 +125,7 @@ const {
   bondNextGap,
   lines,
   favs,
+  isFav,
   toggleFav,
 } = useBuddy()
 
@@ -134,6 +138,7 @@ const KIND_LABEL: Record<BuddyLine['kind'], string> = {
   guard: '守护',
   remind: '到点',
   meet: '见面',
+  proverb: '开屏箴言',
 }
 
 const pad = (n: number): string => String(n).padStart(2, '0')
@@ -164,9 +169,6 @@ interface LineView {
   fav: boolean
 }
 
-/* favMap 依赖 favs.value，保证收藏状态变化触发重算 */
-const favMap = computed(() => new Set(favs.value.map((f) => `${f.kind}:${f.text}`)))
-
 interface Group {
   label: string
   items: LineView[]
@@ -183,7 +185,8 @@ const groups = computed<Group[]>(() => {
       kind: l.kind,
       text: l.text,
       time: fmtTime(l.at),
-      fav: favMap.value.has(`${l.kind}:${l.text}`),
+      /* 收藏状态直接问 proverb store（内部按 source+正文去重），收藏变化会触发重算 */
+      fav: isFav(l),
     }
     if (last && last.label === label) {
       last.items.push(item)
@@ -425,6 +428,10 @@ function goBack(): void {
   background: #4e8fd4;
 }
 
+.line__dot.is-proverb {
+  background: #c4602e;
+}
+
 .line__body {
   flex: 1;
   min-width: 0;
@@ -519,6 +526,15 @@ function goBack(): void {
 .fav__btn--off {
   background: transparent;
   border: 1rpx solid $gz-line;
+  color: $gz-ink-3;
+}
+
+.tip {
+  padding: 16rpx 8rpx 4rpx;
+}
+
+.tip__text {
+  font-size: $gz-fs-caption;
   color: $gz-ink-3;
 }
 

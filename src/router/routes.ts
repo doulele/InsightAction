@@ -20,7 +20,7 @@ export const ROUTES = {
   entryStartup: '/pages/entry/startup',
   /** 首次流程：模式选择页 */
   entryModeSelect: '/pages/entry/mode-select',
-  /** 首次流程 / 我页：首次测评 · 6 题建档（可带 ?from=onboard 表示引导而来） */
+  /** 首次流程 / 我页：首次测评 · 8 题建档（可带 ?from=onboard 表示引导而来） */
   entryAssessment: '/pages/entry/assessment',
   /** 批次 B · 设置 */
   settings: '/pages/settings/index',
@@ -60,6 +60,8 @@ export const ROUTES = {
   meDailyCard: '/subpkg-me/dailycard/index',
   /** m7 · 我：小枢羁绊（对话录 · 箴言墙，分包 subpkg-me） */
   meBond: '/subpkg-me/bond/index',
+  /** 我：我的箴言 —— 收藏句子的统一落点（开屏/小枢/日课，分包 subpkg-me） */
+  meProverbs: '/subpkg-me/proverbs/index',
   /** m7 · 止：触发干预卡片（1-3 分钟呼吸暂停，分包 subpkg-pause） */
   pauseInterrupt: '/subpkg-pause/interrupt/index',
   /** m7 · 行：愿望清单（修为兑换现实奖励，分包 subpkg-action） */

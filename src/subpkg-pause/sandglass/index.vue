@@ -12,6 +12,8 @@
     <!-- 选时 -->
     <template v-if="phase === 'idle'">
       <view class="hero">
+        <!-- 模式专属标志物：沙漏 / 全息专注环 / 飞剑（图缺失或加载失败时整块隐身，页面回落到原有视觉） -->
+        <ModuleMark mark="pause.focus" />
         <view class="seal">止</view>
         <text class="hero__title">翻转沙漏，与世无关</text>
         <text class="hero__desc">

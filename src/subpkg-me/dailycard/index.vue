@@ -96,11 +96,14 @@ import { dayStats } from '@/utils/growth'
 import { levelIndexFromXp, levelProgress, levelName, LEVEL_NAMES, LEVEL_THRESHOLDS } from '@/config/levels'
 import { useSkinClass } from '@/composables/useSkin'
 import { ROUTES } from '@/router/routes'
+import { useDimLabel } from '@/composables/usePhrase'
 
 const modeStore = useModeStore()
 const daily = useDailyStore()
 const xp = useXpStore()
 const skinClass = useSkinClass()
+/** 四维标签（日课卡是转发出去的，说法必须和站内一致） */
+const dl = useDimLabel()
 
 /* 数据：单日真实快照（在页面每次进入时评估一次即可；跨天重进由 onShow 前的页面重建覆盖） */
 const st = dayStats(todayKey())
@@ -141,10 +144,10 @@ interface CardDim {
 const dims = computed<CardDim[]>(() => {
   const done = daily.doneCount
   return [
-    { key: 'observe', label: '观 · 辨源', value: `${st.marks} 次`, score: st.marks },
-    { key: 'pause', label: '止 · 静修', value: `${st.focusMin} 分钟`, score: st.focusMin },
-    { key: 'reflect', label: '知 · 产出', value: `${st.cards} 张卡片`, score: st.cards + (st.answered ? 1 : 0) },
-    { key: 'action', label: '行 · 完成', value: `${done}/${daily.planCount || 3} 件`, score: done },
+    { key: 'observe', label: dl('observe'), value: `${st.marks} 次`, score: st.marks },
+    { key: 'pause', label: dl('pause'), value: `${st.focusMin} 分钟`, score: st.focusMin },
+    { key: 'reflect', label: dl('reflect'), value: `${st.cards} 张卡片`, score: st.cards + (st.answered ? 1 : 0) },
+    { key: 'action', label: dl('action'), value: `${done}/${daily.planCount || 3} 件`, score: done },
   ]
 })
 

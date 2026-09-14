@@ -88,17 +88,17 @@
       <view class="detail">
         <view class="detail__col">
           <view class="detail__box" :class="{ 'is-on': d.marks > 0 }">
-            <text class="detail__label">观 · 辨源</text>
+            <text class="detail__label">{{ dl('observe') }}</text>
             <text class="detail__value">{{ d.marks }} 次</text>
           </view>
           <view class="detail__box" :class="{ 'is-on': d.focusMin > 0 }">
-            <text class="detail__label">止 · 静修</text>
+            <text class="detail__label">{{ dl('pause') }}</text>
             <text class="detail__value">{{ d.focusMin }} 分</text>
           </view>
         </view>
         <view class="detail__col">
           <view class="detail__box" :class="{ 'is-on': d.cards > 0 || d.answered }">
-            <text class="detail__label">知 · 产出</text>
+            <text class="detail__label">{{ dl('reflect') }}</text>
             <text class="detail__value">{{ d.cards }} 卡{{ d.answered ? ' + 答卡' : '' }}</text>
           </view>
           <view class="detail__box" :class="{ 'is-on': d.traces > 0 || d.habitDone > 0 }">
@@ -127,8 +127,11 @@ import { computed, ref } from 'vue'
 import { dayStats, activeDimCount, fmtKey, type DayStats } from '@/utils/growth'
 import { useSkinClass } from '@/composables/useSkin'
 import { ROUTES } from '@/router/routes'
+import { useDimLabel } from '@/composables/usePhrase'
 
 const skinClass = useSkinClass()
+/** 四维标签（只换前三个：行那一格展示的是「痕迹/习惯」指标名，不是维度名） */
+const dl = useDimLabel()
 const WEEK = ['一', '二', '三', '四', '五', '六', '日']
 
 const now = new Date()

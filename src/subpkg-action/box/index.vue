@@ -38,6 +38,8 @@
 
     <!-- 可开 -->
     <view v-else class="ready">
+      <!-- 模式专属标志物：纸签筒 / 任务队列 / 开炉（图缺失时整块隐身） -->
+      <ModuleMark mark="action.draw" size="md" />
       <view class="ready__box" hover-class="gz-hover" @click="openOnce">
         <text class="ready__mark">?</text>
       </view>
