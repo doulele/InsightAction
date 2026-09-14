@@ -7,7 +7,7 @@
 import { defineStore } from 'pinia'
 import { computed, ref } from 'vue'
 import { todayKey } from '@/stores/daily'
-import { useXpStore } from '@/stores/xp'
+import { logTrace } from '@/utils/traceLog'
 
 export interface FocusDay {
   /** 自然日 'YYYY-MM-DD'（本地时区） */
@@ -49,7 +49,8 @@ export const useFocusStore = defineStore(
       } else {
         days.value.push({ date, minutes })
       }
-      useXpStore().gain(minutes)
+      // 静修完成：走统一事件流（value = 分钟数，与原「+1/分钟」口径一致）
+      logTrace({ kind: 'pause.cooldown', text: `静修 ${minutes} 分钟`, value: minutes })
     }
 
     /** 某自然日累计分钟数（默认今天） */

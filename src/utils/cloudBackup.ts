@@ -32,7 +32,7 @@ export async function backupNow(): Promise<BackupOutcome> {
     return { saved: false, skipped: true, reason: '本机还没有可备份的数据' }
   }
 
-  const res = await account.withAuth((t) => uploadBackup(t, payload.data, 'manual'))
+  const res = await account.withAuth((t) => uploadBackup(t, payload.data, 'manual', payload.schema))
   if (res.saved) account.markBackedUp(stores)
   return {
     saved: !!res.saved,
@@ -83,7 +83,8 @@ export async function fetchCloudSnapshot(which: 'latest' | 'prev' = 'latest'): P
   const snapshot = await account.withAuth((t) => downloadSnapshot(t, which))
   return {
     app: 'guanzhi',
-    schema: 1,
+    // 服务端尚未回传 schema 时按 1（旧快照）处理：旧结构可被迁移兜底，恢复是安全的
+    schema: snapshot.meta?.schema ?? 1,
     exportedAt: snapshot.meta?.updatedAt || '',
     data: snapshot.data || {},
   }

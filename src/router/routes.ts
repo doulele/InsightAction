@@ -30,6 +30,16 @@ export const ROUTES = {
   observeQualityBoard: '/subpkg-observe/qualityboard/index',
   /** 批次 B · 观：概念播种（分包 subpkg-observe） */
   observeSeedbed: '/subpkg-observe/seedbed/index',
+  /** 批次 E · 观：记一笔 · 统一录入（分包 subpkg-observe，可带 ?kind=thing|theory|mother&form=article|quote|video） */
+  observeCompose: '/subpkg-observe/compose/index',
+  /** 批次 E · 观：收件匣（事/理/道的统一落点，分包 subpkg-observe） */
+  observeInbox: '/subpkg-observe/inbox/index',
+  /** 观：一条的详情（收件匣卡片点进去看全文，可转编辑 / 处理 / 删，分包 subpkg-observe） */
+  observeDetail: '/subpkg-observe/detail/index',
+  /** 批次 E · 观：理库（已入册的理 + 概念播种并入，分包 subpkg-observe） */
+  observeTheoryLib: '/subpkg-observe/theorylib/index',
+  /** 批次 E · 观：母题库（预置 12 母题 + 我的母题，分包 subpkg-observe） */
+  observeMotherLib: '/subpkg-observe/motherlib/index',
   /** 批次 B · 止：禅定沙漏专注计时（分包 subpkg-pause） */
   pauseSandglass: '/subpkg-pause/sandglass/index',
   /** 批次 B · 止：专注统计（分包 subpkg-pause） */

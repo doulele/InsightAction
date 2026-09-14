@@ -7,6 +7,7 @@ import { useRemoteStore } from '@/stores/remote'
 import { useContentStore } from '@/stores/content'
 import { useImageStore } from '@/stores/images'
 import { useProverbStore } from '@/stores/proverb'
+import { useObserveStore } from '@/stores/observe'
 import { applySkin } from '@/utils/skin'
 import { initUpdateManager } from '@/utils/update'
 import { autoBackupIfDue } from '@/utils/cloudBackup'
@@ -29,6 +30,10 @@ onLaunch(() => {
   // 箴言收藏迁移：旧版本把收藏存在 insight:buddy-favs（不在备份体系内），
   // 这里一次性搬进 proverb store（幂等，仅首次生效；之后随备份/云备份一起走）
   useProverbStore().migrateLegacy()
+
+  // 观的一条迁移：主题从单选（topic: string）改多选（topics: string[]）。
+  // 必须放在这里而不是 store 内部 —— 插件的水合晚于 setup，写在 setup 里会迁到空 state
+  useObserveStore().migrateLegacy()
 
   // 图片缓存：先校验持久化下来的本地文件是否还在（临时目录会被系统清理），
   // 失效的条目会被剔除，用到时会自动重新下载，不会出现"指向空文件"的坏图
@@ -117,6 +122,31 @@ button,
 input,
 textarea {
   box-sizing: border-box;
+}
+
+/*
+ * 单行输入框的高度必须自己拿回来：
+ * 微信 <input> 自带 height: 1.4em，而 page 上的 line-height: 1.7 会被它继承，
+ * 两者一挤，各页「竖向 padding + 没写 height」的输入框（搜索框 / 播种框 / 稍后读…）
+ * 就会把文字裁掉半截（占位文案只剩底下一条）。
+ * 这里统一改成 auto —— 高度 = 行高 + padding；不写死高度是为了让 flex 行里
+ * 仍能被 align-items: stretch 拉齐。个别页面要更高/更矮时用类选择器覆盖
+ * （类选择器权重天然高于这里的标签选择器）。
+ */
+input {
+  height: auto;
+  min-height: 1.7em; /* 兜底：不低于继承的行高，与 page 的 line-height 对齐 */
+}
+
+/*
+ * 多行 textarea 同理：微信默认给的是 150px 高，各页写的 min-height（96 / 120 / 140 / 150rpx）
+ * 会被它整个盖过去，框一律撑成 150px（比设计高一倍）。
+ * 改成 auto 后，高度 =「内容行高 + padding」，各页的 min-height 才真正成为它们的设计高度，
+ * 需要固定高的页面用类选择器写 height 覆盖即可。
+ * 注意：带 auto-height 属性的 textarea 由框架动态写 inline height，不受这条影响。
+ */
+textarea {
+  height: auto;
 }
 
 /* 去掉按钮默认样式（我们全程手写视觉） */

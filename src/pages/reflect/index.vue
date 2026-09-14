@@ -133,7 +133,7 @@ import { useModeStore } from '@/stores/mode'
 import { useQuestionStore, rolloverRemainMin } from '@/stores/question'
 import { useKnowledgeStore, DEPTH_LABEL, depthColor, type CardDepth, type KnowledgeCard } from '@/stores/knowledge'
 import { poke } from '@/composables/useBuddy'
-import { useXpStore } from '@/stores/xp'
+import { logTrace } from '@/utils/traceLog'
 import { useSkinClass } from '@/composables/useSkin'
 import { syncTabBar } from '@/utils/skin'
 import { ROUTES } from '@/router/routes'
@@ -178,7 +178,8 @@ function submitAnswer(): void {
   }
   const first = !question.answeredToday()
   question.setAnswer(t)
-  if (first) useXpStore().gain(8)
+  // 仅首次作答入账（沿用原 8 分口径，与事件表 10 分不同 → 显式指定）
+  if (first) logTrace({ kind: 'reflect.probe', text: '回答了今日一问', value: 8 })
   uni.showToast({ title: answered.value ? '已更新今天的回答' : '已记录 · 流入今日所悟', icon: 'none' })
 }
 

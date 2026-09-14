@@ -32,6 +32,19 @@
       </view>
     </view>
 
+    <!--
+      数据备份：把「上次备份是什么时候」摆在明面上。
+      收件池 / 理库 / 痕迹一多，换机即丢的代价就大了 —— 这个痛要提前露出来，
+      而不是等丢的那天才想起来（备份开关本身在设置页，这里只做状态和一键）。
+    -->
+    <view class="backup" hover-class="gz-hover" @click="goBackup">
+      <view class="backup__body">
+        <text class="backup__title">数据备份</text>
+        <text class="backup__sub">{{ backupText }}</text>
+      </view>
+      <text class="backup__go">{{ cloudOn ? '去备份' : '开启 ›' }}</text>
+    </view>
+
     <!-- 修行语言切换：三模式共用一套修行数据，只换「叫法 + 视觉」 -->
     <view class="lang" hover-class="gz-hover" @click="switchLanguage">
       <view class="lang__mark">言</view>
@@ -143,6 +156,8 @@ import { useDailyStore, todayKey } from '@/stores/daily'
 import { useFocusStore } from '@/stores/focus'
 import { useTraceStore } from '@/stores/trace'
 import { useProverbStore } from '@/stores/proverb'
+import { useAccountStore } from '@/stores/account'
+import { backupNow } from '@/utils/cloudBackup'
 import { poke, openDailyCard, bondLv, bondXp } from '@/composables/useBuddy'
 import { useSkinClass } from '@/composables/useSkin'
 import { applySkin, syncTabBar } from '@/utils/skin'
@@ -184,6 +199,38 @@ onShow(() => {
   /* tabBar 原生样式/图标只能在本类大厅页上同步 */
   syncTabBar(modeStore.id)
 })
+
+/* —— 数据备份：状态可见 + 一键备份（未开启则直达设置） —— */
+const account = useAccountStore()
+const cloudOn = computed(() => account.cloudEnabled)
+const backupText = computed(() => {
+  if (!account.cloudEnabled) return '还没开启云备份 · 换机会丢'
+  const last = account.lastBackupAt ? Date.parse(account.lastBackupAt) : 0
+  if (!last) return '云备份已开启 · 还没备份过'
+  const days = Math.floor((Date.now() - last) / 86400000)
+  return days <= 0 ? '今天已备份 · 数据在云上' : `上次备份 ${days} 天前`
+})
+
+async function goBackup(): Promise<void> {
+  if (!account.cloudEnabled) {
+    navigateTo(ROUTES.settings)
+    uni.showToast({ title: '在设置里开启云备份', icon: 'none' })
+    return
+  }
+  uni.showLoading({ title: '备份中' })
+  try {
+    const outcome = await backupNow()
+    uni.hideLoading()
+    if (outcome.saved) {
+      uni.showToast({ title: `已备份 ${account.lastBackupStores} 项数据`, icon: 'none' })
+    } else {
+      uni.showToast({ title: outcome.reason || '这次没备份成', icon: 'none' })
+    }
+  } catch {
+    uni.hideLoading()
+    uni.showToast({ title: '备份失败 · 检查网络后重试', icon: 'none' })
+  }
+}
 
 /**
  * 切换修行语言（三模式）：产品约定——换皮肤绝不清数据，
@@ -246,10 +293,11 @@ function openAssessment(): void {
 }
 
 /* —— 等级卡：修为 store 真实累计 → 三模式九级 —— */
-const lvIndex = computed(() => levelIndexFromXp(xp.total))
+/** 等级按历史最高修为（只升不降） */
+const lvIndex = computed(() => levelIndexFromXp(xp.levelXp))
 const lv = computed(() => lvIndex.value + 1)
 const lvName = computed(() => (LEVEL_NAMES[modeMeta.value.id] ?? LEVEL_NAMES.normal)[lvIndex.value] ?? '圆满')
-const lvPct = computed(() => Math.round(levelProgress(xp.total) * 100))
+const lvPct = computed(() => Math.round(levelProgress(xp.levelXp) * 100))
 const nextHint = computed(() => {
   const names = LEVEL_NAMES[modeMeta.value.id] ?? LEVEL_NAMES.normal
   const next = names[lvIndex.value + 1]
@@ -257,7 +305,7 @@ const nextHint = computed(() => {
   if (next === undefined || nextNeed === undefined) {
     return `已达「${lvName.value}」之巅 · 累计 ${xp.total} 点修为`
   }
-  const remain = nextNeed - xp.total
+  const remain = nextNeed - xp.levelXp
   return `距「${next}」还差 ${remain} 点修为 · 累计 ${xp.total} 点`
 })
 
@@ -532,6 +580,44 @@ const moreEntries = computed<MoreEntry[]>(() => [
   border: 1rpx solid var(--gz-rank-border);
   font-size: $gz-fs-caption;
   color: var(--gz-accent);
+}
+
+/* 数据备份行 */
+.backup {
+  display: flex;
+  align-items: center;
+  gap: 18rpx;
+  margin-top: 18rpx;
+  padding: 22rpx 26rpx;
+  border: 1rpx dashed $gz-line;
+  border-radius: $gz-radius-md;
+  background: $gz-surface;
+}
+
+.backup__body {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 4rpx;
+}
+
+.backup__title {
+  font-size: $gz-fs-small;
+  font-weight: 600;
+  color: $gz-ink;
+}
+
+.backup__sub {
+  font-size: $gz-fs-caption;
+  color: $gz-ink-3;
+}
+
+.backup__go {
+  flex: none;
+  font-size: $gz-fs-caption;
+  color: $gz-accent;
+  font-weight: 600;
 }
 
 /* 修行语言切换行 */

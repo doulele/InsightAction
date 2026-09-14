@@ -33,6 +33,27 @@ export interface RemoteAssessment {
   banks?: AssessmentBank[]
 }
 
+/** 远端下发的「每日一则」条目（缺字段由前端 sanitizeDaily 兜底或整批丢弃） */
+export interface RemoteDailyItem {
+  id?: string
+  kind?: '事' | '理' | '典'
+  title: string
+  text: string
+  source?: string
+  /** 反例 / 不适用的边界 —— 给「反驳」动作一个抓手 */
+  counter?: string
+  tags?: string[]
+}
+
+/**
+ * 内容库下发。daily 用**独立版本号** dailyVersion，不吃全局 version：
+ * 换一批每日一则不牵动题库与短语的覆盖闸门（详见 config/daily.ts 的 LOCAL_DAILY_VERSION）。
+ */
+export interface RemoteLibrary {
+  dailyVersion?: number
+  daily?: RemoteDailyItem[]
+}
+
 export interface RemoteContent {
   version?: number
   updatedAt?: string
@@ -41,6 +62,8 @@ export interface RemoteContent {
   lexicon?: LexiconPayload
   /** 主题化短语：短语键 → mode → 固定短语（按钮/确认框/toast） */
   phrases?: PhrasesPayload
+  /** 内容库（每日一则等，独立版本号） */
+  library?: RemoteLibrary
 }
 
 export type PhrasesPayload = Record<string, Partial<Record<ModeId, string>>>

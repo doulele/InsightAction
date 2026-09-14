@@ -15,6 +15,8 @@ import { fetchContent } from '@/api/modules/content'
 import { getAssessmentBank, DEFAULT_TIER_THRESHOLDS, LOCAL_ASSESS_VERSION } from '@/config/assessment'
 import type { AssessmentBank, TierThresholds } from '@/config/assessment'
 import type { AssessmentScoring, HallId, LexiconPayload, PhrasesPayload } from '@/api/modules/content'
+import { LOCAL_DAILY_VERSION, sanitizeDaily } from '@/config/daily'
+import type { DailyItem } from '@/config/daily'
 import { localPhrase, LOCAL_PHRASE_VERSION } from '@/config/phrases'
 import type { PhraseKey } from '@/config/phrases'
 import type { ModeId } from '@/config/modes'
@@ -34,11 +36,21 @@ export const useContentStore = defineStore('content', () => {
   const lexicon = ref<LexiconPayload>({})
   /** 远端主题化短语（为空 = 用内置短语） */
   const phrases = ref<PhrasesPayload>({})
+  /** 远端每日一则（空数组 = 用内置 30 条）；已过 sanitize，结构可信 */
+  const daily = ref<DailyItem[]>([])
   const loaded = ref(false)
 
   /** 取某大厅 / 某模式的文案模板；没配就返回空串（调用方回落到内置模板） */
   function lexiconOf(hall: HallId, mode: ModeId): string {
     return lexicon.value[hall]?.[mode] ?? ''
+  }
+
+  /**
+   * 每日一则取用表：有远端就用远端，没有则用内置 ——
+   * 页面只调 dailyOf(dateKey, dailyItems())，不必关心内容来自哪里。
+   */
+  function dailyItems(): DailyItem[] {
+    return daily.value.length ? daily.value : []
   }
 
   /** 取主题化短语：远端优先，缺则内置（保证任何情况下都有词可用） */
@@ -128,11 +140,24 @@ export const useContentStore = defineStore('content', () => {
       // 短语与题库同为「解释型内容」，口径变了必须整套跟进 → 一并受闸门保护
       if (phraseFresh && cfg?.phrases && typeof cfg.phrases === 'object') phrases.value = cfg.phrases
 
+      /*
+       * 每日一则走**独立版本号** dailyVersion，不受全局 version 牵连。
+       * 若共用全局 version：运营侧想换一批每日一则就得动 version，
+       * 而 version 一提升会顺带放开题库/短语的覆盖 —— 线上 content.json 常年比代码旧，
+       * 旧题库会因此整体盖回来（这个坑踩过）。所以这里只看 dailyVersion，缺字段视为 0。
+       */
+      const lib = cfg?.library
+      if (lib && typeof lib === 'object') {
+        const v = Number(lib.dailyVersion)
+        const freshDaily = Number.isFinite(v) && v >= LOCAL_DAILY_VERSION
+        daily.value = (freshDaily ? sanitizeDaily(lib.daily) : null) ?? []
+      }
+
       loaded.value = true
     } catch {
       // 忽略：远端内容不可用时全部使用内置题库与内置文案
     }
   }
 
-  return { remoteBanks, scoring, lexicon, phrases, loaded, bankOf, tiers, lexiconOf, phraseOf, load }
+  return { remoteBanks, scoring, lexicon, phrases, daily, loaded, bankOf, tiers, lexiconOf, phraseOf, dailyItems, load }
 })

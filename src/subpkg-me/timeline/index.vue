@@ -45,12 +45,12 @@
         <view class="group__list">
           <view v-for="(t, ti) in g.items" :key="`${g.key}-${ti}`" class="item">
             <view class="item__rail">
-              <view class="item__dot" :class="`is-${t.type}`" />
+              <view class="item__dot" :class="`is-${t.hall}`" />
             </view>
             <view class="item__body">
               <text class="item__text">{{ t.text }}</text>
               <view class="item__meta">
-                <text class="item__type">{{ labelOf(t.type) }}</text>
+                <text class="item__type">{{ labelOf(t.kind) }}</text>
                 <text class="item__time">{{ t.time }}</text>
               </view>
             </view>
@@ -72,7 +72,10 @@
  * 三件事完成 / 习惯打卡 / 盲盒动作按天成组，时间新在前。
  */
 import { computed } from 'vue'
-import { useTraceStore, TRACE_LABEL, type Trace, type TraceType } from '@/stores/trace'
+import { useTraceStore, type Trace } from '@/stores/trace'
+import { TRACE_LABEL } from '@/config/trace'
+import type { TraceKind } from '@/config/trace'
+import type { HallId } from '@/config/lexicon'
 import { useSkinClass } from '@/composables/useSkin'
 import { ROUTES } from '@/router/routes'
 
@@ -96,7 +99,9 @@ function friendlyLabel(key: string): string {
 }
 
 interface Item {
-  type: TraceType
+  kind: TraceKind
+  /** 所属环（用于圆点配色） */
+  hall: HallId
   text: string
   time: string
 }
@@ -109,16 +114,21 @@ interface DayGroup {
 
 const groups = computed<DayGroup[]>(() => {
   const map = new Map<string, Item[]>()
-  trace.traces.forEach((t: Trace) => {
+  trace.list.forEach((t: Trace) => {
     const list = map.get(t.day) ?? []
     const d = new Date(t.at)
-    list.push({ type: t.type, text: t.text, time: `${pad(d.getHours())}:${pad(d.getMinutes())}` })
+    list.push({
+      kind: t.kind,
+      hall: t.hall,
+      text: t.text,
+      time: `${pad(d.getHours())}:${pad(d.getMinutes())}`,
+    })
     map.set(t.day, list)
   })
   // traces 本就新在前；按出现的先后成组
   const seen = new Set<string>()
   const out: DayGroup[] = []
-  trace.traces.forEach((t) => {
+  trace.list.forEach((t) => {
     if (seen.has(t.day)) return
     seen.add(t.day)
     out.push({ key: t.day, label: friendlyLabel(t.day), items: map.get(t.day) ?? [] })
@@ -126,20 +136,20 @@ const groups = computed<DayGroup[]>(() => {
   return out
 })
 
-const total = computed(() => trace.traces.length)
+const total = computed(() => trace.list.length)
 const daysN = computed(() => groups.value.length)
 const n = computed(() => {
   const acc = { todo: 0, habit: 0, box: 0 }
-  trace.traces.forEach((t) => {
-    if (t.type === 'box') acc.box += 1
-    else if (t.type === 'habit') acc.habit += 1
-    else acc.todo += 1
+  trace.list.forEach((t) => {
+    if (t.kind === 'action.box') acc.box += 1
+    else if (t.kind === 'action.habit') acc.habit += 1
+    else if (t.kind === 'action.todo') acc.todo += 1
   })
   return acc
 })
 
-function labelOf(type: TraceType): string {
-  return TRACE_LABEL[type]
+function labelOf(kind: TraceKind): string {
+  return TRACE_LABEL[kind] ?? '痕迹'
 }
 
 function goBack(): void {
@@ -304,6 +314,23 @@ function goBack(): void {
 
 .item__dot.is-box {
   background: #9c8ac4;
+}
+
+/* 四环配色：观 / 止 / 知 / 行 */
+.item__dot.is-observe {
+  background: #84a268;
+}
+
+.item__dot.is-pause {
+  background: #4e8fd4;
+}
+
+.item__dot.is-reflect {
+  background: #9c8ac4;
+}
+
+.item__dot.is-action {
+  background: #c98a4b;
 }
 
 .item__body {

@@ -18,9 +18,11 @@ import { useDailyStore, freshTodos, todayKey } from '@/stores/daily'
 import { useReminderStore } from '@/stores/reminder'
 import { useReadLaterStore } from '@/stores/readLater'
 import { useProverbStore } from '@/stores/proverb'
+import { useObserveStore } from '@/stores/observe'
+import { useComposeDraftStore } from '@/stores/composeDraft'
 
 export function resetPracticeData(): void {
-  useXpStore().$patch({ total: 0 })
+  useXpStore().$patch({ total: 0, maxLevel: 0 })
   useFocusStore().$patch({ days: [], dailyGoal: 60 })
   useQualityStore().$patch({ sources: [], dayMarks: {} })
   useQuestionStore().$patch({ records: {}, lastIdx: 0 })
@@ -35,4 +37,7 @@ export function resetPracticeData(): void {
   useReminderStore().$patch({ reminders: [] })
   useReadLaterStore().$patch({ items: [] })
   useProverbStore().$patch({ items: [] })
+  useObserveStore().$patch({ items: [] })
+  // 草稿也是内容：重置修行数据时一并清掉，免得留一份"看不见的输入"在下一次进录入页时冒出来
+  useComposeDraftStore().$patch({ draft: null })
 }

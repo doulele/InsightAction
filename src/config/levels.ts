@@ -13,10 +13,16 @@ export const LEVEL_NAMES: Record<ModeId, readonly string[]> = {
 export const LEVEL_COUNT = 9
 
 /**
- * 进入各等级所需累计修为（下标 0 对应 Lv.1）：
- * 每级增量 100、150、200、250…（等差递增），上限 2200 进满级。
+ * 进入各等级所需累计修为（下标 0 对应 Lv.1）。
+ *
+ * v2 §12.3：满级周期从「约 40 天」拉长到「约 120 天」——
+ * 旧阈值 [0,100,250,450,700,1000,1350,1750,2200] 是早期按"每天 50 分"估的，
+ * 实测一周就到 Lv.4，成长感很快耗尽；改为 [0,200,500,1000,1800,3000,4800,7400,11000]。
+ *
+ * ⚠️ 改这张表会让既有用户的等级**下降**（阈值提高）—— 这是有意的：
+ * 等级只升不降保护的是"修为被花掉"（maxLevel），不保护"阈值调整"。
  */
-export const LEVEL_THRESHOLDS: readonly number[] = [0, 100, 250, 450, 700, 1000, 1350, 1750, 2200]
+export const LEVEL_THRESHOLDS: readonly number[] = [0, 200, 500, 1000, 1800, 3000, 4800, 7400, 11000]
 
 export function levelIndexFromXp(xp: number): number {
   let idx = 0

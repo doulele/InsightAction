@@ -76,14 +76,12 @@ import GzDialog from '@/components/GzDialog/GzDialog.vue'
 import { onShow } from '@dcloudio/uni-app'
 import { BOX_IDEAS, useBoxStore } from '@/stores/box'
 import { useDailyStore } from '@/stores/daily'
-import { useTraceStore } from '@/stores/trace'
-import { useXpStore } from '@/stores/xp'
+import { logTrace } from '@/utils/traceLog'
 import { useSkinClass } from '@/composables/useSkin'
 import { navigateTo, ROUTES } from '@/router/routes'
 
 const box = useBoxStore()
 const daily = useDailyStore()
-const trace = useTraceStore()
 const skinClass = useSkinClass()
 
 onShow(() => {
@@ -102,7 +100,8 @@ const stageHint = computed(() => {
 function openOnce(): void {
   if (!daily.allDone) return
   box.draw(false)
-  trace.push('box', '开启微行动盲盒')
+  // 开盒不给分，达成才给（避免反复开关刷分）
+  logTrace({ kind: 'action.box', text: '开启微行动盲盒', value: 0 })
 }
 
 const redrawOpen = ref(false)
@@ -120,8 +119,7 @@ function doRedraw(): void {
 
 function finish(): void {
   box.markDone()
-  trace.push('box', '完成今日微行动')
-  useXpStore().gain(12)
+  logTrace({ kind: 'action.box', text: '完成今日微行动' })
   uni.showToast({ title: '完成。回来给身体鼓个掌', icon: 'none' })
 }
 

@@ -7,6 +7,7 @@
  * 服务端按 openid（哈希后）隔离数据，前端只保存 token，不保存 openid。
  */
 import { http } from '@/api/http'
+import { SCHEMA_VERSION } from '@/config/schema'
 
 export interface SyncMeta {
   updatedAt: string
@@ -19,6 +20,8 @@ export interface SyncMeta {
   source: 'manual' | 'auto' | 'prev'
   /** 服务器是否还留着"上一版"（误覆盖救援用） */
   hasPrev?: boolean
+  /** 数据结构版本（服务端回传；未回传时前端按 1 处理） */
+  schema?: number
 }
 
 export interface LoginResult {
@@ -66,15 +69,21 @@ export function fetchSyncMeta(token: string): Promise<SyncMeta | null> {
   return http.get<SyncMeta | null>('/sync/meta', { header: authHeader(token), showError: false })
 }
 
-/** 上传一份快照（source = 'auto' 时服务端会做缩水保护） */
+/**
+ * 上传一份快照（source = 'auto' 时服务端会做缩水保护）。
+ *
+ * schema 一并上报（后端目前可忽略，属向前兼容字段）：
+ * 将来后端把它存进 meta 并回传，就能在"用旧客户端恢复新快照"时提前拦下。
+ */
 export function uploadBackup(
   token: string,
   data: Record<string, string>,
   source: 'manual' | 'auto',
+  schema: number = SCHEMA_VERSION,
 ): Promise<BackupResult> {
-  return http.post<BackupResult, { data: Record<string, string>; source: string }>(
+  return http.post<BackupResult, { data: Record<string, string>; source: string; schema?: number }>(
     '/sync/backup',
-    { data, source },
+    { data, source, schema },
     { header: authHeader(token), showError: false },
   )
 }

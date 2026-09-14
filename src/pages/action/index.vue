@@ -77,7 +77,7 @@ import { useSkinClass } from '@/composables/useSkin'
 import { useDailyStore, todayKey, type DailyTodo } from '@/stores/daily'
 import { useKnowledgeStore } from '@/stores/knowledge'
 import { useHabitStore } from '@/stores/habit'
-import { useTraceStore } from '@/stores/trace'
+import { logTrace } from '@/utils/traceLog'
 import { poke } from '@/composables/useBuddy'
 import { useXpStore } from '@/stores/xp'
 import { useWishStore } from '@/stores/wish'
@@ -94,7 +94,6 @@ const skinClass = useSkinClass()
 const daily = useDailyStore()
 const knowledge = useKnowledgeStore()
 const habit = useHabitStore()
-const trace = useTraceStore()
 const wishStore = useWishStore()
 const xpTotal = useXpStore()
 
@@ -134,9 +133,11 @@ function writeBack(text: string): void {
   })
   if (!dup) {
     knowledge.add({ kind: 'action', title: text, content: text, tags: ['行动'], depth: 2, src: '行 · 行动回写' })
-    useXpStore().gain(10)
+    // 首次回写入账修为（value 取事件表 10 分）；重复内容只留痕，不给分（防刷）
+    logTrace({ kind: 'action.todo', text })
+  } else {
+    logTrace({ kind: 'action.todo', text, value: 0 })
   }
-  trace.push('todo', text)
 }
 
 function openBox(): void {

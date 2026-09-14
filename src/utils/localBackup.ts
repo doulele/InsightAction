@@ -11,16 +11,19 @@
  *  3. 恢复后不只是写 storage，还要把**内存里已存在的 store 一起 patch** ——
  *     否则界面仍显示旧数据（pinia 的水合只在 store 首次创建时发生）。
  */
+import { SCHEMA_VERSION } from '@/config/schema'
 import { STORE_PREFIX } from '@/stores/index'
 import { useAppStore } from '@/stores/app'
 import { useAssessmentStore } from '@/stores/assessment'
 import { useBoxStore } from '@/stores/box'
+import { useComposeDraftStore } from '@/stores/composeDraft'
 import { useDailyStore } from '@/stores/daily'
 import { useFocusStore } from '@/stores/focus'
 import { useHabitStore } from '@/stores/habit'
 import { useInterruptStore } from '@/stores/interrupt'
 import { useKnowledgeStore } from '@/stores/knowledge'
 import { useModeStore } from '@/stores/mode'
+import { useObserveStore } from '@/stores/observe'
 import { useQualityStore } from '@/stores/quality'
 import { useQuestionStore } from '@/stores/question'
 import { useProverbStore } from '@/stores/proverb'
@@ -59,10 +62,10 @@ interface MiniProgramFileApi {
 
 const mp = uni as unknown as MiniProgramFileApi
 
-/** 备份文件格式（schema 留作将来兼容） */
+/** 备份文件格式（schema 用于跨版本兼容拦截，见 config/schema.ts） */
 export interface BackupPayload {
   app: 'guanzhi'
-  schema: 1
+  schema: number
   exportedAt: string
   /** storage 键 → 原始 JSON 字符串（原样保存，避免二次序列化差异） */
   data: Record<string, string>
@@ -82,12 +85,14 @@ const HYDRATORS: Array<{ key: string; use: () => Patchable }> = [
   { key: 'app', use: () => useAppStore() },
   { key: 'assessment', use: () => useAssessmentStore() },
   { key: 'box', use: () => useBoxStore() },
+  { key: 'composeDraft', use: () => useComposeDraftStore() },
   { key: 'daily', use: () => useDailyStore() },
   { key: 'focus', use: () => useFocusStore() },
   { key: 'habit', use: () => useHabitStore() },
   { key: 'interrupt', use: () => useInterruptStore() },
   { key: 'knowledge', use: () => useKnowledgeStore() },
   { key: 'mode', use: () => useModeStore() },
+  { key: 'observe', use: () => useObserveStore() },
   { key: 'quality', use: () => useQualityStore() },
   { key: 'proverb', use: () => useProverbStore() },
   { key: 'question', use: () => useQuestionStore() },
@@ -111,7 +116,7 @@ export function collectBackup(): BackupPayload {
     if (value === '' || value === undefined || value === null) continue
     data[key] = typeof value === 'string' ? value : JSON.stringify(value)
   }
-  return { app: 'guanzhi', schema: 1, exportedAt: new Date().toISOString(), data }
+  return { app: 'guanzhi', schema: SCHEMA_VERSION, exportedAt: new Date().toISOString(), data }
 }
 
 /** 备份摘要（设置页确认弹框里展示） */
@@ -168,13 +173,23 @@ export function validateBackup(raw: unknown): BackupPayload {
   if (obj.app !== 'guanzhi') throw new Error('这不是「观止知行」的备份文件')
   if (!obj.data || typeof obj.data !== 'object') throw new Error('备份内容缺少数据段')
 
+  /*
+   * 版本闸门：备份来自**更新版本**的 App → 拒绝恢复。
+   * 旧备份（schema 更小）可以恢复：各 store 的迁移兜底（如 trace 的 type→kind）能兜住。
+   * 反过来不行 —— 老版本读不懂新字段，恢复后界面会出现半截数据，且无声无息。
+   */
+  const schema = Number(obj.schema)
+  if (Number.isFinite(schema) && schema > SCHEMA_VERSION) {
+    throw new Error(`备份来自更新版本（schema ${schema} > 当前 ${SCHEMA_VERSION}），请先升级小程序再恢复`)
+  }
+
   const data: Record<string, string> = {}
   for (const [key, value] of Object.entries(obj.data)) {
     if (!key.startsWith(STORE_PREFIX)) continue
     if (typeof value === 'string') data[key] = value
   }
   if (!Object.keys(data).length) throw new Error('备份里没有可恢复的数据')
-  return { app: 'guanzhi', schema: 1, exportedAt: obj.exportedAt || '', data }
+  return { app: 'guanzhi', schema: Number.isFinite(schema) ? schema : 1, exportedAt: obj.exportedAt || '', data }
 }
 
 /** 从聊天记录里选一个备份文件并解析（用户主动选文件，不涉及自动采集） */
@@ -213,6 +228,10 @@ export function pickBackupFile(): Promise<BackupPayload> {
  * 返回实际恢复的项数，供 UI 提示。
  */
 export function applyBackup(payload: BackupPayload): { restoredKeys: number; restoredStores: number } {
+  // 云快照不经过 validateBackup（后端直接给 data），这里再兜一次版本闸门
+  if (Number(payload.schema) > SCHEMA_VERSION) {
+    throw new Error(`备份来自更新版本（schema ${payload.schema} > 当前 ${SCHEMA_VERSION}），请先升级小程序再恢复`)
+  }
   const keys = Object.keys(payload.data)
   for (const key of keys) uni.setStorageSync(key, payload.data[key])
 

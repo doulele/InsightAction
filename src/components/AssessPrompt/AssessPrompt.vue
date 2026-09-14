@@ -59,7 +59,7 @@ function later(): void {
 
 <style lang="scss" scoped>
 .prompt {
-  margin-top: 22rpx;
+  margin-bottom: 22rpx;
   padding: 24rpx 26rpx;
   border: 1rpx solid $gz-line;
   border-radius: $gz-radius-md;

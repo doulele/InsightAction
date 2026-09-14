@@ -123,14 +123,14 @@ const weekday = computed(() => {
 })
 
 /* —— 境界 —— */
-const lv = computed(() => levelIndexFromXp(xp.total) + 1)
-const lvName = computed(() => levelName(modeStore.id, xp.total))
-const lvPct = computed(() => Math.round(levelProgress(xp.total) * 100))
+const lv = computed(() => levelIndexFromXp(xp.levelXp) + 1)
+const lvName = computed(() => levelName(modeStore.id, xp.levelXp))
+const lvPct = computed(() => Math.round(levelProgress(xp.levelXp) * 100))
 const nextHint = computed(() => {
   const idx = lv.value - 1
   const next = LEVEL_THRESHOLDS[idx + 1]
   if (next === undefined) return '已至圆满 · 修为仍随每一日累积'
-  const need = next - xp.total
+  const need = next - xp.levelXp
   return `距「${(LEVEL_NAMES[modeStore.id] ?? LEVEL_NAMES.normal)[idx + 1]}」还差 ${need} 点修为`
 })
 

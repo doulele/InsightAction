@@ -121,13 +121,12 @@ import { computed, ref } from 'vue'
 import GzDialog from '@/components/GzDialog/GzDialog.vue'
 import { onUnmounted } from 'vue'
 import { useInterruptStore, PRESET_SCENARIOS } from '@/stores/interrupt'
-import { useXpStore } from '@/stores/xp'
+import { logTrace } from '@/utils/traceLog'
 import { useSkinClass } from '@/composables/useSkin'
 import { todayKey } from '@/stores/daily'
 import { ROUTES } from '@/router/routes'
 
 const store = useInterruptStore()
-const xp = useXpStore()
 const skinClass = useSkinClass()
 
 const DURATIONS = [1, 2, 3] as const
@@ -213,7 +212,8 @@ function settle(held: boolean): void {
   clearTimer()
   store.finish(minutes.value, held)
   if (held) {
-    xp.gain(5)
+    // 守住誓愿：走事件流入账（原 +5 不变，显式指定以对齐旧口径）
+    logTrace({ kind: 'pause.vow.keep', text: `守住了一次「${selected.value.name}」`, value: 5 })
     uni.showToast({ title: `守住了一次「${selected.value.name}」 · +5 修为`, icon: 'none' })
   } else {
     uni.showToast({ title: '没有关系，再来一次', icon: 'none' })

@@ -98,14 +98,12 @@ import { computed, ref } from 'vue'
 import GzDialog from '@/components/GzDialog/GzDialog.vue'
 import { onShow } from '@dcloudio/uni-app'
 import { useHabitStore, type Habit } from '@/stores/habit'
-import { useTraceStore } from '@/stores/trace'
-import { useXpStore } from '@/stores/xp'
+import { logTrace } from '@/utils/traceLog'
 import { todayKey } from '@/stores/daily'
 import { useSkinClass } from '@/composables/useSkin'
 import { ROUTES } from '@/router/routes'
 
 const habit = useHabitStore()
-const trace = useTraceStore()
 const skinClass = useSkinClass()
 
 const SUGGESTS = ['喝水 2L', '早睡 23:30', '阅读 20 分钟', '散步 30 分钟', '复盘 3 行', '戒刷手机 1h'] as const
@@ -173,8 +171,7 @@ const list = computed<Row[]>(() => {
 function toggle(row: Row): void {
   const nowDone = habit.toggle(row.id)
   if (nowDone) {
-    trace.push('habit', row.name)
-    useXpStore().gain(6)
+    logTrace({ kind: 'action.habit', text: row.name })
     uni.showToast({ title: `「${row.name}」今日已打卡`, icon: 'none' })
   }
 }

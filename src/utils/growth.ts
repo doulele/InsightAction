@@ -39,8 +39,8 @@ export function buildBadgeContext(): BadgeContext {
     habitStreakMax: habit.habits.reduce((max, h) => Math.max(max, habit.streakOf(h.id)), 0),
     cardTotal: knowledge.cards.length,
     hasLv3: knowledge.cards.some((c) => c.depth === 3),
-    todoDone: trace.traces.filter((t) => t.type === 'todo').length,
-    boxDone: trace.traces.filter((t) => t.type === 'box' && t.text.includes('完成')).length,
+    todoDone: trace.countKind('action.todo'),
+    boxDone: trace.list.filter((t) => t.kind === 'action.box' && t.text.includes('完成')).length,
   }
 }
 

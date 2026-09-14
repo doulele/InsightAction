@@ -520,7 +520,7 @@ function onRemind(key: RemindKey, e: Event & { detail?: { value?: boolean } }): 
 function exportToday(): void {
   const k = todayKey()
   const st = dayStats(k)
-  const lv = levelIndexFromXp(xp.total) + 1
+  const lv = levelIndexFromXp(xp.levelXp) + 1
   const plan = daily.planCount || 3
   const lines = [
     '观止知行 · 今日概览',

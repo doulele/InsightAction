@@ -87,6 +87,41 @@
             "navigationStyle": "custom",
             "navigationBarTitleText": "概念播种"
           }
+        },
+        {
+          "path": "compose/index",
+          "style": {
+            "navigationStyle": "custom",
+            "navigationBarTitleText": "记一笔"
+          }
+        },
+        {
+          "path": "inbox/index",
+          "style": {
+            "navigationStyle": "custom",
+            "navigationBarTitleText": "收件匣"
+          }
+        },
+        {
+          "path": "detail/index",
+          "style": {
+            "navigationStyle": "custom",
+            "navigationBarTitleText": "详情"
+          }
+        },
+        {
+          "path": "theorylib/index",
+          "style": {
+            "navigationStyle": "custom",
+            "navigationBarTitleText": "理库"
+          }
+        },
+        {
+          "path": "motherlib/index",
+          "style": {
+            "navigationStyle": "custom",
+            "navigationBarTitleText": "母题库"
+          }
         }
       ]
     },

@@ -58,8 +58,8 @@
       </view>
       <view v-else class="mini-list">
         <view v-for="t in activeTraces" :key="t.id" class="mini">
-          <view class="mini__dot" :class="`is-${t.type}`" />
-          <text class="mini__label">{{ labelOf(t.type) }}</text>
+          <view class="mini__dot" :class="`is-${t.hall}`" />
+          <text class="mini__label">{{ labelOf(t.kind) }}</text>
           <text class="mini__text">{{ t.text }}</text>
           <text class="mini__time">{{ timeOf(t.at) }}</text>
         </view>
@@ -79,7 +79,9 @@
  * 时间轴复用「痕迹流」store，我页时间轴为同源不同视图。
  */
 import { computed, ref } from 'vue'
-import { useTraceStore, TRACE_LABEL, type Trace, type TraceType } from '@/stores/trace'
+import { useTraceStore, type Trace } from '@/stores/trace'
+import { TRACE_LABEL } from '@/config/trace'
+import type { TraceKind } from '@/config/trace'
 import { useHabitStore } from '@/stores/habit'
 import { todayKey } from '@/stores/daily'
 import { useSkinClass } from '@/composables/useSkin'
@@ -112,9 +114,9 @@ const todayK = todayKey()
 
 /* 本周事件数 */
 const weekTraces = computed(() => trace.between(mondayKey, todayK))
-const todoCount = computed(() => weekTraces.value.filter((t) => t.type === 'todo').length)
+const todoCount = computed(() => weekTraces.value.filter((t) => t.kind === 'action.todo').length)
 const boxCount = computed(
-  () => weekTraces.value.filter((t) => t.type === 'box' && t.text.includes('完成')).length,
+  () => weekTraces.value.filter((t) => t.kind === 'action.box' && t.text.includes('完成')).length,
 )
 /** 习惯打卡：本周各习惯打卡的「习惯×天」总数 */
 const habitCount = computed(() =>
@@ -169,18 +171,20 @@ const activeTraces = computed<Trace[]>(() => {
       // 无时间戳，作为当天 08:00 之后一条伪记录展示明细
       fromHabit.push({
         id: -h.id - 1,
-        type: 'habit',
+        kind: 'action.habit' as TraceKind,
+        hall: 'action',
         text: h.name,
         day: activeDay.value,
         at: new Date(`${activeDay.value}T08:00:00`).getTime(),
+        value: 0,
       })
     }
   })
   return [...traces, ...fromHabit].sort((a, b) => b.at - a.at).slice(0, 30)
 })
 
-function labelOf(type: TraceType): string {
-  return TRACE_LABEL[type]
+function labelOf(kind: TraceKind): string {
+  return TRACE_LABEL[kind] ?? '痕迹'
 }
 
 function timeOf(at: number): string {
@@ -405,6 +409,23 @@ function goBack(): void {
 
 .mini__dot.is-box {
   background: #9c8ac4;
+}
+
+/* 四环配色：观 / 止 / 知 / 行 */
+.mini__dot.is-observe {
+  background: #84a268;
+}
+
+.mini__dot.is-pause {
+  background: #4e8fd4;
+}
+
+.mini__dot.is-reflect {
+  background: #9c8ac4;
+}
+
+.mini__dot.is-action {
+  background: #c98a4b;
 }
 
 .mini__label {
