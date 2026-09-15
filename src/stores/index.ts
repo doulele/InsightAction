@@ -10,7 +10,6 @@
  */
 import { createPinia } from 'pinia'
 import type { PiniaPluginContext, StateTree } from 'pinia'
-import { toRaw } from 'vue'
 
 export interface PersistStrategy {
   /** 存储键；缺省用 store.$id */
@@ -59,11 +58,25 @@ function persistPlugin({ store, options }: PiniaPluginContext) {
   // 二、订阅：state 变化后写回存储（detached 使组件卸载后仍生效）
   store.$subscribe(
     (_mutation, state) => {
-      const raw = toRaw(state) as Record<string, unknown>
+      /**
+       * ⚠️ 快照必须从**响应式 state 取值**，不能 toRaw —— 这里踩过坑：
+       * setup store 的字段在 pinia 内部是「ref 挂在 state 容器上」（`state.value[key] = ref`），
+       * toRaw(state)[key] 拿到的是 RefImpl 而不是值；而 RefImpl 一旦被 $subscribe 的
+       * deep watcher 跟踪过，就带上 dep → subs → effect → deps 的循环引用，
+       * JSON.stringify 直接抛 "Converting circular structure to JSON"。
+       * 结果是**每次状态变更写盘都失败**，storage 里一条 insight:store:* 都没有 ——
+       * 表现就是「选了主题 / 做完测评，刷新后又要从头来」。
+       * 响应式代理读取时会自动解包 ref，所以 state[key] 才是真正的值。
+       */
       const snapshot = strategy.paths
-        ? Object.fromEntries(strategy.paths.map((p) => [p, raw[p]]))
-        : raw
-      uni.setStorageSync(storageKey, JSON.stringify(snapshot))
+        ? Object.fromEntries(strategy.paths.map((p) => [p, (state as Record<string, unknown>)[p]]))
+        : state
+      try {
+        uni.setStorageSync(storageKey, JSON.stringify(snapshot))
+      } catch (e) {
+        // 持久化失败不致命：内存里的状态仍然正确，仅本次落盘丢失（下次变更会再试）
+        console.warn(`[pinia-persist] persist "${storageKey}" failed:`, e)
+      }
     },
     { detached: true },
   )

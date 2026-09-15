@@ -27,6 +27,20 @@
       </view>
     </view>
 
+    <!--
+      外部入口（信息工作台）：只有「今天几个事件」与一个出口，**不含任何新闻内容**。
+      个人主体小程序不可选「新闻资讯」类目，页面里出现标题/摘要即构成类目不符，
+      所以事实层留在网站侧，这里只做一道"门"（形态上是入口条，不是内容卡）。
+
+      位置在每日一则之上：它是"外面世界"的入口 —— 先让用户知道"那边有人替你盯着"，
+      再进入今天那一条。顺序与「观事 → 观理 → 观道」一致。
+    -->
+    <view v-if="portal" class="portal" hover-class="gz-hover" @click="openPortal">
+      <text class="portal__title">今日要闻</text>
+      <text class="portal__sub">{{ PORTAL_HINT }}</text>
+      <text class="portal__arrow">›</text>
+    </view>
+
     <!-- 每日一则：首开即可见的常驻卡（不进浮层），一日一条、不补不累计 -->
     <view class="section">
       <view class="section__head">
@@ -36,7 +50,8 @@
 
       <view class="daily">
         <view class="daily__top">
-          <text class="daily__kind">{{ daily.kind }}</text>
+          <!-- 类别胶囊：「事 · 最近发生的」—— 类别按天分派后，必须让用户知道这一条属于哪个范畴 -->
+          <text class="daily__kind">{{ daily.kind }} · {{ kindNote }}</text>
           <text v-if="isToday" class="daily__today">今天</text>
           <text v-else-if="isFuture" class="daily__today daily__today--future">未到</text>
           <text v-else class="daily__today daily__today--back">回看</text>
@@ -52,7 +67,10 @@
           </view>
         </view>
         <text class="daily__title">{{ daily.title }}</text>
-        <text class="daily__text">{{ daily.text }}</text>
+        <!-- 正文限高可滚：最长 600 字，全展开会把卡片撑到两三屏，反例/四动作/追问都被挤走 -->
+        <scroll-view class="daily__text-box" scroll-y>
+          <text class="daily__text">{{ daily.text }}</text>
+        </scroll-view>
         <text v-if="daily.counter" class="daily__counter">反过来想：{{ daily.counter }}</text>
         <text v-if="daily.source" class="daily__src">{{ daily.source }}</text>
 
@@ -67,6 +85,36 @@
             @click="doAction(a.id)"
           >
             <text class="act__text">{{ a.label }}</text>
+          </view>
+        </view>
+
+        <!--
+          读完追问：把「观」和「知」接上（观 → 知 的最小闭环）。
+          只对"今天"开放 —— 它的意义是"刚读完这一条，顺手想一想"，
+          回看历史时不该再冒出来（也不该让同一天堆出第二张卡）。
+        -->
+        <view v-if="isToday" class="ask">
+          <view v-if="askAnswered" class="ask__done">
+            <text class="ask__done-text">已想过 · 收进「知」的最近所悟</text>
+          </view>
+
+          <view v-else-if="!askOpen" class="ask__entry" hover-class="gz-hover" @click="askOpen = true">
+            <text class="ask__entry-text">读完想想 ›</text>
+          </view>
+
+          <view v-else class="ask__body">
+            <text class="ask__q">{{ askQuestion }}</text>
+            <textarea
+              v-model="askDraft"
+              class="ask__input"
+              :maxlength="300"
+              placeholder="一句话就行，不必写成文章…"
+              placeholder-class="ask__ph"
+            />
+            <view class="ask__acts">
+              <text class="ask__cancel" hover-class="gz-hover" @click="askOpen = false">先不想</text>
+              <text class="ask__save" hover-class="gz-hover" @click="saveAsk">存下</text>
+            </view>
           </view>
         </view>
       </view>
@@ -152,6 +200,19 @@
       </view>
     </view>
 
+    <!-- 出口说明：讲清"为什么不在这里看"，而不是直接甩一个外链 -->
+    <GzDialog
+      :show="portalOpen"
+      :art="modeStore.art"
+      title="去信息工作台"
+      content="今天的要闻、多源核实与事件脉络都在信息工作台 —— 那是你的网站。小程序里只留认知与修行：看完就关，想追源头时再过去。"
+      note="复制后请在浏览器或聊天窗口粘贴打开"
+      cancel-text="知道了"
+      confirm-text="复制链接"
+      @cancel="portalOpen = false"
+      @confirm="copyPortal"
+    />
+
     <!-- 批次 D · 小枢全局浮层 -->
     <BuddyFloat />
   </view>
@@ -167,7 +228,7 @@
  *  - 四个动作（认领 / 记住 / 反驳 / 记一笔）都有落点，不是点了就消失的按钮；
  *  - 「记一笔」是用户主动输入的统一入口（事/理/道 × 文章/一句话/视频）。
  */
-import { computed, getCurrentInstance, ref } from 'vue'
+import { computed, getCurrentInstance, ref, watch } from 'vue'
 import { onReady, onShow } from '@dcloudio/uni-app'
 import { useModeStore } from '@/stores/mode'
 import { useSkinClass } from '@/composables/useSkin'
@@ -175,14 +236,17 @@ import { syncTabBar } from '@/utils/skin'
 import { getModeMeta } from '@/config/modes'
 import { hallStatus } from '@/config/lexicon'
 import { dailyOf } from '@/config/daily'
+import type { DailyKind } from '@/config/daily'
 import { useContentStore } from '@/stores/content'
 import { useObserveStore } from '@/stores/observe'
+import { useKnowledgeStore } from '@/stores/knowledge'
 import { useReadLaterStore } from '@/stores/readLater'
 import { useQualityStore } from '@/stores/quality'
 import { poke } from '@/composables/useBuddy'
 import { navigateTo, ROUTES } from '@/router/routes'
 import type { RoutePath } from '@/router/routes'
 import { todayKey } from '@/stores/daily'
+import GzDialog from '@/components/GzDialog/GzDialog.vue'
 import type { EntryBadge } from '@/components/EntryItem/EntryItem.vue'
 
 const modeStore = useModeStore()
@@ -222,6 +286,42 @@ const quota = computed(() => observe.quotaTotal())
 const content = useContentStore()
 const today = ref(todayKey())
 const dailyList = computed(() => content.dailyItems())
+
+/* —— 外部入口（信息工作台）：只有数字与出口，内容全部留在网站侧 —— */
+const portal = computed(() => content.portal)
+const portalOpen = ref(false)
+
+/**
+ * 入口右侧文案 —— 固定一句话。
+ *
+ * 为什么不用数字：事件数实测每天都是 40~60（取决于清晨那次抓取抓了多少），
+ * 用户看久了会把它当装饰。少一个会变的数字，反而少一分"每天一样"的疲态。
+ *
+ * 为什么是「替你」而不是「已」：这个入口存在的理由就是省下你自己刷的力气 ——
+ * "已归拢"只是陈述一个状态，"替你归拢"说的才是它替你做了什么。
+ */
+const PORTAL_HINT = '今日消息已替你归拢'
+
+function openPortal(): void {
+  portalOpen.value = true
+}
+
+/**
+ * 复制出口地址。
+ *
+ * 为什么是复制而不是跳转：个人主体小程序没有业务域名白名单，web-view 打不开外站
+ * —— 与本项目其它外链同一套做法（见 subpkg-observe 的 copyThenTip）。
+ */
+function copyPortal(): void {
+  const url = portal.value?.url
+  portalOpen.value = false
+  if (!url) return
+  uni.setClipboardData({
+    data: url,
+    success: () => uni.showToast({ title: '已复制 · 粘贴到浏览器打开', icon: 'none', duration: 2600 }),
+    fail: () => uni.showToast({ title: '复制失败，请手动输入网址', icon: 'none' }),
+  })
+}
 
 /* —— 日期拨轮 —— */
 /**
@@ -355,6 +455,74 @@ const swapCount = computed(() => offsets.value[selectedDate.value] ?? 0)
 
 const daily = computed(() => dailyOf(selectedDate.value, dailyList.value, swapCount.value))
 const isToday = computed(() => selectedDate.value === today.value)
+
+/**
+ * 类别的一句话说明。
+ *
+ * 为什么需要：类别按天分派后，用户某天看到的是「理」或「典」—— 不点明范畴，
+ * 他会以为"今天怎么没讲事"。这句话也让「观事 → 观理 → 观道」的结构在界面上看得见。
+ */
+const KIND_NOTE: Record<DailyKind, string> = {
+  事: '最近发生的',
+  理: '一条规律',
+  典: '前人说的',
+}
+const kindNote = computed(() => KIND_NOTE[daily.value.kind])
+
+/* —— 读完追问：观 → 知 的最小闭环 —— */
+const knowledge = useKnowledgeStore()
+const askOpen = ref(false)
+const askDraft = ref('')
+
+/**
+ * 追问问题：后端下发优先（将来若用模型生成更贴题的问题就下发到 daily.ask），
+ * 否则按类别取模板。
+ *
+ * 模板为什么按类别分：三类内容"该想什么"本来就不同 ——
+ * 「事」要迁移（在哪还见过）、「理」要找边界（何时不成立）、
+ * 「典」要落地（上次用它是什么时候）。零成本，且够用。
+ */
+const ASK_TEMPLATE: Record<DailyKind, string> = {
+  事: '你最近在哪见过同一个机制？',
+  理: '它在什么条件下不成立？',
+  典: '你上一次用它是什么时候？',
+}
+const askQuestion = computed(() => daily.value.ask || ASK_TEMPLATE[daily.value.kind])
+
+/**
+ * 今天是否已答过。
+ *
+ * 靠卡片 src 里的日期判断（格式约定：`每日一则 · 追问 · YYYY-MM-DD`）——
+ * 这样"一天一条"不需要额外的状态存储，答案本身就在知识库里。
+ */
+const askAnswered = computed(() =>
+  knowledge.cards.some((c) => c.kind === 'daily' && c.src.endsWith(today.value)),
+)
+
+/* 拨到别的日期时收起输入区，避免回看时还开着今天的输入框 */
+watch(selectedDate, () => {
+  askOpen.value = false
+})
+
+/** 存下追问的答案 → 成为「知」里的一张 Lv.2 卡片 */
+function saveAsk(): void {
+  const text = askDraft.value.trim()
+  if (!text) {
+    uni.showToast({ title: '写一句再存', icon: 'none' })
+    return
+  }
+  knowledge.add({
+    kind: 'daily',
+    title: `读「${daily.value.title.slice(0, 14)}」`,
+    content: text,
+    tags: ['每日一则', daily.value.kind],
+    depth: 2,
+    src: `每日一则 · 追问 · ${today.value}`,
+  })
+  askOpen.value = false
+  askDraft.value = ''
+  uni.showToast({ title: '已收进「知」的最近所悟', icon: 'none' })
+}
 /** 拨到了今天之后的日子（日期串是 YYYY-MM-DD，直接比字典序即可） */
 const isFuture = computed(() => selectedDate.value > today.value)
 const doneActions = computed(() => observe.dailyActionsOf(selectedDate.value))
@@ -806,6 +974,77 @@ const moreEntries = computed<MoreEntry[]>(() => {
   color: #8a6a3c;
 }
 
+/*
+  读完追问：四动作之下"轻推一把"。
+  默认只露一行文字链 —— 只想读的人不会被输入框打扰，想留一句的人一步就能展开。
+*/
+.ask {
+  margin-top: 18rpx;
+  padding-top: 18rpx;
+  border-top: 1rpx dashed $gz-line;
+}
+
+.ask__entry-text {
+  font-size: $gz-fs-caption;
+  font-weight: 600;
+  color: $gz-accent;
+}
+
+.ask__done-text {
+  font-size: $gz-fs-caption;
+  color: $gz-ink-3;
+}
+
+.ask__q {
+  font-size: $gz-fs-small;
+  line-height: 1.6;
+  color: $gz-ink;
+}
+
+.ask__input {
+  margin-top: 12rpx;
+  width: 100%;
+  min-height: 96rpx;
+  padding: 16rpx 18rpx;
+  box-sizing: border-box;
+  border: 1rpx dashed $gz-line;
+  border-radius: $gz-radius-md;
+  font-size: $gz-fs-small;
+  line-height: 1.6;
+}
+
+.ask__ph {
+  color: $gz-ink-3;
+}
+
+.ask__acts {
+  margin-top: 14rpx;
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 28rpx;
+}
+
+.ask__cancel {
+  font-size: $gz-fs-caption;
+  color: $gz-ink-3;
+}
+
+.ask__save {
+  font-size: $gz-fs-caption;
+  font-weight: 700;
+  color: $gz-accent;
+}
+
+/*
+  每日一则正文的视窗。
+  520rpx ≈ 11 行（28rpx 字号 × 1.7 行高），与 detail 页正文限高保持同一量级。
+  只设 max-height 不设 height：内容短的条目不该被撑出一块空白。
+*/
+.daily__text-box {
+  max-height: 520rpx;
+}
+
 /* 换一个：文字链形态，撑出足够热区；换过之后变成主题色，让人知道"这不是今日原条" */
 .daily__swap {
   margin-left: auto;
@@ -1202,6 +1441,52 @@ const moreEntries = computed<MoreEntry[]>(() => {
 .quota.is-out .quota__right {
   color: $gz-accent;
   font-weight: 600;
+}
+
+/*
+  今日要闻入口（通向站外的那道门）。
+  形态上刻意与内容卡区分：不做"标题 + 正文"的卡片结构，而是一条**扁平的入口条** ——
+  小标签 + 一句状态 + 箭头，一眼就知道这是"出口"而不是"能读的内容"。
+  这既是视觉层级，也是合规考虑：小程序里不该看起来像能读到新闻。
+*/
+.portal {
+  margin-top: 20rpx;
+  display: flex;
+  align-items: center;
+  gap: 12rpx;
+  padding: 20rpx 24rpx;
+  border-radius: $gz-radius-md;
+  background: $gz-accent-soft;
+}
+
+/* 标签形态（像网站首页"最近新闻"那个小标签）—— 实底、胶囊，不抢文字的位置 */
+.portal__title {
+  flex-shrink: 0;
+  padding: 4rpx 16rpx;
+  border-radius: 999rpx;
+  background: $gz-accent;
+  color: $gz-on-cta;
+  font-size: $gz-fs-caption;
+  font-weight: 700;
+  line-height: 1.7;
+}
+
+/* 状态文字占满余下宽度：过长时省略，不把箭头挤出去 */
+.portal__sub {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  font-size: $gz-fs-caption;
+  color: $gz-ink-3;
+}
+
+.portal__arrow {
+  flex-shrink: 0;
+  font-size: 32rpx;
+  line-height: 1;
+  color: $gz-accent;
 }
 
 .entries {

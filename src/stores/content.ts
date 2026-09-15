@@ -14,7 +14,13 @@ import { ref } from 'vue'
 import { fetchContent } from '@/api/modules/content'
 import { getAssessmentBank, DEFAULT_TIER_THRESHOLDS, LOCAL_ASSESS_VERSION } from '@/config/assessment'
 import type { AssessmentBank, TierThresholds } from '@/config/assessment'
-import type { AssessmentScoring, HallId, LexiconPayload, PhrasesPayload } from '@/api/modules/content'
+import type {
+  AssessmentScoring,
+  HallId,
+  LexiconPayload,
+  PhrasesPayload,
+  RemotePortal,
+} from '@/api/modules/content'
 import { LOCAL_DAILY_VERSION, sanitizeDaily } from '@/config/daily'
 import type { DailyItem } from '@/config/daily'
 import { localPhrase, LOCAL_PHRASE_VERSION } from '@/config/phrases'
@@ -38,6 +44,11 @@ export const useContentStore = defineStore('content', () => {
   const phrases = ref<PhrasesPayload>({})
   /** 远端每日一则（空数组 = 用内置 30 条）；已过 sanitize，结构可信 */
   const daily = ref<DailyItem[]>([])
+  /**
+   * 外部入口（信息工作台）：只有「几个事件 + 一个地址」，没有任何内容。
+   * null = 后端未启用或这次没拉到 → 页面不显示入口。
+   */
+  const portal = ref<RemotePortal | null>(null)
   const loaded = ref(false)
 
   /** 取某大厅 / 某模式的文案模板；没配就返回空串（调用方回落到内置模板） */
@@ -153,11 +164,35 @@ export const useContentStore = defineStore('content', () => {
         daily.value = (freshDaily ? sanitizeDaily(lib.daily) : null) ?? []
       }
 
+      /*
+       * 外部入口：**不受任何版本闸门约束**。
+       * 它不在 content.json 里（不是运营位），是后端按配置生成的静态入口，
+       * 没有"新鲜度"一说；拿到就用，拿不到保持 null（页面不显示入口）。
+       */
+      const p = cfg?.portal
+      if (p && typeof p === 'object' && p.enabled !== false && typeof p.url === 'string' && p.url) {
+        portal.value = { enabled: true, url: p.url }
+      }
+
       loaded.value = true
     } catch {
       // 忽略：远端内容不可用时全部使用内置题库与内置文案
     }
   }
 
-  return { remoteBanks, scoring, lexicon, phrases, daily, loaded, bankOf, tiers, lexiconOf, phraseOf, dailyItems, load }
+  return {
+    remoteBanks,
+    scoring,
+    lexicon,
+    phrases,
+    daily,
+    portal,
+    loaded,
+    bankOf,
+    tiers,
+    lexiconOf,
+    phraseOf,
+    dailyItems,
+    load,
+  }
 })

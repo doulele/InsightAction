@@ -11,7 +11,23 @@ import { ref } from 'vue'
 export type CardDepth = 1 | 2 | 3
 
 /** 卡片来源类型 */
-export type CardKind = 'question' | 'seed' | 'action' | 'note'
+export type CardKind =
+  /** 每日灵魂拷问的作答 */
+  | 'question'
+  /** 概念播种的收成 */
+  | 'seed'
+  /** 行动回写 */
+  | 'action'
+  /** 手动转述 */
+  | 'note'
+  /**
+   * 每日一则的「读完追问」。
+   *
+   * 与 question 分开记：拷问是**独立的每日自省**（问题与今天读什么无关），
+   * 而这个是**针对当天那一则内容**的追问 —— 它是「观 → 知」的桥，
+   * 来源不同，知识库里也该分得开。
+   */
+  | 'daily'
 
 export interface KnowledgeCard {
   /** 建档时刻（Date.now()，兼作 id） */

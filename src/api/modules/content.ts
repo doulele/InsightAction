@@ -54,6 +54,26 @@ export interface RemoteLibrary {
   daily?: RemoteDailyItem[]
 }
 
+/**
+ * 外部入口（信息工作台 wellwin.top/staticTool/hotstation）。
+ *
+ * 为什么只有「一个地址」，没有任何内容，也没有任何数字：
+ *  - 本小程序是**个人主体**，而「新闻资讯」类目个人主体不可选 —— 页面里一旦出现
+ *    新闻标题/摘要，就构成「类目与实际内容不符」（比内容本身更容易被驳回或整改）；
+ *    所以事实层留在网站侧（那边有备案、自担内容责任），小程序只留认知层；
+ *  - 曾经还下发过"今天有多少个事件"的数字，但实测每天都是 40~60、界面上已不再显示，
+ *    后端取数逻辑遂一并删除 —— 现在它是一个**完全不依赖外部接口**的静态入口。
+ *
+ * 个人主体也没有业务域名白名单，web-view 打不开外站，所以出口一律是
+ * 「复制链接 + 提示」（与本项目其它外链一致，见 subpkg-observe 的 copyThenTip）。
+ */
+export interface RemotePortal {
+  /** 后端是否启用（false/缺省时前端不显示入口） */
+  enabled?: boolean
+  /** 复制给用户、由用户在浏览器打开的地址 */
+  url?: string
+}
+
 export interface RemoteContent {
   version?: number
   updatedAt?: string
@@ -64,6 +84,8 @@ export interface RemoteContent {
   phrases?: PhrasesPayload
   /** 内容库（每日一则等，独立版本号） */
   library?: RemoteLibrary
+  /** 外部入口（信息工作台）—— 运行时数据，不来自 content.json */
+  portal?: RemotePortal
 }
 
 export type PhrasesPayload = Record<string, Partial<Record<ModeId, string>>>
