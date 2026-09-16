@@ -1,0 +1,396 @@
+<template>
+  <view class="page" :class="skinClass">
+    <view class="nav">
+      <view class="nav__side" hover-class="gz-hover" @click="goBack">
+        <text class="nav__back">‹</text>
+      </view>
+      <text class="nav__title">{{ w.plan }}</text>
+      <view class="nav__side" />
+    </view>
+
+    <!-- 今天 / 长期 -->
+    <view class="tabs">
+      <view
+        v-for="t in TABS"
+        :key="t.id"
+        class="tab"
+        :class="{ 'is-on': tab === t.id }"
+        hover-class="gz-hover"
+        @click="tab = t.id"
+      >
+        {{ t.label }}
+        <text v-if="t.id === 'today' && todaySteps.length" class="tab__n">{{ doneSteps }}/{{ todaySteps.length }}</text>
+        <text v-else-if="t.id === 'long' && plan.activeLongCount" class="tab__n">{{ plan.activeLongCount }}</text>
+      </view>
+    </view>
+
+    <!-- 今天 -->
+    <template v-if="tab === 'today'">
+      <view class="card">
+        <view class="card__head">
+          <text class="card__title">{{ w.today }}</text>
+          <text class="card__n">{{ doneSteps }}/{{ todaySteps.length }}</text>
+        </view>
+        <view class="bar">
+          <view class="bar__fill" :style="{ width: `${todayPct}%` }" />
+        </view>
+
+        <view v-if="todaySteps.length" class="steps">
+          <PlanStep v-for="s in todaySteps" :key="s.key" :item="s" @toggle="onToggle" />
+        </view>
+        <text v-else class="empty-inline">{{ w.emptyToday }}</text>
+
+        <view class="quick">
+          <input
+            v-model="newToday"
+            class="quick__input"
+            :placeholder="w.newToday"
+            placeholder-class="quick__ph"
+            :maxlength="30"
+            confirm-type="done"
+            @confirm="addToday"
+          />
+          <view class="quick__btn" hover-class="gz-hover" @click="addToday">加</view>
+        </view>
+        <text v-if="todaySteps.length > TODAY_STEP_COMFORT" class="quick__hint">
+          今天排了 {{ todaySteps.length }} 条 —— 比平时多，走得完吗？
+        </text>
+      </view>
+
+      <view v-if="pool.length" class="card">
+        <view class="card__head">
+          <text class="card__title">{{ w.pool }}</text>
+          <text class="card__n">{{ pool.length }}</text>
+        </view>
+        <text class="card__sub">没排期的、过了日子的都攒在这。不做也不扣分。</text>
+        <view class="steps">
+          <PlanStep v-for="s in pool" :key="s.key" :item="s" @toggle="onToggle">
+            <view class="mini" hover-class="gz-hover" @click="reschedule(s)">排到今天</view>
+            <view class="mini" hover-class="gz-hover" @click="dropStep(s)">不做了</view>
+          </PlanStep>
+        </view>
+      </view>
+    </template>
+
+    <!-- 长期 -->
+    <template v-else>
+      <view v-if="staleList.length" class="stale">
+        <text class="stale__text">{{ w.stale }}</text>
+      </view>
+
+      <!-- 入门挑战（规格 §11 · 行：三类各一个）。只给从没立过长路的人 —— 有过长路，就不再是"入门" -->
+      <view v-if="isStarter" class="starter">
+        <text class="starter__title">第一次不知道走什么？三条现成的</text>
+        <view
+          v-for="c in STARTER_CHALLENGES"
+          :key="c.id"
+          class="starter__row"
+          hover-class="gz-hover"
+          @click="startChallenge(c)"
+        >
+          <text class="starter__tag">{{ CHALLENGE_LABEL[c.id] }}</text>
+          <view class="starter__body">
+            <text class="starter__name">{{ c.title }}</text>
+            <text class="starter__note">{{ c.note }}</text>
+          </view>
+          <text class="starter__go">立它 ›</text>
+        </view>
+      </view>
+
+      <view v-if="!longList.length" class="empty">
+        <view class="empty__seal">划</view>
+        <text class="empty__text">{{ w.emptyLong }}</text>
+      </view>
+
+      <view
+        v-for="p in longList"
+        :key="p.id"
+        class="plan"
+        :class="{ 'is-off': p.status !== 'active' }"
+        hover-class="gz-hover"
+        @click="openDetail(p)"
+      >
+        <view class="plan__head">
+          <text class="plan__title">{{ p.title }}</text>
+          <text v-if="p.challenge" class="plan__tag">{{ challengeLabel(p) }}</text>
+          <text class="plan__status">{{ statusLabel(p) }}</text>
+        </view>
+        <text v-if="p.note" class="plan__note">{{ p.note }}</text>
+        <view class="bar">
+          <view class="bar__fill" :style="{ width: `${plan.progressOf(p).pct}%` }" />
+        </view>
+        <view class="plan__meta">
+          <text class="plan__progress">{{ w.progress(plan.progressOf(p).done, plan.progressOf(p).total) }}</text>
+          <text v-if="nextTitle(p)" class="plan__next">{{ w.next }} · {{ nextTitle(p) }}</text>
+        </view>
+        <text v-if="dueText(p)" class="plan__due">{{ dueText(p) }}</text>
+      </view>
+
+      <view class="add" hover-class="gz-hover" @click="newOpen = true">
+        <text class="add__mark">＋</text>
+        <text class="add__text">{{ w.newLong }}</text>
+      </view>
+      <text class="add__cap">同时在走的长路上限 {{ MAX_LONG_ACTIVE }} 条 —— {{ w.cap }}</text>
+    </template>
+
+    <!-- 新建长路 -->
+    <view v-if="newOpen" class="overlay" @touchmove.stop.prevent @click="newOpen = false">
+      <view class="sheet" @click.stop>
+        <text class="sheet__title">{{ w.newLong }}</text>
+        <input v-model="newTitle" class="sheet__input" placeholder="这条路叫什么" placeholder-class="quick__ph" :maxlength="20" />
+        <input v-model="newNote" class="sheet__input" placeholder="为什么走它 / 走成什么样（选填）" placeholder-class="quick__ph" :maxlength="40" />
+        <text class="sheet__label">挑战类型（选填）</text>
+        <view class="chips">
+          <view
+            v-for="c in CHALLENGES"
+            :key="c.id"
+            class="chip"
+            :class="{ 'is-on': newChallenge === c.id }"
+            hover-class="gz-hover"
+            @click="toggleChallenge(c.id)"
+          >
+            {{ c.label }}
+          </view>
+        </view>
+        <text v-if="newChallenge" class="sheet__hint">{{ channelDesc(newChallenge) }}</text>
+        <view class="sheet__row">
+          <view class="btn btn--ghost" hover-class="gz-hover" @click="newOpen = false">先不立</view>
+          <view class="btn" hover-class="gz-hover" @click="savePlan">立下</view>
+        </view>
+      </view>
+    </view>
+
+    <PlanReflect :show="!!reflectPlan" :plan="reflectPlan" @confirm="onReflectConfirm" @skip="onReflectSkip" />
+  </view>
+</template>
+
+<script setup lang="ts">
+/**
+ * 行 · 计划列表（分包 subpkg-action）—— 今天 / 长期两个视图。
+ *
+ * 「今天」= 三件事之外的步子：派到今天的节点 + 只活今天的一件事 + 待办池；
+ * 「长期」= 在走的长路（进度 n/m、下一节点、状态）。
+ * 计分与收束规则全部在 stores/plan.ts 里闭环，本页只负责展示与转发。
+ * 样式外置在 plans/index.scss（超过 100 行，按项目约定拆出）。
+ */
+import { computed, ref } from 'vue'
+import { onShow } from '@dcloudio/uni-app'
+import {
+  usePlanStore,
+  TODAY_STEP_COMFORT,
+  MAX_LONG_ACTIVE,
+  type Plan,
+  type StepItem,
+  type ChallengeType,
+} from '@/stores/plan'
+import { CHALLENGE_DESC, CHALLENGE_LABEL, planWords } from '@/config/lexicon'
+import { useModeStore } from '@/stores/mode'
+import { useSkinClass } from '@/composables/useSkin'
+import { todayKey } from '@/stores/daily'
+import { navigateTo, ROUTES } from '@/router/routes'
+
+const plan = usePlanStore()
+const mode = useModeStore()
+const skinClass = useSkinClass()
+const w = computed(() => planWords(mode.id))
+
+const TABS = [
+  { id: 'today' as const, label: '今天' },
+  { id: 'long' as const, label: '长期' },
+]
+const CHALLENGES: Array<{ id: ChallengeType; label: string }> = (
+  ['abstain', 'try', 'cog'] as ChallengeType[]
+).map((id) => ({ id, label: CHALLENGE_LABEL[id] }))
+
+const tab = ref<'today' | 'long'>('today')
+
+onShow(() => {
+  // 搁置满 3 天的 today 型计划自动收走（静默，不打扰）
+  plan.sweep()
+})
+
+/* ---------------- 今天 ---------------- */
+const todaySteps = computed<StepItem[]>(() => plan.stepsOf())
+const pool = computed<StepItem[]>(() => plan.poolStepsOf())
+const doneSteps = computed(() => todaySteps.value.filter((s) => s.done).length)
+const todayPct = computed(() =>
+  todaySteps.value.length ? Math.round((doneSteps.value / todaySteps.value.length) * 100) : 0,
+)
+
+const newToday = ref('')
+
+function addToday(): void {
+  const title = newToday.value.trim()
+  if (!title) return
+  const created = plan.addPlan({ title, kind: 'today' })
+  if (created) {
+    newToday.value = ''
+    uni.showToast({ title: '已记下 · 今天多做一件', icon: 'none' })
+  }
+}
+
+function onToggle(item: StepItem): void {
+  const res = plan.toggleStep(item.planId, item.nodeId)
+  if (!res.closed) return
+  const target = plan.byId(item.planId)
+  if (target && target.kind === 'long') {
+    reflectPlan.value = target
+  } else {
+    uni.showToast({ title: '今日事已了', icon: 'none' })
+  }
+}
+
+/** 待办池：排到今天 */
+function reschedule(item: StepItem): void {
+  const ok =
+    item.kind === 'node' && item.nodeId !== undefined
+      ? plan.scheduleNode(item.planId, item.nodeId, todayKey())
+      : plan.rollToToday(item.planId)
+  if (ok) uni.showToast({ title: '已排到今天', icon: 'none' })
+}
+
+/** 待办池：不做了（只移除，不扣分） */
+function dropStep(item: StepItem): void {
+  uni.showModal({
+    title: '不做了？',
+    content: item.kind === 'plan' ? '这条今日事会从清单里拿掉。' : '这一步会从计划里拿掉，其余步骤不受影响。',
+    confirmText: '拿掉',
+    cancelText: '再想想',
+    success: (res) => {
+      if (!res.confirm) return
+      if (item.kind === 'plan') plan.archivePlan(item.planId)
+      else if (item.nodeId !== undefined) plan.removeNode(item.planId, item.nodeId)
+    },
+  })
+}
+
+/* ---------------- 长期 ---------------- */
+const longList = computed(() => plan.longPlans)
+const staleList = computed(() => plan.staleLong())
+
+function challengeLabel(p: Plan): string {
+  return p.challenge ? CHALLENGE_LABEL[p.challenge] : ''
+}
+
+function statusLabel(p: Plan): string {
+  if (p.status === 'done') return w.value.statusDone
+  if (p.status === 'archived') return w.value.statusArchived
+  return w.value.statusActive
+}
+
+function nextTitle(p: Plan): string {
+  return p.status === 'active' ? plan.nextNodeOf(p)?.title ?? '' : ''
+}
+
+function dueText(p: Plan): string {
+  if (!p.dueDay) return ''
+  const remain = plan.remainDaysOf(p)
+  if (remain === null) return ''
+  if (remain > 0) return `目标日 ${p.dueDay} · 还剩 ${remain} 天`
+  if (remain === 0) return `今天是目标日 ${p.dueDay}`
+  return `目标日 ${p.dueDay} 已过 ${-remain} 天`
+}
+
+function openDetail(p: Plan): void {
+  navigateTo(ROUTES.actionPlanDetail, { id: p.id })
+}
+
+/* ---------------- 新建 ---------------- */
+const newOpen = ref(false)
+const newTitle = ref('')
+const newNote = ref('')
+const newChallenge = ref<ChallengeType | undefined>(undefined)
+
+function toggleChallenge(id: ChallengeType): void {
+  newChallenge.value = newChallenge.value === id ? undefined : id
+}
+
+function channelDesc(id: ChallengeType): string {
+  return CHALLENGE_DESC[id]
+}
+
+/* ---------------- 入门挑战（规格 §11 · 三类各一个） ---------------- */
+
+/**
+ * 只预填、不代立：点了把它填进新建表单（标题 / 缘由 / 挑战类型），
+ * 用户自己看过、改过、亲手按「立下」—— 代用户立下的路，走不远。
+ */
+const STARTER_CHALLENGES: ReadonlyArray<{ id: ChallengeType; title: string; note: string }> = [
+  {
+    id: 'abstain',
+    title: '七天睡前不刷手机',
+    note: '不靠忍，靠放远：睡前把它放到够不着的地方',
+  },
+  {
+    id: 'try',
+    title: '七天，每天出门走 20 分钟',
+    note: '不求快，只求出门。走成什么样，七天后回来收束回望',
+  },
+  {
+    id: 'cog',
+    title: '推翻一个「我一直这么认为」',
+    note: '挑一个你从不怀疑的说法，认真替它找反例',
+  },
+]
+
+/** 从没立过长路（含已收束）才算入门 —— 立过第一条，路就该是他自己的了 */
+const isStarter = computed(() => !plan.plans.some((p) => p.kind === 'long'))
+
+function startChallenge(c: { id: ChallengeType; title: string; note: string }): void {
+  newTitle.value = c.title
+  newNote.value = c.note
+  newChallenge.value = c.id
+  newOpen.value = true
+}
+
+function savePlan(): void {
+  const created = plan.addPlan({
+    title: newTitle.value,
+    note: newNote.value,
+    kind: 'long',
+    challenge: newChallenge.value,
+  })
+  if (!created) {
+    if (!newTitle.value.trim()) uni.showToast({ title: '先给它起个名字', icon: 'none' })
+    return
+  }
+  newTitle.value = ''
+  newNote.value = ''
+  newChallenge.value = undefined
+  newOpen.value = false
+  uni.showToast({ title: '已立下 · 去拆成几步吧', icon: 'none' })
+  navigateTo(ROUTES.actionPlanDetail, { id: created.id })
+}
+
+/* ---------------- 收束回望 ---------------- */
+const reflectPlan = ref<Plan | null>(null)
+
+function onReflectConfirm(text: string): void {
+  const p = reflectPlan.value
+  reflectPlan.value = null
+  if (!p) return
+  if (plan.writeReflection(p.id, text)) {
+    uni.showToast({ title: '这句已存进【知】', icon: 'none' })
+  } else {
+    uni.showToast({ title: '这条长路走完了', icon: 'none' })
+  }
+}
+
+function onReflectSkip(): void {
+  reflectPlan.value = null
+  uni.showToast({ title: '这条长路走完了', icon: 'none' })
+}
+
+function goBack(): void {
+  const pages = getCurrentPages()
+  if (pages.length > 1) {
+    uni.navigateBack()
+  } else {
+    uni.switchTab({ url: ROUTES.tabAction })
+  }
+}
+</script>
+
+<style lang="scss" scoped>
+@import './index.scss';
+</style>

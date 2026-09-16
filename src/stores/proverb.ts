@@ -36,6 +36,8 @@ export interface ProverbItem {
   lastReviewAt: number
   /** 置顶 */
   pinned: boolean
+  /** 转成知识卡的时刻；有值 = 已入知识库（防重复转存） */
+  cardAt?: number
 }
 
 export const SOURCE_LABEL: Record<ProverbSource, string> = {
@@ -46,6 +48,64 @@ export const SOURCE_LABEL: Record<ProverbSource, string> = {
 
 /** 收藏上限：与旧版一致，防止"收藏变成另一种囤积" */
 const CAP = 99
+
+/**
+ * 间隔回响的阶梯（天）：记住一句之后，第 1 天、再第 3 天、再第 7 天各回来一次。
+ *
+ * 为什么不一次说完：隔一段时间再见，比当天连读十遍更记得住。
+ * 走完这三阶就不再自动出现（想看可以去「我的箴言」翻）。
+ */
+export const REVIEW_DAYS: readonly number[] = [1, 3, 7]
+
+const DAY_MS = 86_400_000
+
+/** 是否已走完回响阶梯 */
+export function reviewFinished(it: ProverbItem): boolean {
+  return it.reviewCount >= REVIEW_DAYS.length
+}
+
+/** 今天是否已到回响时刻 */
+export function isDue(it: ProverbItem, now = Date.now()): boolean {
+  const at = nextReviewAt(it)
+  return at !== null && at <= now
+}
+
+/**
+ * 回响状态的展示文案。
+ *
+ * 如实说"还有几天"，不写"即将""快了"这类含糊词 ——
+ * 用户要靠这个数字判断自己什么时候会再见到这句。
+ */
+export function reviewHint(it: ProverbItem, now = Date.now()): string {
+  const at = nextReviewAt(it)
+  if (at === null) return '已沉淀'
+  const days = Math.ceil((at - now) / DAY_MS)
+  if (days <= 0) return '今天回响'
+  if (days === 1) return '明天回响'
+  return `${days} 天后回响`
+}
+
+/**
+ * 迁移数据的回响起点。
+ *
+ * 旧收藏距今可能已有数月，若一律从"第 1 天"算起，会有一大批同时到期，
+ * 开屏连续好几周只剩回响、见不到新句子 —— 那是打扰，不是回响。
+ * 这里按已过去的天数把阶梯推进到相应位置（超过 7 天视为已沉淀）。
+ */
+function reviewCountForAge(createdAt: number, now = Date.now()): number {
+  const days = (now - createdAt) / DAY_MS
+  if (!Number.isFinite(days) || days <= 0) return 0
+  let n = 0
+  for (const d of REVIEW_DAYS) if (days >= d) n += 1
+  return Math.min(n, REVIEW_DAYS.length)
+}
+
+/** 下次回响时刻；走完阶梯返回 null */
+export function nextReviewAt(it: ProverbItem): number | null {
+  if (reviewFinished(it)) return null
+  // 第一次以收藏时刻为起点，之后以上次回顾时刻为起点
+  return (it.lastReviewAt || it.createdAt) + REVIEW_DAYS[it.reviewCount] * DAY_MS
+}
 
 const LEGACY_KEY = 'buddy-favs'
 const LEGACY_DONE_KEY = 'buddy-favs-migrated'
@@ -70,6 +130,30 @@ export const useProverbStore = defineStore(
     const items = ref<ProverbItem[]>([])
 
     const count = computed(() => items.value.length)
+
+    /**
+     * 今天到点该回响的收藏（早到期的排前面），开屏页取第一条。
+     *
+     * 每次都重算一遍：条目上限 99，算得起，不值得为此做缓存。
+     */
+    const dueReviews = computed<ProverbItem[]>(() => {
+      const now = Date.now()
+      return items.value
+        .filter((it) => {
+          const at = nextReviewAt(it)
+          return at !== null && at <= now
+        })
+        .sort((a, b) => (nextReviewAt(a) ?? 0) - (nextReviewAt(b) ?? 0))
+    })
+
+    /** 记住的句子里各标签的计数 —— 开屏"偏好加权"的数据源 */
+    const tagPreference = computed<Record<string, number>>(() => {
+      const out: Record<string, number> = {}
+      for (const it of items.value) {
+        for (const t of it.tags) out[t] = (out[t] ?? 0) + 1
+      }
+      return out
+    })
 
     /** 按来源统计（我页入口文案、箴言页头部用） */
     const countBySource = computed<Record<ProverbSource, number>>(() => {
@@ -127,7 +211,13 @@ export const useProverbStore = defineStore(
     }
 
     /** 收藏 / 取消收藏：返回操作后的状态（true=已收藏） */
-    function toggle(input: { text: string; from?: string; source?: ProverbSource; at?: number }): boolean {
+    function toggle(input: {
+      text: string
+      from?: string
+      source?: ProverbSource
+      at?: number
+      tags?: string[]
+    }): boolean {
       const src: ProverbSource = input.source ?? 'buddy'
       const t = input.text.trim()
       const hit = items.value.find((it) => it.text === t && it.source === src)
@@ -144,6 +234,14 @@ export const useProverbStore = defineStore(
       if (!it) return
       it.reviewCount += 1
       it.lastReviewAt = Date.now()
+    }
+
+    /** 标记为「已转成知识卡」；已转过返回 false（调用方据此提示，不重复入库） */
+    function markCarded(id: number): boolean {
+      const it = byId(id)
+      if (!it || it.cardAt) return false
+      it.cardAt = Date.now()
+      return true
     }
 
     function setNote(id: number, note: string): void {
@@ -178,7 +276,11 @@ export const useProverbStore = defineStore(
           source: l.kind === 'proverb' ? 'startup' : 'buddy',
           at: l.at || Date.now(),
         })
-        if (added) n += 1
+        if (added) {
+          // 旧收藏按"距今多久"接着走阶梯：否则几十条同时到期，开屏连着几周只剩回响
+          added.reviewCount = reviewCountForAge(added.createdAt)
+          n += 1
+        }
       }
       return n
     }
@@ -187,12 +289,15 @@ export const useProverbStore = defineStore(
       items,
       count,
       countBySource,
+      dueReviews,
+      tagPreference,
       has,
       add,
       remove,
       toggle,
       byId,
       markReviewed,
+      markCarded,
       setNote,
       togglePin,
       migrateLegacy,

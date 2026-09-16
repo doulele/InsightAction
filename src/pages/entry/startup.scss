@@ -1,0 +1,172 @@
+/**
+ * startup.vue 的样式（超过 100 行，按项目约定外置到同目录 startup.scss）。
+ * 由 startup.vue 通过 @import 引入；以后改样式改本文件。
+ */
+/* 版式：品牌 → 箴言 → 记住 依次靠上，下方留白（像纸质扉页，短屏也安全） */
+.startup {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  min-height: 100vh;
+  padding: calc(var(--status-bar-height) + 72rpx) $gz-page-pad 64rpx;
+  box-sizing: border-box;
+}
+
+.startup__brand {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.startup__name {
+  margin-top: 28rpx;
+  font-size: 44rpx;
+  font-weight: 700;
+  letter-spacing: 0.24em;
+  text-indent: 0.24em; /* 抵消末字间距，保持居中 */
+  color: $gz-ink;
+}
+
+.startup__en {
+  margin-top: 14rpx;
+  font-size: $gz-fs-caption;
+  letter-spacing: $gz-ls-wide;
+  color: $gz-ink-3;
+}
+
+.startup__proverb {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  flex: none;
+  margin-top: 96rpx;
+  padding: 0 40rpx;
+}
+
+/* 弹性留白：把底部提示推到屏底，同时保证版心不被拉散 */
+.startup__spacer {
+  flex: 1;
+  min-height: 60rpx;
+}
+
+.startup__proverb-text {
+  font-size: 38rpx;
+  line-height: 1.9;
+  text-align: center;
+  color: $gz-ink;
+  animation: gz-rise 0.9s ease both;
+}
+
+.startup__proverb-from {
+  margin-top: 24rpx;
+  font-size: $gz-fs-small;
+  color: $gz-ink-3;
+  animation: gz-rise 0.9s 0.15s ease both;
+}
+
+/* 记住这句：文字链形态（无边框无底色，热区靠 padding 撑开，随主题色走） */
+.startup__fav {
+  display: inline-flex;
+  align-items: center;
+  gap: 10rpx;
+  margin-top: 56rpx;
+  padding: 18rpx 30rpx;
+  animation: gz-rise 0.9s 0.3s ease both;
+}
+
+.startup__fav-icon {
+  font-size: 30rpx;
+  color: var(--gz-accent);
+  opacity: 0.7;
+}
+
+.startup__fav-label {
+  font-size: $gz-fs-caption;
+  letter-spacing: 0.1em;
+  color: var(--gz-accent);
+  opacity: 0.85;
+}
+
+.startup__fav.is-on .startup__fav-icon,
+.startup__fav.is-on .startup__fav-label {
+  opacity: 1;
+  font-weight: 600;
+}
+
+/* 回响态：带淡边框，与「记住这句」区分开 —— 一个是收藏新句，一个是确认还记得 */
+.startup__fav.is-echo {
+  border: 1rpx solid var(--gz-accent);
+  border-radius: 999rpx;
+  opacity: 1;
+}
+
+/* 回响标识：说明这一屏是到期重看的旧句，不解释会让人以为开屏抽风重复了 */
+.startup__echo {
+  margin-bottom: 24rpx;
+  padding: 4rpx 18rpx;
+  border: 1rpx solid var(--gz-accent);
+  border-radius: 999rpx;
+  font-size: 20rpx;
+  letter-spacing: 0.1em;
+  color: var(--gz-accent);
+  opacity: 0.7;
+  animation: gz-rise 0.9s ease both;
+}
+
+.startup__foot {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.startup__hint {
+  font-size: $gz-fs-caption;
+  letter-spacing: 0.1em;
+  color: $gz-ink-3;
+  animation: gz-breathe 2.4s ease-in-out infinite;
+}
+
+/* 停留进度：让用户知道还要等多久 */
+.startup__bar {
+  margin-top: 22rpx;
+  width: 200rpx;
+  height: 6rpx;
+  border-radius: 999rpx;
+  background: $gz-line-soft;
+  overflow: hidden;
+}
+
+.startup__bar-fill {
+  height: 100%;
+  border-radius: 999rpx;
+  background: linear-gradient(90deg, var(--gz-accent), var(--gz-grad-to));
+  transition: width 0.1s linear;
+}
+
+.startup__favnote {
+  margin-top: 20rpx;
+  font-size: $gz-fs-caption;
+  color: $gz-ink-3;
+  opacity: 0.8;
+}
+
+@keyframes gz-rise {
+  from {
+    opacity: 0;
+    transform: translateY(24rpx);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes gz-breathe {
+  0%,
+  100% {
+    opacity: 0.4;
+  }
+  50% {
+    opacity: 1;
+  }
+}

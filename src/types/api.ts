@@ -29,6 +29,8 @@ export const ApiCode = {
   NotFound: 40400,
   TooManyRequest: 42900,
   ServerError: 50000,
+  /** 服务端没配某个能力（如缺 DEEPSEEK_API_KEY → AI 功能未开启） */
+  NotConfigured: 50001,
 } as const
 
 /** 判断任意对象是否为约定外壳（供响应解包使用） */

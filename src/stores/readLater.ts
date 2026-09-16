@@ -1,7 +1,7 @@
 /**
  * 稍后读 store ——「临时收藏，24 小时未读自动清理」。
  * 批次 B · 观子页（观事 → 观理：够时间消化即可，不养收藏夹僵尸）。
- * 纯本地（云同步后端期接入）；跨天不重置，只按 24h 时效滚动清理。
+ * 纯本地存储，随云备份一起走（见 utils/cloudBackup.ts）；跨天不重置，只按 24h 时效滚动清理。
  */
 import { defineStore } from 'pinia'
 import { ref } from 'vue'

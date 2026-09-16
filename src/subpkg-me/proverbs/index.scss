@@ -1,0 +1,266 @@
+/**
+ * index.vue 的样式（超过 100 行，按项目约定外置到同目录 index.scss）。
+ * 由 index.vue 通过 @import 引入；以后改样式改本文件。
+ */
+.page {
+  min-height: 100vh;
+  padding: 24rpx $gz-page-pad 60rpx;
+}
+
+.nav {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8rpx 0 20rpx;
+}
+
+.nav__side {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 72rpx;
+  height: 72rpx;
+}
+
+.nav__back {
+  font-size: 56rpx;
+  color: $gz-ink-2;
+  line-height: 1;
+}
+
+.nav__title {
+  font-size: $gz-fs-title;
+  font-weight: 700;
+  color: $gz-ink;
+}
+
+/* ---- 概览 ---- */
+.sum {
+  padding: 30rpx 32rpx;
+  background: var(--gz-surface);
+  border: 1rpx solid var(--gz-line);
+  border-radius: $gz-radius-lg;
+  box-shadow: 0 10rpx 30rpx rgba(0, 0, 0, 0.05);
+}
+
+.sum__main {
+  display: flex;
+  align-items: baseline;
+  gap: 8rpx;
+}
+
+.sum__num {
+  font-size: 64rpx;
+  font-weight: 800;
+  color: var(--gz-accent);
+  line-height: 1.1;
+}
+
+.sum__unit {
+  font-size: $gz-fs-small;
+  color: $gz-ink-3;
+}
+
+.sum__sub {
+  display: block;
+  margin-top: 10rpx;
+  font-size: $gz-fs-small;
+  line-height: 1.7;
+  color: $gz-ink-3;
+}
+
+.sum__due {
+  display: block;
+  margin-top: 12rpx;
+  font-size: $gz-fs-caption;
+  color: $gz-accent;
+}
+
+/* ---- 搜索 / 筛选 ---- */
+.tools {
+  margin-top: 22rpx;
+}
+
+.tools__input {
+  width: 100%;
+  height: 80rpx;
+  padding: 0 26rpx;
+  box-sizing: border-box;
+  background: $gz-surface;
+  border: 1rpx solid $gz-line;
+  border-radius: $gz-radius-md;
+  font-size: $gz-fs-body;
+  color: $gz-ink;
+}
+
+.chips {
+  display: flex;
+  gap: 12rpx;
+  margin-top: 16rpx;
+}
+
+.chip {
+  padding: 10rpx 26rpx;
+  border-radius: 999rpx;
+  background: $gz-surface;
+  border: 1rpx solid $gz-line;
+  font-size: $gz-fs-caption;
+  color: $gz-ink-2;
+}
+
+.chip.is-on {
+  background: $gz-accent-soft;
+  border-color: $gz-accent;
+  color: $gz-accent;
+  font-weight: 700;
+}
+
+.sec {
+  margin-top: 24rpx;
+}
+
+/* ---- 箴言卡 ---- */
+.fav {
+  display: flex;
+  align-items: flex-start;
+  gap: 12rpx;
+  padding: 24rpx 26rpx;
+  margin-bottom: 16rpx;
+  background: $gz-surface;
+  border: 1rpx solid $gz-line;
+  border-radius: $gz-radius-md;
+}
+
+.fav__mark {
+  flex: none;
+  color: $gz-accent;
+  font-size: 44rpx;
+  line-height: 1;
+}
+
+.fav__body {
+  flex: 1;
+  min-width: 0;
+}
+
+.fav__text {
+  display: block;
+  font-size: $gz-fs-body;
+  line-height: 1.7;
+  color: $gz-ink;
+}
+
+.fav__from {
+  display: block;
+  margin-top: 6rpx;
+  font-size: $gz-fs-caption;
+  color: $gz-ink-3;
+}
+
+.fav__meta {
+  display: flex;
+  align-items: center;
+  gap: 14rpx;
+  margin-top: 12rpx;
+}
+
+.fav__pin {
+  padding: 2rpx 12rpx;
+  border-radius: 999rpx;
+  background: $gz-accent-soft;
+  color: $gz-accent;
+  font-size: $gz-fs-caption;
+}
+
+/* 回响状态：到期的用主题色标出，一眼看出"今天开屏会见到哪几句" */
+.fav__echo {
+  padding: 2rpx 12rpx;
+  border: 1rpx solid $gz-line;
+  border-radius: 999rpx;
+  font-size: $gz-fs-caption;
+  color: $gz-ink-3;
+}
+
+.fav__echo.is-due {
+  background: $gz-accent-soft;
+  border-color: $gz-accent;
+  color: $gz-accent;
+  font-weight: 700;
+}
+
+.fav__src,
+.fav__time {
+  font-size: $gz-fs-caption;
+  color: $gz-ink-3;
+}
+
+.fav__acts {
+  flex: none;
+  display: flex;
+  flex-direction: column;
+  gap: 10rpx;
+}
+
+.fav__btn {
+  padding: 6rpx 18rpx;
+  border-radius: 999rpx;
+  background: $gz-accent-soft;
+  color: $gz-accent;
+  font-size: $gz-fs-caption;
+  text-align: center;
+}
+
+.fav__btn--off {
+  background: transparent;
+  border: 1rpx solid $gz-line;
+  color: $gz-ink-3;
+}
+
+/* 转知识卡：描边强调（这是"沉淀"动作，比复制/置顶更重一步） */
+.fav__btn--card {
+  background: transparent;
+  border: 1rpx solid $gz-accent;
+  color: $gz-accent;
+  font-weight: 700;
+}
+
+/* 已入卡：不可再点，只作状态说明 */
+.fav__btn--done {
+  background: transparent;
+  color: $gz-ink-3;
+}
+
+/* ---- 空态 ---- */
+.empty {
+  padding: 70rpx 40rpx;
+  text-align: center;
+  background: $gz-surface;
+  border: 1rpx dashed $gz-line;
+  border-radius: $gz-radius-lg;
+}
+
+.empty__title {
+  display: block;
+  font-size: $gz-fs-title;
+  font-weight: 700;
+  color: $gz-ink-2;
+}
+
+.empty__text {
+  display: block;
+  margin-top: 12rpx;
+  font-size: $gz-fs-small;
+  line-height: 1.8;
+  color: $gz-ink-3;
+}
+
+.foot {
+  padding: 40rpx 0 10rpx;
+  text-align: center;
+}
+
+.foot__text {
+  font-size: $gz-fs-caption;
+  letter-spacing: 0.1em;
+  color: $gz-ink-3;
+}

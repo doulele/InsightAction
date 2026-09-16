@@ -1,0 +1,87 @@
+/**
+ * PlanReflect —— 计划收束时的「回望」浮层（可跳过）。
+ * 由 components/PlanReflect/PlanReflect.vue 通过 @import 引入（样式超过 100 行，按项目约定外置）。
+ */
+
+.overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 260;
+  display: flex;
+  align-items: flex-end;
+  background: rgba(0, 0, 0, 0.35);
+}
+
+.sheet {
+  width: 100%;
+  box-sizing: border-box;
+  padding: 36rpx 32rpx calc(40rpx + env(safe-area-inset-bottom));
+  border-radius: $gz-radius-lg $gz-radius-lg 0 0;
+  background: $gz-surface;
+}
+
+.sheet__title {
+  display: block;
+  font-size: 32rpx;
+  font-weight: 800;
+  color: $gz-ink;
+}
+
+.sheet__q {
+  display: block;
+  margin-top: 14rpx;
+  font-size: $gz-fs-body;
+  font-weight: 600;
+  color: $gz-accent;
+}
+
+.sheet__ta {
+  width: 100%;
+  box-sizing: border-box;
+  height: 180rpx;
+  margin-top: 20rpx;
+  padding: 20rpx 24rpx;
+  border: 1rpx solid $gz-line;
+  border-radius: $gz-radius-md;
+  background: $gz-input-bg;
+  font-size: $gz-fs-small;
+  line-height: 1.7;
+  color: $gz-ink;
+}
+
+.sheet__ph {
+  color: $gz-ink-3;
+}
+
+.sheet__hint {
+  display: block;
+  margin-top: 14rpx;
+  font-size: $gz-fs-caption;
+  line-height: 1.7;
+  color: $gz-ink-3;
+}
+
+.sheet__row {
+  display: flex;
+  gap: 16rpx;
+  margin-top: 28rpx;
+}
+
+.btn {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 88rpx;
+  border-radius: $gz-radius-md;
+  background: $gz-accent;
+  color: $gz-on-cta;
+  font-size: $gz-fs-body;
+  font-weight: 600;
+}
+
+.btn--ghost {
+  background: transparent;
+  border: 1rpx solid $gz-line;
+  color: $gz-ink-2;
+}

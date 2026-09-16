@@ -1,0 +1,55 @@
+/* 第一周解锁引导条：只挂在大厅头下面，一天一条，不抢戏 */
+.wguide {
+  /* 上下都要留白：本组件后面直接跟 hero 横幅，而 hero 自身没有上边距，
+     只写上边距会让卡片与下方横幅贴死（此前的问题）。取值与其他提示条对齐。 */
+  margin: 18rpx 0 22rpx;
+  padding: 22rpx 26rpx;
+  border: 1rpx solid $gz-accent;
+  border-radius: $gz-radius-md;
+  background: linear-gradient(135deg, $gz-accent-soft, transparent 72%);
+}
+
+/* 头部独占一行：第几天在左、「去」在右。
+   早先是 badge / 正文 / 去 三列横排，badge 一长就把正文挤成窄条、排版打架，
+   所以拆成「头部一行 + 正文一行」。 */
+.wguide__head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 16rpx;
+}
+
+.wguide__badge {
+  flex: 1;
+  min-width: 0;
+  font-size: $gz-fs-caption;
+  letter-spacing: 0.04em;
+  color: $gz-accent;
+}
+
+.wguide__go {
+  flex: none;
+  font-size: $gz-fs-caption;
+  font-weight: 600;
+  color: $gz-accent;
+}
+
+.wguide__body {
+  margin-top: 12rpx;
+  display: flex;
+  flex-direction: column;
+  gap: 8rpx;
+}
+
+.wguide__title {
+  font-size: 32rpx;
+  font-weight: 700;
+  line-height: 1.4;
+  color: $gz-ink;
+}
+
+.wguide__todo {
+  font-size: $gz-fs-caption;
+  line-height: 1.7;
+  color: $gz-ink-3;
+}

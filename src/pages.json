@@ -82,13 +82,6 @@
           }
         },
         {
-          "path": "seedbed/index",
-          "style": {
-            "navigationStyle": "custom",
-            "navigationBarTitleText": "概念播种"
-          }
-        },
-        {
           "path": "compose/index",
           "style": {
             "navigationStyle": "custom",
@@ -121,6 +114,13 @@
           "style": {
             "navigationStyle": "custom",
             "navigationBarTitleText": "母题库"
+          }
+        },
+        {
+          "path": "graph/index",
+          "style": {
+            "navigationStyle": "custom",
+            "navigationBarTitleText": "理道图谱"
           }
         }
       ]
@@ -161,6 +161,27 @@
           "style": {
             "navigationStyle": "custom",
             "navigationBarTitleText": "定力目标 · 连胜"
+          }
+        },
+        {
+          "path": "interrupt/index",
+          "style": {
+            "navigationStyle": "custom",
+            "navigationBarTitleText": "触发干预"
+          }
+        },
+        {
+          "path": "vow/index",
+          "style": {
+            "navigationStyle": "custom",
+            "navigationBarTitleText": "立约"
+          }
+        },
+        {
+          "path": "urge/index",
+          "style": {
+            "navigationStyle": "custom",
+            "navigationBarTitleText": "冲动记录"
           }
         }
       ]
@@ -206,6 +227,34 @@
           "style": {
             "navigationStyle": "custom",
             "navigationBarTitleText": "行动周报"
+          }
+        },
+        {
+          "path": "wishes/index",
+          "style": {
+            "navigationStyle": "custom",
+            "navigationBarTitleText": "愿望清单"
+          }
+        },
+        {
+          "path": "plans/index",
+          "style": {
+            "navigationStyle": "custom",
+            "navigationBarTitleText": "计划"
+          }
+        },
+        {
+          "path": "plans/detail",
+          "style": {
+            "navigationStyle": "custom",
+            "navigationBarTitleText": "计划详情"
+          }
+        },
+        {
+          "path": "body/index",
+          "style": {
+            "navigationStyle": "custom",
+            "navigationBarTitleText": "身体电量"
           }
         }
       ]
@@ -253,6 +302,20 @@
           "style": {
             "navigationStyle": "custom",
             "navigationBarTitleText": "我的箴言"
+          }
+        },
+        {
+          "path": "review/index",
+          "style": {
+            "navigationStyle": "custom",
+            "navigationBarTitleText": "年度回顾"
+          }
+        },
+        {
+          "path": "board/index",
+          "style": {
+            "navigationStyle": "custom",
+            "navigationBarTitleText": "修行看板"
           }
         }
       ]

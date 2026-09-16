@@ -1,0 +1,613 @@
+/**
+ * index.vue 的样式（超过 100 行，按项目约定外置到同目录 index.scss）。
+ * 由 index.vue 通过 @import 引入；以后改样式改本文件。
+ */
+.page {
+  min-height: 100vh;
+  padding: 24rpx $gz-page-pad 60rpx;
+}
+
+/*
+  大厅头（主题艺术画背景 + 压暗层 + 印章 / 定位 / 状态 / 修行语言）已抽成共用组件：
+  `components/HallHead/HallHead.vue`（样式在同目录 `HallHead.scss`）。
+  观 / 止 / 知 / 行 / 我 五页统一走它 —— 要调图上配色或压暗强度，去组件里改一处即可。
+*/
+
+/* 底噪过滤器：一个小开关 + 一句说明，不做成二级页面 */
+.noise {
+  font-size: $gz-fs-caption;
+  color: $gz-ink-3;
+}
+
+.noise.is-on {
+  color: $gz-accent;
+  font-weight: 600;
+}
+
+.noise__note {
+  display: block;
+  margin-bottom: 16rpx;
+  font-size: $gz-fs-caption;
+  line-height: 1.7;
+  color: $gz-ink-3;
+}
+
+.section {
+  margin-top: 34rpx;
+}
+
+.section__head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  margin-bottom: 20rpx;
+}
+
+.section__title {
+  font-size: 32rpx;
+  font-weight: 700;
+  color: $gz-ink;
+}
+
+.section__badge {
+  font-size: $gz-fs-caption;
+  color: $gz-ink-3;
+}
+
+/* 每日一则 */
+.daily {
+  padding: 30rpx 28rpx 24rpx;
+  background: $gz-surface;
+  border: 1rpx solid $gz-line;
+  border-radius: $gz-radius-md;
+}
+
+.daily__top {
+  display: flex;
+  align-items: center;
+  gap: 14rpx;
+}
+
+.daily__kind {
+  padding: 4rpx 18rpx;
+  border-radius: 999rpx;
+  background: $gz-accent-soft;
+  color: $gz-accent;
+  font-size: $gz-fs-caption;
+  font-weight: 700;
+}
+
+.daily__today {
+  font-size: $gz-fs-caption;
+  color: $gz-ink-3;
+}
+
+.daily__today--back {
+  color: #b24a3a;
+}
+
+/* 往未来拨到的日子：内容算得出来，但还没到来，标一下别让人误会 */
+.daily__today--future {
+  color: #8a6a3c;
+}
+
+/*
+  读完追问：四动作之下"轻推一把"。
+  默认只露一行文字链 —— 只想读的人不会被输入框打扰，想留一句的人一步就能展开。
+*/
+.ask {
+  margin-top: 18rpx;
+  padding-top: 18rpx;
+  border-top: 1rpx dashed $gz-line;
+}
+
+.ask__entry-text {
+  font-size: $gz-fs-caption;
+  font-weight: 600;
+  color: $gz-accent;
+}
+
+.ask__done-text {
+  font-size: $gz-fs-caption;
+  color: $gz-ink-3;
+}
+
+.ask__q {
+  font-size: $gz-fs-small;
+  line-height: 1.6;
+  color: $gz-ink;
+}
+
+.ask__input {
+  margin-top: 12rpx;
+  width: 100%;
+  min-height: 96rpx;
+  padding: 16rpx 18rpx;
+  box-sizing: border-box;
+  border: 1rpx dashed $gz-line;
+  border-radius: $gz-radius-md;
+  font-size: $gz-fs-small;
+  line-height: 1.6;
+}
+
+.ask__ph {
+  color: $gz-ink-3;
+}
+
+.ask__acts {
+  margin-top: 14rpx;
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 28rpx;
+}
+
+.ask__cancel {
+  font-size: $gz-fs-caption;
+  color: $gz-ink-3;
+}
+
+.ask__save {
+  font-size: $gz-fs-caption;
+  font-weight: 700;
+  color: $gz-accent;
+}
+
+/*
+  每日一则正文的视窗。
+  520rpx ≈ 11 行（28rpx 字号 × 1.7 行高），与 detail 页正文限高保持同一量级。
+  只设 max-height 不设 height：内容短的条目不该被撑出一块空白。
+*/
+.daily__text-box {
+  max-height: 520rpx;
+}
+
+/* 换一个：文字链形态，撑出足够热区；换过之后变成主题色，让人知道"这不是今日原条" */
+.daily__swap {
+  margin-left: auto;
+  display: flex;
+  align-items: center;
+  gap: 6rpx;
+  padding: 6rpx 18rpx;
+  border: 1rpx solid $gz-line;
+  border-radius: 999rpx;
+  background: $gz-input-bg;
+}
+
+.daily__swap.is-on {
+  border-color: $gz-accent;
+  background: $gz-accent-soft;
+}
+
+.daily__swap-ico {
+  font-size: $gz-fs-caption;
+  line-height: 1;
+  color: $gz-ink-3;
+}
+
+.daily__swap.is-on .daily__swap-ico {
+  color: $gz-accent;
+}
+
+.daily__swap-text {
+  font-size: $gz-fs-caption;
+  color: $gz-ink-2;
+}
+
+.daily__swap.is-on .daily__swap-text {
+  color: $gz-accent;
+  font-weight: 600;
+}
+
+.daily__title {
+  display: block;
+  margin-top: 18rpx;
+  font-size: 34rpx;
+  font-weight: 700;
+  line-height: 1.5;
+  color: $gz-ink;
+}
+
+.daily__text {
+  display: block;
+  margin-top: 14rpx;
+  font-size: $gz-fs-small;
+  line-height: 1.9;
+  color: $gz-ink-2;
+}
+
+.daily__counter {
+  display: block;
+  margin-top: 16rpx;
+  padding: 14rpx 18rpx;
+  border-left: 4rpx solid #d9a15b;
+  background: #fbf3e6;
+  border-radius: 0 $gz-radius-sm $gz-radius-sm 0;
+  font-size: $gz-fs-caption;
+  line-height: 1.8;
+  color: #8a6a3c;
+}
+
+.daily__src {
+  display: block;
+  margin-top: 14rpx;
+  font-size: $gz-fs-caption;
+  color: $gz-ink-3;
+}
+
+/* 四动作 */
+.acts {
+  display: flex;
+  gap: 12rpx;
+  margin-top: 22rpx;
+  padding-top: 20rpx;
+  border-top: 1rpx dashed $gz-line;
+}
+
+.act {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 14rpx 0;
+  border: 1rpx solid $gz-line;
+  border-radius: $gz-radius-sm;
+  background: $gz-input-bg;
+}
+
+.act.is-done {
+  border-color: $gz-accent;
+  background: $gz-accent-soft;
+}
+
+.act__text {
+  font-size: $gz-fs-caption;
+  color: $gz-ink-2;
+}
+
+.act.is-done .act__text {
+  color: $gz-accent;
+  font-weight: 600;
+}
+
+/* ---------- 日期拨轮（密码锁滚轮） ---------- */
+.dial {
+  position: relative;
+  height: 132rpx;
+  margin-top: 18rpx;
+  border: 1rpx solid $gz-line;
+  border-radius: $gz-radius-md;
+  background: $gz-input-bg;
+  overflow: hidden;
+
+  /* 三模式可调项，被下方 .dial--xxx 覆盖 */
+  --dial-edge: rgba(246, 240, 226, 0.92); // 两端收边色（只在最外侧不足一格处起淡出）
+  --dial-win-bg: rgba(255, 255, 255, 0.72); // 中心取景窗填充（在字下层，可以给足）
+  --dial-win-line: rgba(109, 139, 63, 0.34); // 中心取景窗描边
+}
+
+.dial__scroll {
+  position: relative;
+  /* 数字压在取景窗**之上**：底衬可以有底色，字永远清晰 */
+  z-index: 2;
+  height: 100%;
+  white-space: nowrap;
+  /* 首屏"量格宽 → 定位到今天"期间先藏着，避免看到一次跳位（定位完 .is-ready 放出来） */
+  opacity: 0;
+  transition: opacity 0.16s ease;
+}
+
+.dial.is-ready .dial__scroll {
+  opacity: 1;
+}
+
+.dial__track {
+  display: inline-flex;
+  align-items: stretch;
+  height: 100%;
+}
+
+.dial__cell {
+  flex: none;
+  width: 116rpx; // ⚠️ 与脚本里的 CELL_RPX 必须一致
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+}
+
+.dial__num {
+  font-size: 26rpx;
+  font-weight: 700;
+  line-height: 1.05;
+  color: $gz-ink;
+}
+
+.dial__sub {
+  margin-top: 6rpx;
+  font-size: 20rpx;
+  line-height: 1.1;
+  color: $gz-ink-3;
+}
+
+/* 正中那一格：主题色 + 加粗，其余靠内联 opacity/font-size 渐变 */
+.dial__cell.is-cur .dial__num {
+  font-weight: 800;
+  color: $gz-accent;
+}
+
+.dial__cell.is-cur .dial__sub {
+  font-weight: 600;
+  color: $gz-accent;
+}
+
+/**
+ * 两端收边。
+ * ⚠️ 宽度**必须小于一格**（116rpx）：它只负责把被容器切掉的那半格柔化掉，
+ * 不能盖住完整的日子 —— 之前 170rpx 的宽遮罩 + backdrop-filter 直接把
+ * 左半边拨轮糊没了，看不出两边有日期。
+ */
+.dial__veil {
+  position: absolute;
+  z-index: 3;
+  top: 0;
+  bottom: 0;
+  width: 92rpx;
+  pointer-events: none;
+}
+
+.dial__veil--l {
+  left: 0;
+  background: linear-gradient(90deg, var(--dial-edge) 0%, rgba(255, 255, 255, 0) 100%);
+}
+
+.dial__veil--r {
+  right: 0;
+  background: linear-gradient(270deg, var(--dial-edge) 0%, rgba(255, 255, 255, 0) 100%);
+}
+
+/**
+ * 中心取景窗：告诉用户"只有这一格是选中的"。
+ * ⚠️ 必须在数字**下层**（z-index 1 + .dial__scroll 是 2）——之前它盖在字上，
+ * 那层半透明白等于给「今天」糊了层雾，反而比两侧的邻格还虚。
+ */
+.dial__win {
+  position: absolute;
+  z-index: 1;
+  top: 14rpx;
+  bottom: 14rpx;
+  left: 50%;
+  width: 104rpx;
+  margin-left: -52rpx;
+  border-radius: 14rpx;
+  border: 1rpx solid var(--dial-win-line);
+  background: var(--dial-win-bg);
+  pointer-events: none;
+}
+
+.dial__bar {
+  position: absolute;
+  left: 50%;
+  width: 60rpx;
+  height: 2rpx;
+  margin-left: -30rpx;
+  background: transparent;
+}
+
+.dial__bar--t {
+  top: 0;
+}
+
+.dial__bar--b {
+  bottom: 0;
+}
+
+.dial__foot {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  margin-top: 12rpx;
+}
+
+.dial__hint {
+  font-size: $gz-fs-caption;
+  color: $gz-ink-3;
+}
+
+.dial__picked {
+  font-size: $gz-fs-caption;
+  color: $gz-ink-2;
+  font-weight: 600;
+}
+
+/* —— 普通 · 手账纸：圆润纸槽，柔和不抢 —— */
+.dial--normal {
+  --dial-edge: rgba(246, 240, 226, 0.92);
+  --dial-win-bg: rgba(255, 255, 255, 0.78);
+  --dial-win-line: rgba(109, 139, 63, 0.34);
+}
+
+.dial--normal .dial__win {
+  border-radius: 16rpx;
+}
+
+/* —— 科技 · 实验室：锐利取景框 + 电光蓝上下卡尺 —— */
+.dial--tech {
+  --dial-edge: rgba(26, 36, 49, 0.92);
+  --dial-win-bg: rgba(63, 169, 255, 0.16);
+  --dial-win-line: rgba(63, 169, 255, 0.55);
+}
+
+.dial--tech .dial__win {
+  border-radius: 6rpx;
+  box-shadow: inset 0 0 18rpx rgba(63, 169, 255, 0.16);
+}
+
+.dial--tech .dial__bar {
+  width: 92rpx;
+  margin-left: -46rpx;
+  background: #3fa9ff;
+}
+
+.dial--tech .dial__num {
+  font-variant-numeric: tabular-nums;
+}
+
+/* —— 修仙 · 水墨：朱砂印框，宽字距 —— */
+.dial--dao {
+  --dial-edge: rgba(239, 231, 208, 0.92);
+  --dial-win-bg: rgba(255, 255, 255, 0.64);
+  --dial-win-line: rgba(164, 71, 31, 0.5);
+}
+
+.dial--dao .dial__win {
+  border-radius: 8rpx;
+}
+
+.dial--dao .dial__bar {
+  background: #a4471f;
+}
+
+.dial--dao .dial__num {
+  letter-spacing: 0.08em;
+}
+
+/* 7 天清理提示 */
+.cleandue {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-top: 18rpx;
+  padding: 18rpx 26rpx;
+  border: 1rpx solid #e0b3a8;
+  border-radius: $gz-radius-md;
+  background: #fbf0ec;
+}
+
+.cleandue__text {
+  font-size: $gz-fs-small;
+  color: #b24a3a;
+}
+
+.cleandue__go {
+  font-size: $gz-fs-caption;
+  color: #b24a3a;
+  font-weight: 600;
+}
+
+/* 记一笔通栏入口 */
+.compose {
+  display: flex;
+  align-items: center;
+  gap: 16rpx;
+  margin-top: 26rpx;
+  padding: 28rpx 30rpx;
+  border-radius: $gz-radius-md;
+  background: $gz-accent;
+}
+
+.compose__plus {
+  font-size: 40rpx;
+  line-height: 1;
+  color: $gz-on-cta;
+}
+
+.compose__text {
+  font-size: 32rpx;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  color: $gz-on-cta;
+}
+
+.compose__hint {
+  margin-left: auto;
+  font-size: $gz-fs-caption;
+  color: $gz-on-cta;
+  opacity: 0.85;
+}
+
+.quota {
+  margin-top: 16rpx;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 20rpx 26rpx;
+  border: 1rpx dashed $gz-line;
+  border-radius: $gz-radius-md;
+}
+
+.quota__left {
+  font-size: $gz-fs-small;
+  font-weight: 600;
+  color: $gz-ink;
+}
+
+/* 用尽：虚线「提醒」变成实线「到位」—— 让它看起来像一道真的关上了的门 */
+.quota.is-out {
+  border-style: solid;
+  border-color: $gz-accent;
+  background: $gz-accent-soft;
+}
+
+.quota__right {
+  font-size: $gz-fs-caption;
+  color: $gz-ink-3;
+}
+
+.quota.is-out .quota__right {
+  color: $gz-accent;
+  font-weight: 600;
+}
+
+/*
+  今日要闻入口（通向站外的那道门）。
+  形态上刻意与内容卡区分：不做"标题 + 正文"的卡片结构，而是一条**扁平的入口条** ——
+  小标签 + 一句状态 + 箭头，一眼就知道这是"出口"而不是"能读的内容"。
+  这既是视觉层级，也是合规考虑：小程序里不该看起来像能读到新闻。
+*/
+.portal {
+  margin-top: 20rpx;
+  display: flex;
+  align-items: center;
+  gap: 12rpx;
+  padding: 20rpx 24rpx;
+  border-radius: $gz-radius-md;
+  background: $gz-accent-soft;
+}
+
+/* 标签形态（像网站首页"最近新闻"那个小标签）—— 实底、胶囊，不抢文字的位置 */
+.portal__title {
+  flex-shrink: 0;
+  padding: 4rpx 16rpx;
+  border-radius: 999rpx;
+  background: $gz-accent;
+  color: $gz-on-cta;
+  font-size: $gz-fs-caption;
+  font-weight: 700;
+  line-height: 1.7;
+}
+
+/* 状态文字占满余下宽度：过长时省略，不把箭头挤出去 */
+.portal__sub {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  font-size: $gz-fs-caption;
+  color: $gz-ink-3;
+}
+
+.portal__arrow {
+  flex-shrink: 0;
+  font-size: 32rpx;
+  line-height: 1;
+  color: $gz-accent;
+}
+
+.entries {
+  display: flex;
+  flex-direction: column;
+  gap: 18rpx;
+}

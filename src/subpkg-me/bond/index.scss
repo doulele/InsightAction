@@ -1,0 +1,454 @@
+/**
+ * index.vue 的样式（超过 100 行，按项目约定外置到同目录 index.scss）。
+ * 由 index.vue 通过 @import 引入；以后改样式改本文件。
+ */
+.page {
+  min-height: 100vh;
+  padding: 24rpx $gz-page-pad 60rpx;
+}
+
+.nav {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8rpx 0 20rpx;
+}
+
+.nav__side {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 72rpx;
+  height: 72rpx;
+}
+
+.nav__back {
+  font-size: 56rpx;
+  color: $gz-ink-2;
+  line-height: 1;
+}
+
+.nav__title {
+  font-size: $gz-fs-title;
+  font-weight: 700;
+  color: $gz-ink;
+}
+
+/* ---- 羁绊卡 ---- */
+.bond {
+  display: flex;
+  align-items: center;
+  gap: 26rpx;
+  padding: 30rpx;
+  background: var(--gz-surface);
+  border: 1rpx solid var(--gz-line);
+  border-radius: $gz-radius-lg;
+  box-shadow: 0 10rpx 30rpx rgba(0, 0, 0, 0.05);
+}
+
+.bond__orb {
+  flex: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 116rpx;
+  height: 116rpx;
+  border-radius: 50%;
+  background: radial-gradient(circle at 30% 24%, var(--gz-grad-to), var(--gz-accent) 70%);
+  box-shadow: 0 12rpx 28rpx rgba(0, 0, 0, 0.18);
+}
+
+.bond__orb-glyph {
+  color: #fff;
+  font-size: 52rpx;
+  font-weight: 800;
+}
+
+.bond__info {
+  flex: 1;
+  min-width: 0;
+}
+
+.bond__head {
+  display: flex;
+  align-items: center;
+  gap: 16rpx;
+}
+
+.bond__name {
+  font-size: 38rpx;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  color: var(--gz-ink);
+}
+
+.bond__lv {
+  padding: 4rpx 16rpx;
+  border-radius: 999rpx;
+  background: var(--gz-accent-soft);
+  color: var(--gz-accent);
+  font-size: $gz-fs-caption;
+  font-weight: 700;
+}
+
+.bond__sub {
+  display: block;
+  margin-top: 8rpx;
+  font-size: $gz-fs-small;
+  color: var(--gz-ink-3);
+}
+
+.bar {
+  margin-top: 18rpx;
+  height: 14rpx;
+  border-radius: 999rpx;
+  background: var(--gz-line-soft);
+  overflow: hidden;
+}
+
+.bar__fill {
+  height: 100%;
+  border-radius: 999rpx;
+  background: linear-gradient(90deg, var(--gz-accent), var(--gz-grad-to));
+  transition: width 0.4s ease;
+}
+
+.bond__note {
+  display: block;
+  padding: 18rpx 8rpx 0;
+  font-size: $gz-fs-caption;
+  line-height: 1.7;
+  color: $gz-ink-3;
+}
+
+/* ---- 形态谱 ----
+ * 四阶横向排开：虚线=未到 / 实线=已到 / 实心+光环=当前。
+ * 刻意不写"还差 N 天"这类倒计时，只说门槛是哪一级（成长是看的，不是催的）。
+ */
+.form {
+  margin-top: 24rpx;
+  padding: 26rpx 28rpx;
+  background: $gz-surface;
+  border: 1rpx solid $gz-line;
+  border-radius: $gz-radius-lg;
+}
+
+.form__head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16rpx;
+}
+
+.form__title {
+  font-size: $gz-fs-body;
+  font-weight: 700;
+  color: $gz-ink;
+}
+
+.form__body {
+  flex: none;
+  font-size: $gz-fs-caption;
+  letter-spacing: 0.1em;
+  color: $gz-ink-3;
+}
+
+.form__track {
+  display: flex;
+  gap: 12rpx;
+  margin-top: 22rpx;
+}
+
+.form__step {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8rpx;
+}
+
+.form__dot {
+  width: 20rpx;
+  height: 20rpx;
+  box-sizing: border-box;
+  border: 2rpx dashed $gz-line;
+  border-radius: 50%;
+}
+
+.form__step.is-on .form__dot {
+  border-style: solid;
+  border-color: var(--gz-accent);
+}
+
+.form__step.is-cur .form__dot {
+  background: var(--gz-accent);
+  box-shadow: 0 0 0 6rpx var(--gz-accent-soft);
+}
+
+.form__name {
+  font-size: $gz-fs-caption;
+  color: $gz-ink-3;
+}
+
+.form__step.is-on .form__name {
+  color: $gz-ink-2;
+}
+
+.form__step.is-cur .form__name {
+  color: var(--gz-accent);
+  font-weight: 700;
+}
+
+.form__from {
+  font-size: 20rpx;
+  color: $gz-ink-3;
+  opacity: 0.75;
+}
+
+.form__note {
+  display: block;
+  margin-top: 22rpx;
+  padding-top: 18rpx;
+  border-top: 1rpx solid $gz-line;
+  font-size: $gz-fs-small;
+  line-height: 1.7;
+  color: $gz-ink-2;
+}
+
+.form__next {
+  display: block;
+  margin-top: 8rpx;
+  font-size: $gz-fs-caption;
+  color: var(--gz-accent);
+}
+
+/* ---- 切换 ---- */
+.tabs {
+  display: flex;
+  gap: 12rpx;
+  margin-top: 30rpx;
+}
+
+.tabs__item {
+  position: relative;
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 80rpx;
+  border-radius: $gz-radius-md;
+  background: $gz-surface;
+  border: 1rpx solid $gz-line;
+  font-size: $gz-fs-body;
+  font-weight: 600;
+  color: $gz-ink-2;
+}
+
+.tabs__item.is-on {
+  background: $gz-accent-soft;
+  border-color: $gz-accent;
+  color: $gz-accent;
+  font-weight: 700;
+}
+
+.tabs__count {
+  margin-left: 8rpx;
+  font-size: $gz-fs-caption;
+  color: inherit;
+  opacity: 0.8;
+}
+
+.sec {
+  margin-top: 24rpx;
+}
+
+/* ---- 对话录 ---- */
+.grp__label {
+  display: block;
+  padding: 8rpx 4rpx 14rpx;
+  font-size: $gz-fs-small;
+  letter-spacing: 0.08em;
+  color: $gz-ink-3;
+}
+
+.line {
+  display: flex;
+  align-items: flex-start;
+  gap: 20rpx;
+  padding: 22rpx 26rpx;
+  margin-bottom: 16rpx;
+  background: $gz-surface;
+  border: 1rpx solid $gz-line;
+  border-radius: $gz-radius-md;
+}
+
+.line__dot {
+  flex: none;
+  margin-top: 10rpx;
+  width: 16rpx;
+  height: 16rpx;
+  border-radius: 50%;
+  background: $gz-line;
+}
+
+.line__dot.is-greet {
+  background: #6d8b3f;
+}
+
+.line__dot.is-guard {
+  background: #c4602e;
+}
+
+.line__dot.is-remind {
+  background: #9c8ac4;
+}
+
+.line__dot.is-meet {
+  background: #4e8fd4;
+}
+
+.line__dot.is-proverb {
+  background: #c4602e;
+}
+
+.line__body {
+  flex: 1;
+  min-width: 0;
+}
+
+.line__text {
+  display: block;
+  font-size: $gz-fs-body;
+  line-height: 1.7;
+  color: $gz-ink;
+}
+
+.line__meta {
+  display: block;
+  margin-top: 6rpx;
+  font-size: $gz-fs-caption;
+  color: $gz-ink-3;
+}
+
+.line__fav {
+  flex: none;
+  width: 56rpx;
+  height: 56rpx;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  font-size: 32rpx;
+  color: $gz-ink-3;
+  border: 1rpx solid $gz-line;
+}
+
+.line__fav.is-on {
+  color: #c4602e;
+  border-color: #c4602e;
+  background: rgba(196, 96, 46, 0.08);
+}
+
+/* ---- 箴言墙 ---- */
+.fav {
+  display: flex;
+  align-items: flex-start;
+  gap: 12rpx;
+  padding: 24rpx 26rpx;
+  margin-bottom: 16rpx;
+  background: $gz-surface;
+  border: 1rpx solid $gz-line;
+  border-radius: $gz-radius-md;
+}
+
+.fav__mark {
+  flex: none;
+  color: $gz-accent;
+  font-size: 44rpx;
+  line-height: 1;
+}
+
+.fav__body {
+  flex: 1;
+  min-width: 0;
+}
+
+.fav__text {
+  display: block;
+  font-size: $gz-fs-body;
+  line-height: 1.7;
+  color: $gz-ink;
+}
+
+.fav__meta {
+  display: block;
+  margin-top: 8rpx;
+  font-size: $gz-fs-caption;
+  color: $gz-ink-3;
+}
+
+.fav__acts {
+  flex: none;
+  display: flex;
+  flex-direction: column;
+  gap: 10rpx;
+}
+
+.fav__btn {
+  padding: 6rpx 18rpx;
+  border-radius: 999rpx;
+  background: $gz-accent-soft;
+  color: $gz-accent;
+  font-size: $gz-fs-caption;
+}
+
+.fav__btn--off {
+  background: transparent;
+  border: 1rpx solid $gz-line;
+  color: $gz-ink-3;
+}
+
+.tip {
+  padding: 16rpx 8rpx 4rpx;
+}
+
+.tip__text {
+  font-size: $gz-fs-caption;
+  color: $gz-ink-3;
+}
+
+/* ---- 空态 ---- */
+.empty {
+  padding: 70rpx 40rpx;
+  text-align: center;
+  background: $gz-surface;
+  border: 1rpx dashed $gz-line;
+  border-radius: $gz-radius-lg;
+}
+
+.empty__title {
+  display: block;
+  font-size: $gz-fs-title;
+  font-weight: 700;
+  color: $gz-ink-2;
+}
+
+.empty__text {
+  display: block;
+  margin-top: 12rpx;
+  font-size: $gz-fs-small;
+  line-height: 1.8;
+  color: $gz-ink-3;
+}
+
+.foot {
+  padding: 40rpx 0 10rpx;
+  text-align: center;
+}
+
+.foot__text {
+  font-size: $gz-fs-caption;
+  letter-spacing: 0.1em;
+  color: $gz-ink-3;
+}

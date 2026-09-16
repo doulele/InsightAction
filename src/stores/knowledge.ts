@@ -1,7 +1,8 @@
 /**
  * 知识卡片库 store ——「所有输入加工后的沉淀」（转述 → 重构 → 内化）。
- * 批次 C · 知：卡片来源 = 灵魂拷问作答（Lv.3）/ 概念播种收成导入（Lv.2）/ 行动回写（批次 C）；
- * 支持手动打标签与检索（AI 智能标签为后端期能力，此处先手动）。
+ * 批次 C · 知：卡片来源 = 灵魂拷问作答（Lv.3）/ 概念播种收成导入（Lv.2）/ 行动回写 / 手动转述 / 每日一则追问 / 箴言转存。
+ * 支持手动打标签与检索；**AI 智能标签已接线**（`/ai/tags`，见 `composables/useAi.ts`，
+ * 未授权或失败时自动落 `utils/localAi` 的本机规则）—— 本 store 只负责存，不管标签怎么来的。
  * 单卡可被「加深一层」升级深度；满 7 天沉淀后的种子收成等素材可导入。
  */
 import { defineStore } from 'pinia'
@@ -20,6 +21,8 @@ export type CardKind =
   | 'action'
   /** 手动转述 */
   | 'note'
+  /** 由「我的箴言」转来：收藏的句子 + 你写下的"为什么记住它" */
+  | 'proverb'
   /**
    * 每日一则的「读完追问」。
    *
@@ -91,6 +94,31 @@ export const useKnowledgeStore = defineStore(
       return seedImported.value.includes(plantedAt)
     }
 
+    /**
+     * 由「我的箴言」转存一张卡。
+     *
+     * 深度由有没有写下"为什么记住它"决定：只搬原句 = Lv.1 转述，
+     * 附了自己的理由 = Lv.2 重构 —— 说得出为什么，就已经不是复述了。
+     */
+    function importProverb(p: {
+      text: string
+      from?: string
+      note?: string
+      tags?: string[]
+      src: string
+    }): KnowledgeCard {
+      const note = p.note?.trim() ?? ''
+      const quote = p.from ? `「${p.text}」 —— ${p.from}` : `「${p.text}」`
+      return add({
+        kind: 'proverb',
+        title: p.text.length > 18 ? `${p.text.slice(0, 18)}…` : p.text,
+        content: [quote, note].filter(Boolean).join('\n'),
+        tags: [...new Set([...(p.tags ?? []), '箴言'])],
+        depth: note ? 2 : 1,
+        src: p.src,
+      })
+    }
+
     /** 新卡在前 */
     function add(card: Omit<KnowledgeCard, 'createdAt'>): KnowledgeCard {
       const created: KnowledgeCard = { ...card, createdAt: nextId() }
@@ -130,7 +158,19 @@ export const useKnowledgeStore = defineStore(
       }).length
     }
 
-    return { cards, add, remove, deepen, byId, allTags, countOn, seedImported, importSeedHarvest, isSeedImported }
+    return {
+      cards,
+      add,
+      remove,
+      deepen,
+      byId,
+      allTags,
+      countOn,
+      seedImported,
+      importSeedHarvest,
+      importProverb,
+      isSeedImported,
+    }
   },
   {
     persist: { key: 'knowledge', paths: ['cards', 'seedImported'] },

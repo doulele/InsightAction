@@ -1,0 +1,265 @@
+/**
+ * HallHead 的样式（五页共用的大厅头）。
+ * 由 HallHead.vue 通过 @import 引入；以后调大厅头的图/压暗/文字配色都改本文件。
+ *
+ * 一句话记住改哪：`--hh-*` 管"图上的字"，`.hall-head__veil` 管"图被压多暗"，
+ * 两者都按皮肤（.gz-skin--tech / --dao）各给一套。
+ */
+.hall-head {
+  /*
+    图上文字配色（三套皮肤各给一组，见下方皮肤覆盖）：
+    默认 = 普通模式，取橄榄主题色的浅色版 —— 既有主题色味，又压得住压暗后的画面。
+    改这里的值等于改"图上文字用什么颜色"的口径，比逐条改文字规则可靠。
+  */
+  --hh-ink: #eaf2d6;
+  --hh-ink-2: rgba(234, 242, 214, 0.82);
+  --hh-line: rgba(234, 242, 214, 0.26);
+  --hh-mark-bg: rgba(234, 242, 214, 0.16);
+  position: relative;
+  min-height: 190rpx;
+  /*
+    不做通栏：试过用负边距铺到屏幕两边（见功能清单「第三轮」），
+    但那样块内文字与下方卡片不在同一条竖线上，整页看着散 —— 与页面内容同宽的卡片。
+  */
+  margin-bottom: 30rpx;
+  padding: 26rpx 28rpx 24rpx;
+  border-radius: $gz-radius-lg;
+  overflow: hidden;
+  box-shadow: 0 12rpx 32rpx rgba(20, 16, 10, 0.18);
+  background: linear-gradient(135deg, $gz-accent-soft, $gz-accent);
+}
+
+/* 带修行语言横幅时（观大厅）：块高一些，印章行在顶、横幅贴底 */
+.hall-head--with-cap {
+  min-height: 250rpx;
+}
+
+.hall-head__art {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+}
+
+/*
+  压暗层：艺术画偏亮（普通模式是浅黄绿），需要压一层才托得住字，
+  但压太过图就白放了 —— 取「够读就行」的中间值。文字的 `text-shadow` 是第二道保险。
+*/
+.hall-head__veil {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: linear-gradient(
+    180deg,
+    rgba(10, 12, 8, 0.46) 0%,
+    rgba(10, 12, 8, 0.3) 46%,
+    rgba(10, 12, 8, 0.72) 100%
+  );
+}
+
+/*
+  压暗强度按皮肤分开 —— 三套艺术画的明暗差得远，一套数值套三个模式必然有对有错：
+  · 科技：画本身是深底冷调，字直接读得清 → 完全不压，尽量留住图的质感；
+  · 修仙：水墨底整体偏暗，按普通模式的强度压会发闷 → 收成一"薄雾"；
+  · 普通：浅黄绿底最亮，沿用上面那组值。
+*/
+.gz-skin--tech .hall-head__veil {
+  background: none;
+}
+
+.gz-skin--dao .hall-head__veil {
+  /*
+    三档差值收窄：水墨底要的是一层"薄雾"，不是上亮下暗的断层。
+    差值一拉开（例如 0.3 / 0.16 / 0.5）卡片里就会显出一条横的明暗分界，
+    上半部的英文与状态行也会发虚。
+  */
+  background: linear-gradient(
+    180deg,
+    rgba(10, 12, 8, 0.34) 0%,
+    rgba(10, 12, 8, 0.28) 46%,
+    rgba(10, 12, 8, 0.44) 100%
+  );
+}
+
+/*
+  图上文字颜色同样按皮肤走 —— 一律取各自主题色的**浅色版**：
+  · 科技：电光蓝的亮版（深底冷调上最跳眼）；
+  · 修仙：淡暖米色 —— 朱砂那个橙饱和度高，压在浅色水墨上"色重"、发闷，
+    所以字只留一点暖，朱砂退到印章底上当那一抹印色。
+  普通模式用 .hall-head 上那组默认值。
+  取浅色版而不是直接用 --gz-accent：那三个值（橄榄 / 电光蓝 / 朱砂）里，橄榄与朱砂在各自的图上不够亮。
+*/
+.gz-skin--tech .hall-head {
+  --hh-ink: #78c6ff;
+  --hh-ink-2: rgba(120, 198, 255, 0.85);
+  --hh-line: rgba(120, 198, 255, 0.3);
+  --hh-mark-bg: rgba(63, 169, 255, 0.18);
+}
+
+.gz-skin--dao .hall-head {
+  --hh-ink: #f8ecdf;
+  --hh-ink-2: rgba(248, 236, 223, 0.9);
+  --hh-line: rgba(248, 236, 223, 0.32);
+  --hh-mark-bg: rgba(164, 71, 31, 0.14);
+}
+
+/* 文字层：没横幅时「印章 + 定位 / 状态」垂直居中；有横幅时印章行在顶、横幅用 margin-top:auto 贴底 */
+.hall-head__body {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+}
+
+.hall-head--with-cap .hall-head__body {
+  justify-content: flex-start;
+  min-height: 200rpx;
+}
+
+.hall-head__row {
+  display: flex;
+  align-items: center;
+  gap: 20rpx;
+}
+
+.hall-head--with-cap .hall-head__row {
+  margin-bottom: 22rpx;
+}
+
+/* 模式印章：描边章 —— 图作底后它是块上唯一的"实"元素，描边与字随皮肤主题色 */
+.hall-head__mark {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex: none;
+  width: 76rpx;
+  height: 76rpx;
+  font-size: 40rpx;
+  font-weight: 800;
+  color: var(--hh-ink);
+  background: var(--hh-mark-bg);
+  border: 2rpx solid var(--hh-ink);
+  border-radius: 20rpx;
+  line-height: 1;
+  text-shadow: 0 2rpx 8rpx rgba(10, 12, 8, 0.5);
+}
+
+/*
+  头像章（「我」大厅）：同一个位置、同一个尺寸、同一圈描边 —— 只是章里放头像。
+  不改成圆形：那样这一格就从"印章"变成"头像框"，五页头部不再是一套东西。
+*/
+.hall-head__mark.is-avatar {
+  padding: 0;
+  overflow: hidden;
+}
+
+.hall-head__avatar {
+  width: 100%;
+  height: 100%;
+}
+
+/* 主标题（昵称）：比英文定位大一档，坐在它原来的位置上 */
+.hall-head__name {
+  font-size: 34rpx;
+  font-weight: 700;
+  color: var(--hh-ink);
+  text-shadow: 0 2rpx 8rpx rgba(10, 12, 8, 0.55);
+}
+
+/* 右侧动作（起号 / 修改）：轻描边胶囊，比主张轻、又不至于看不见 */
+.hall-head__action {
+  flex: none;
+  align-self: center;
+  padding: 8rpx 18rpx;
+  border: 1rpx solid var(--hh-line);
+  border-radius: 999rpx;
+  font-size: $gz-fs-caption;
+  color: var(--hh-ink-2);
+  text-shadow: 0 2rpx 8rpx rgba(10, 12, 8, 0.5);
+}
+
+/* 印章右侧一列：英文定位在上、状态在下 —— 两行成一组，不再各占一行 */
+.hall-head__id {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6rpx;
+}
+
+.hall-head__en {
+  font-size: $gz-fs-caption;
+  letter-spacing: $gz-ls-wide;
+  color: var(--hh-ink-2);
+  text-shadow: 0 2rpx 8rpx rgba(10, 12, 8, 0.55);
+}
+
+.hall-head__state {
+  font-size: $gz-fs-small;
+  color: var(--hh-ink-2);
+  text-shadow: 0 2rpx 8rpx rgba(10, 12, 8, 0.55);
+}
+
+/* 修行语言：一道淡分隔线，把它与上面那组"身份信息"分开 */
+.hall-head__cap {
+  margin-top: auto;
+  padding-top: 20rpx;
+  border-top: 1rpx solid var(--hh-line);
+  display: flex;
+  flex-direction: column;
+}
+
+.hall-head__eyebrow {
+  font-size: $gz-fs-caption;
+  letter-spacing: 0.14em;
+  color: var(--hh-ink-2);
+  text-shadow: 0 2rpx 8rpx rgba(10, 12, 8, 0.55);
+}
+
+/* 标签语是这块上的主张，字号抬到 32rpx 加粗，与上面那组小字拉开层级 */
+.hall-head__quote {
+  display: block;
+  margin-top: 8rpx;
+  font-size: 32rpx;
+  font-weight: 600;
+  line-height: 1.5;
+  color: var(--hh-ink);
+  text-shadow: 0 2rpx 10rpx rgba(10, 12, 8, 0.62);
+}
+
+/*
+  关键数字：值走大字、标签走小字。
+  为什么数字放在这句主张下面而不是右上角：头部本来就只有两行字，数字贴上去会跟印章抢；
+  摆在主张下面时读起来是"一句 + 证据"的顺序。
+*/
+.hall-head__stats {
+  display: flex;
+  align-items: flex-end;
+  gap: 44rpx;
+  margin-top: 10rpx;
+}
+
+.hall-head__stat {
+  display: flex;
+  flex-direction: column;
+}
+
+.hall-head__stat-value {
+  font-size: 40rpx;
+  font-weight: 800;
+  line-height: 1.1;
+  letter-spacing: 0.02em;
+  color: var(--hh-ink);
+  text-shadow: 0 2rpx 8rpx rgba(10, 12, 8, 0.5);
+}
+
+.hall-head__stat-label {
+  margin-top: 4rpx;
+  font-size: $gz-fs-caption;
+  color: var(--hh-ink-2);
+  text-shadow: 0 2rpx 8rpx rgba(10, 12, 8, 0.5);
+}

@@ -21,7 +21,25 @@
       <text class="rule__num">{{ mothers.length }} 个 · 共 {{ childrenTotal }} 条</text>
     </view>
 
+    <!-- 理道图谱（§15.4）：理与母题连起来是什么样，进图谱看全景 -->
+    <view class="graph-entry" hover-class="gz-hover" @click="goGraph">
+      <text class="graph-entry__text">连起来是什么样 —— 理道图谱</text>
+      <text class="graph-entry__go">›</text>
+    </view>
+
     <!-- 我的母题 -->
+    <!--
+      §15.2 系统提示：同一标签攒够 3 条理就问一句。
+      纯本地统计（按标签共现计数）。**刻意不做**语义相似度与自动归类 ——
+      AI 归类一旦误判就会打乱用户自己建的关系，而"挂靠"本就是他自己该做的动作。
+    -->
+    <view v-if="tagHints.length" class="hint">
+      <view v-for="h in tagHints" :key="h.tag" class="hint__row" hover-class="gz-hover" @click="promoteFromTag(h)">
+        <text class="hint__text">你有 {{ h.count }} 条理都打了「{{ h.tag }}」这个标签，要提炼成一个母题吗？</text>
+        <text class="hint__go">提炼 ›</text>
+      </view>
+    </view>
+
     <view v-if="!mothers.length" class="empty">
       <view class="empty__seal gz-motion">道</view>
       <text class="empty__title">还没有母题</text>
@@ -33,6 +51,8 @@
         <view class="card__top">
           <text v-for="t in m.topics" :key="t" class="card__topic">{{ t }}</text>
           <text class="card__count" :class="{ 'is-thin': countOf(m.id) < 3 }">{{ countOf(m.id) }} 条</text>
+          <!-- §15.2：挂满 3 条就算「长出来了」 -->
+          <text v-if="countOf(m.id) >= 3" class="card__grown">长出来了</text>
         </view>
 
         <text class="card__name" hover-class="gz-hover" @click="toggle(m.id)">{{ m.title }}</text>
@@ -133,8 +153,75 @@ function toggle(id: string): void {
   openId.value = openId.value === id ? '' : id
 }
 
+/** 理道图谱：本页按母题列，图谱按「关系」列 —— 同一份数据的第三个切面 */
+function goGraph(): void {
+  navigateTo(ROUTES.observeGraph)
+}
+
 function taken(name: string): boolean {
   return mothers.value.some((m) => m.title === name)
+}
+
+/** §15.2 标签共现的候选：同一个标签下攒够 3 条理，且这个标签还没成为母题 */
+interface TagHint {
+  tag: string
+  count: number
+}
+
+const tagHints = computed<TagHint[]>(() => {
+  const counts = new Map<string, number>()
+  for (const it of observe.theories) {
+    for (const tag of it.tags) counts.set(tag, (counts.get(tag) ?? 0) + 1)
+  }
+  const names = new Set(mothers.value.map((m) => m.title))
+  return [...counts.entries()]
+    .filter(([tag, n]) => n >= 3 && !names.has(tag))
+    .map(([tag, count]) => ({ tag, count }))
+    .sort((a, b) => b.count - a.count)
+    .slice(0, 2)
+})
+
+/**
+ * 就着提示提炼一个母题：名字可预填标签名（省一步），
+ * 之后问一句要不要把同标签的理一起挂上 —— 规格 §15.3 原本是「勾选要挂的理」，
+ * 这里换成一次确认：多选那一步在手机上太重，而多数情况用户就是想全挂。
+ */
+function promoteFromTag(h: TagHint): void {
+  uni.showModal({
+    title: '提炼成一个母题',
+    content: `你有 ${h.count} 条理都打了「${h.tag}」这个标签。给它一个名字 —— 问句最好。`,
+    editable: true,
+    placeholderText: '如：什么才算够了',
+    confirmText: '提炼',
+    cancelText: '再等等',
+    success: (res) => {
+      if (!res.confirm) return
+      const name = ((res as { content?: string }).content ?? '').trim() || h.tag
+      const seed = observe.theories.find((i) => i.tags.includes(h.tag))
+      if (!seed) return
+      const item = observe.promoteToMother(seed.id, name, `${h.tag}：${h.count} 条理都指向它`)
+      if (!item) {
+        uni.showToast({ title: '没提炼成 · 先在理库处理一条', icon: 'none' })
+        return
+      }
+      const others = observe.theories.filter((i) => i.id !== seed.id && i.tags.includes(h.tag) && !i.motherId)
+      if (!others.length) {
+        uni.showToast({ title: '已提炼 · 收下这 20 点修为', icon: 'none' })
+        return
+      }
+      uni.showModal({
+        title: '顺手挂上？',
+        content: `还有 ${others.length} 条理也打了「${h.tag}」，要一起挂到「${name}」下吗？`,
+        confirmText: '一起挂',
+        cancelText: '不用',
+        success: (r) => {
+          if (!r.confirm) return
+          for (const i of others) observe.attachMother(i.id, item.id)
+          uni.showToast({ title: `已挂上 ${others.length} 条`, icon: 'none' })
+        },
+      })
+    },
+  })
 }
 
 /** 认领预置母题：先让他写下自己的第一笔，空着也能收下（用预置那句垫底） */
@@ -245,334 +332,5 @@ function goBack(): void {
 </script>
 
 <style lang="scss" scoped>
-.page {
-  min-height: 100vh;
-  padding: calc(var(--status-bar-height) + 16rpx) $gz-page-pad 60rpx;
-  box-sizing: border-box;
-}
-
-.nav {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 8rpx 0 10rpx;
-}
-
-.nav__side {
-  width: 76rpx;
-  height: 76rpx;
-}
-
-.nav__back {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 76rpx;
-  height: 76rpx;
-  border: 1rpx solid $gz-line;
-  border-radius: 50%;
-  background: $gz-surface;
-  color: $gz-ink-2;
-  font-size: 52rpx;
-  line-height: 1;
-  padding-bottom: 8rpx;
-}
-
-.nav__title {
-  font-size: 34rpx;
-  font-weight: 700;
-  letter-spacing: 0.08em;
-  color: $gz-ink;
-}
-
-.intro {
-  margin-top: 12rpx;
-  padding: 22rpx 24rpx;
-  border-left: 4rpx solid $gz-accent;
-  background: $gz-accent-soft;
-  border-radius: 0 $gz-radius-sm $gz-radius-sm 0;
-}
-
-.intro__text {
-  font-size: $gz-fs-small;
-  line-height: 1.85;
-  color: $gz-ink-2;
-}
-
-.rule {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  margin: 20rpx 4rpx 8rpx;
-}
-
-.rule__text {
-  font-size: $gz-fs-caption;
-  color: $gz-ink-3;
-}
-
-.rule__num {
-  font-size: $gz-fs-caption;
-  color: $gz-accent;
-}
-
-.list {
-  display: flex;
-  flex-direction: column;
-  gap: 18rpx;
-  margin-top: 12rpx;
-}
-
-.card {
-  padding: 26rpx 26rpx 18rpx;
-  background: $gz-surface;
-  border: 1rpx solid $gz-line;
-  border-radius: $gz-radius-md;
-}
-
-.card__top {
-  display: flex;
-  align-items: center;
-  gap: 12rpx;
-}
-
-.card__topic {
-  padding: 4rpx 16rpx;
-  border-radius: 999rpx;
-  background: #f2edf8;
-  color: #7a63a8;
-  font-size: $gz-fs-caption;
-}
-
-.card__count {
-  margin-left: auto;
-  font-size: $gz-fs-caption;
-  color: $gz-accent;
-  font-weight: 600;
-}
-
-.card__count.is-thin {
-  color: $gz-ink-3;
-  font-weight: 400;
-}
-
-.card__name {
-  display: block;
-  margin-top: 16rpx;
-  font-size: 34rpx;
-  font-weight: 700;
-  line-height: 1.5;
-  color: $gz-ink;
-}
-
-.card__line {
-  display: block;
-  margin-top: 10rpx;
-  font-size: $gz-fs-small;
-  line-height: 1.85;
-  color: $gz-ink-2;
-}
-
-.kids {
-  margin-top: 18rpx;
-  padding: 16rpx 18rpx;
-  border-radius: $gz-radius-md;
-  background: $gz-input-bg;
-}
-
-.kids__empty {
-  font-size: $gz-fs-caption;
-  line-height: 1.8;
-  color: $gz-ink-3;
-}
-
-.kid {
-  display: flex;
-  align-items: center;
-  gap: 12rpx;
-  padding: 8rpx 0;
-}
-
-.kid__kind {
-  flex: none;
-  padding: 2rpx 12rpx;
-  border-radius: 999rpx;
-  background: #eaf0f8;
-  color: #4e8fd4;
-  font-size: 20rpx;
-}
-
-.kid__text {
-  flex: 1;
-  min-width: 0;
-  font-size: $gz-fs-small;
-  color: $gz-ink;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.kid__x {
-  flex: none;
-  font-size: $gz-fs-caption;
-  color: $gz-ink-3;
-}
-
-.ops {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  margin-top: 16rpx;
-  padding-top: 14rpx;
-  border-top: 1rpx solid $gz-line;
-}
-
-.ops__state {
-  font-size: $gz-fs-caption;
-  color: $gz-ink-3;
-}
-
-.ops__right {
-  display: flex;
-  gap: 14rpx;
-}
-
-.ops__btn {
-  padding: 8rpx 26rpx;
-  border: 1rpx solid $gz-line;
-  border-radius: 999rpx;
-  font-size: $gz-fs-caption;
-  color: $gz-ink-2;
-}
-
-.ops__btn--main {
-  border-color: $gz-accent;
-  background: $gz-accent-soft;
-  color: $gz-accent;
-  font-weight: 600;
-}
-
-.section {
-  margin-top: 40rpx;
-}
-
-.section__title {
-  display: block;
-  margin-bottom: 18rpx;
-  font-size: 30rpx;
-  font-weight: 700;
-  color: $gz-ink;
-}
-
-.presets {
-  display: flex;
-  flex-direction: column;
-  gap: 16rpx;
-}
-
-.preset {
-  padding: 24rpx 26rpx 22rpx;
-  background: $gz-surface;
-  border: 1rpx solid $gz-line;
-  border-radius: $gz-radius-md;
-}
-
-.preset.is-taken {
-  opacity: 0.62;
-}
-
-.preset__top {
-  display: flex;
-  align-items: center;
-  gap: 12rpx;
-}
-
-.preset__topic {
-  padding: 4rpx 16rpx;
-  border-radius: 999rpx;
-  background: $gz-input-bg;
-  font-size: $gz-fs-caption;
-  color: $gz-ink-3;
-}
-
-.preset__taken {
-  margin-left: auto;
-  font-size: $gz-fs-caption;
-  color: $gz-accent;
-}
-
-.preset__name {
-  display: block;
-  margin-top: 14rpx;
-  font-size: $gz-fs-body;
-  font-weight: 700;
-  line-height: 1.6;
-  color: $gz-ink;
-}
-
-.preset__line {
-  display: block;
-  margin-top: 8rpx;
-  font-size: $gz-fs-small;
-  line-height: 1.85;
-  color: $gz-ink-2;
-}
-
-.preset__cta {
-  margin-top: 16rpx;
-  padding: 12rpx 0;
-  text-align: center;
-  border: 1rpx solid $gz-accent;
-  border-radius: 999rpx;
-  font-size: $gz-fs-small;
-  color: $gz-accent;
-}
-
-.empty {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  padding: 80rpx 40rpx 0;
-}
-
-.empty__seal {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 108rpx;
-  height: 108rpx;
-  border: 2rpx solid $gz-accent;
-  border-radius: 26rpx;
-  background: $gz-accent-soft;
-  color: $gz-accent;
-  font-size: 48rpx;
-  font-weight: 700;
-}
-
-.empty__title {
-  margin-top: 28rpx;
-  font-size: $gz-fs-title;
-  font-weight: 700;
-  color: $gz-ink;
-}
-
-.empty__desc {
-  margin-top: 14rpx;
-  font-size: $gz-fs-small;
-  line-height: 1.9;
-  text-align: center;
-  color: $gz-ink-3;
-}
-
-.foot {
-  margin-top: 44rpx;
-  display: flex;
-  justify-content: center;
-}
-
-.foot__text {
-  font-size: $gz-fs-caption;
-  letter-spacing: 0.08em;
-  color: $gz-ink-3;
-}
+@import './index.scss';
 </style>

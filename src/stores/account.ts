@@ -9,7 +9,7 @@
 import { defineStore } from 'pinia'
 import { ref } from 'vue'
 import { ApiCode, BizError } from '@/types/api'
-import { wxLogin } from '@/api/modules/sync'
+import { wxLogin } from '@/api/modules/auth'
 
 export const useAccountStore = defineStore(
   'account',
@@ -22,6 +22,14 @@ export const useAccountStore = defineStore(
     const lastBackupAt = ref('')
     /** 上次备份包含的 store 数（仅用于展示与快速自检） */
     const lastBackupStores = ref(0)
+    /**
+     * 是否已同意「把内容发给 AI 服务商」。
+     *
+     * 与 cloudEnabled 是两件事：云备份传的是修行数据，AI 传的是**你写的正文**，
+     * 且流向第三方（深度求索 DeepSeek），所以需要单独一次明示同意。
+     * 撤回入口在设置页；撤回后 AI 功能一律走基础规则，不联网。
+     */
+    const aiConsent = ref(false)
 
     /** 拿 token（force = true 时强制重新登录） */
     async function ensureToken(force = false): Promise<string> {
@@ -53,9 +61,12 @@ export const useAccountStore = defineStore(
       lastBackupStores.value = stores
     }
 
-    return { token, cloudEnabled, lastBackupAt, lastBackupStores, ensureToken, withAuth, markBackedUp }
+    return { token, cloudEnabled, lastBackupAt, lastBackupStores, aiConsent, ensureToken, withAuth, markBackedUp }
   },
   {
-    persist: { key: 'account', paths: ['token', 'cloudEnabled', 'lastBackupAt', 'lastBackupStores'] },
+    persist: {
+      key: 'account',
+      paths: ['token', 'cloudEnabled', 'lastBackupAt', 'lastBackupStores', 'aiConsent'],
+    },
   },
 )

@@ -61,6 +61,13 @@
         <text class="say__from">—— {{ assistantName }} · {{ modeMeta.label }}</text>
       </view>
 
+      <!-- 今日箴言：有到期回响就带那一句，否则带最近记住的一句；一句都没有就不出现 -->
+      <view v-if="proverbLine" class="prov">
+        <text class="prov__label">{{ proverbLabel }}</text>
+        <text class="prov__text">「{{ proverbLine.text }}」</text>
+        <text v-if="proverbLine.from" class="prov__from">—— {{ proverbLine.from }}</text>
+      </view>
+
       <view class="card__foot">
         <text class="card__foot-text">观止知行 · 数字修行 · 每一天都有迹可循</text>
       </view>
@@ -72,6 +79,9 @@
       <view class="copy" hover-class="gz-hover" @click="copyText">复制文字卡片</view>
     </view>
     <view class="acts__hint">把今日修行分享出去 · 数据属于你自己</view>
+
+    <!-- 隐私授权拦截弹窗（复制日课卡前需征得同意） -->
+    <PrivacyGate />
 
     <view class="foot">
       <text class="foot__text">日课卡 · 每天自动生成，只在今晚 23 点前属于今天</text>
@@ -92,6 +102,7 @@ import { onShareAppMessage } from '@dcloudio/uni-app'
 import { useModeStore } from '@/stores/mode'
 import { useDailyStore, todayKey } from '@/stores/daily'
 import { useXpStore } from '@/stores/xp'
+import { REVIEW_DAYS, useProverbStore, type ProverbItem } from '@/stores/proverb'
 import { dayStats } from '@/utils/growth'
 import { levelIndexFromXp, levelProgress, levelName, LEVEL_NAMES, LEVEL_THRESHOLDS } from '@/config/levels'
 import { useSkinClass } from '@/composables/useSkin'
@@ -208,6 +219,20 @@ const comment = computed(() => {
   return `${lead}观止知行走过一遍，今天没有辜负。`
 })
 
+/* —— 今日箴言 —— */
+const proverbs = useProverbStore()
+
+/**
+ * 日课卡上带哪一句：优先今天到期回响的那句（它今天本来就该再见一次），
+ * 否则带最近记住的一句。一句都没记住就整块不出现 —— 不硬凑一句充数。
+ */
+const proverbLine = computed<ProverbItem | null>(() => proverbs.dueReviews[0] ?? proverbs.items[0] ?? null)
+const proverbLabel = computed(() => {
+  const due = proverbs.dueReviews[0]
+  if (!proverbLine.value) return ''
+  return due ? `今日回响 · 第 ${Math.min(due.reviewCount + 1, REVIEW_DAYS.length)} 次见面` : '你记住的这句'
+})
+
 /* —— 分享与复制 —— */
 const shareTitle = computed(() => `今日日课卡 · ${dateLabel.value} —— ${modeStore.meta.growthName} ${lvName.value}`)
 
@@ -224,6 +249,13 @@ const textCard = computed(() => {
     ...dims.value.map((d) => `  ${d.label}：${d.value}`),
     `今日之星：${topKey.value ? dims.value.find((d) => d.key === topKey.value)?.label ?? '' : '暂无'}`,
     `小枢评语：「${comment.value}」`,
+    ...(proverbLine.value
+      ? [
+          `${proverbLabel.value}：「${proverbLine.value.text}」${
+            proverbLine.value.from ? ` —— ${proverbLine.value.from}` : ''
+          }`,
+        ]
+      : []),
     '—— 观止知行 · 数据属于你自己',
   ]
   return lines.join('\n')
@@ -247,298 +279,5 @@ function goBack(): void {
 </script>
 
 <style lang="scss" scoped>
-.page {
-  min-height: 100vh;
-  padding: calc(var(--status-bar-height) + 16rpx) $gz-page-pad 60rpx;
-  box-sizing: border-box;
-}
-
-/* 顶栏 */
-.nav {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 8rpx 0 10rpx;
-}
-.nav__side {
-  width: 76rpx;
-  height: 76rpx;
-}
-.nav__back {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 76rpx;
-  height: 76rpx;
-  border: 1rpx solid $gz-line;
-  border-radius: 50%;
-  background: $gz-surface;
-  color: $gz-ink-2;
-  font-size: 52rpx;
-  line-height: 1;
-  padding-bottom: 8rpx;
-}
-.nav__title {
-  font-size: 34rpx;
-  font-weight: 700;
-  letter-spacing: 0.08em;
-  color: $gz-ink;
-}
-
-/* 卡片主体 */
-.card {
-  position: relative;
-  overflow: hidden;
-  margin-top: 10rpx;
-  padding: 30rpx 30rpx 26rpx;
-  background: $gz-surface;
-  border: 1rpx solid $gz-line;
-  border-radius: $gz-radius-lg;
-
-  /* 模式顶缘色带（与等级卡同一语言） */
-  &::before {
-    content: '';
-    position: absolute;
-    top: 0;
-    left: 0;
-    right: 0;
-    height: 8rpx;
-    background: linear-gradient(90deg, $gz-accent, $gz-grad-to);
-  }
-}
-
-.card__head {
-  display: flex;
-  align-items: flex-start;
-  justify-content: space-between;
-}
-.card__id {
-  display: flex;
-  flex-direction: column;
-}
-.card__brand {
-  font-size: $gz-fs-body;
-  font-weight: 800;
-  letter-spacing: 0.1em;
-  color: $gz-ink;
-}
-.card__date {
-  margin-top: 4rpx;
-  font-size: $gz-fs-caption;
-  letter-spacing: 0.08em;
-  color: $gz-ink-3;
-}
-.card__seal {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 72rpx;
-  height: 72rpx;
-  border: 3rpx solid $gz-accent;
-  border-radius: 18rpx;
-  color: $gz-accent;
-  font-size: 40rpx;
-  font-weight: 800;
-  background: $gz-accent-soft;
-}
-
-/* 等级行 */
-.lv {
-  margin-top: 24rpx;
-  padding: 22rpx 24rpx;
-  border-radius: $gz-radius-md;
-  background: $gz-surface-2;
-}
-.lv__row {
-  display: flex;
-  align-items: baseline;
-  justify-content: space-between;
-}
-.lv__title {
-  font-size: 34rpx;
-  font-weight: 800;
-  color: $gz-ink;
-}
-.lv__num {
-  margin-left: 10rpx;
-  font-size: $gz-fs-caption;
-  font-weight: 600;
-  color: $gz-accent;
-}
-.lv__xp {
-  font-size: $gz-fs-caption;
-  color: $gz-ink-3;
-}
-.bar {
-  margin-top: 16rpx;
-  height: 12rpx;
-  border-radius: 999rpx;
-  background: $gz-line-soft;
-  overflow: hidden;
-}
-.bar__fill {
-  height: 100%;
-  border-radius: 999rpx;
-  background: linear-gradient(90deg, $gz-accent, $gz-grad-to);
-  transition: width 0.4s ease;
-}
-.lv__next {
-  display: block;
-  margin-top: 10rpx;
-  font-size: $gz-fs-caption;
-  color: $gz-ink-3;
-}
-
-/* 四维 */
-.sec {
-  margin-top: 26rpx;
-}
-.sec__head {
-  display: flex;
-  align-items: baseline;
-  justify-content: space-between;
-  margin-bottom: 14rpx;
-}
-.sec__title {
-  font-size: $gz-fs-title;
-  font-weight: 800;
-  color: $gz-ink;
-}
-.sec__hint {
-  font-size: $gz-fs-caption;
-  letter-spacing: 0.06em;
-  color: $gz-ink-3;
-}
-.dims {
-  display: flex;
-  flex-direction: column;
-  gap: 12rpx;
-}
-.dim {
-  padding: 16rpx 20rpx;
-  border-radius: $gz-radius-md;
-  border: 1rpx solid $gz-line-soft;
-  background: transparent;
-  transition: border-color 0.2s ease, background 0.2s ease;
-}
-.dim.is-top {
-  border-color: $gz-accent;
-  background: $gz-accent-soft;
-}
-.dim__row {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-}
-.dim__name {
-  display: flex;
-  align-items: center;
-  gap: 12rpx;
-}
-.dim__label {
-  font-size: $gz-fs-body;
-  font-weight: 600;
-  color: $gz-ink;
-}
-.dim__star {
-  padding: 2rpx 12rpx;
-  border-radius: 999rpx;
-  background: $gz-accent;
-  color: $gz-on-cta;
-  font-size: 20rpx;
-  letter-spacing: 0.06em;
-}
-.dim__value {
-  font-size: $gz-fs-body;
-  font-weight: 800;
-  color: $gz-ink-2;
-  font-variant-numeric: tabular-nums;
-}
-.dim.is-top .dim__value {
-  color: $gz-accent;
-}
-
-/* 评语 */
-.say {
-  margin-top: 26rpx;
-  padding: 22rpx 24rpx;
-  border-left: 6rpx solid $gz-accent;
-  background: $gz-surface-2;
-  border-radius: 0 $gz-radius-md $gz-radius-md 0;
-}
-.say__quote {
-  display: block;
-  font-size: $gz-fs-body;
-  line-height: 1.9;
-  color: $gz-ink-2;
-}
-.say__from {
-  display: block;
-  margin-top: 10rpx;
-  font-size: $gz-fs-caption;
-  letter-spacing: 0.06em;
-  color: $gz-ink-3;
-  text-align: right;
-}
-
-.card__foot {
-  margin-top: 26rpx;
-  padding-top: 18rpx;
-  border-top: 1rpx dashed $gz-line;
-  text-align: center;
-}
-.card__foot-text {
-  font-size: $gz-fs-caption;
-  letter-spacing: 0.06em;
-  color: $gz-ink-3;
-}
-
-/* 操作 */
-.acts {
-  margin-top: 30rpx;
-  display: flex;
-  gap: 16rpx;
-}
-.share,
-.copy {
-  flex: 1;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  height: 88rpx;
-  border-radius: $gz-radius-md;
-  font-size: $gz-fs-body;
-  font-weight: 700;
-  letter-spacing: 0.04em;
-}
-.share {
-  background: $gz-accent;
-  color: $gz-on-cta;
-  border: none;
-  &::after {
-    border: none;
-  }
-}
-.copy {
-  border: 1rpx solid $gz-line;
-  background: $gz-surface;
-  color: $gz-ink-2;
-}
-.acts__hint {
-  margin-top: 14rpx;
-  text-align: center;
-  font-size: $gz-fs-caption;
-  color: $gz-ink-3;
-}
-
-.foot {
-  margin-top: 36rpx;
-  display: flex;
-  justify-content: center;
-}
-.foot__text {
-  font-size: $gz-fs-caption;
-  letter-spacing: 0.04em;
-  color: $gz-ink-3;
-}
+@import './index.scss';
 </style>

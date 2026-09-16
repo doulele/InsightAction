@@ -29,7 +29,7 @@
  * - disabled 时点击给出「筹备中」提示。
  */
 import { navigateTo } from '@/router/routes'
-import type { RoutePath } from '@/router/routes'
+import type { RouteParams, RoutePath } from '@/router/routes'
 
 export interface EntryBadge {
   text: string
@@ -45,6 +45,12 @@ const props = withDefaults(
     mark?: string
     /** 跳转目标；缺省只触发 select 事件 */
     url?: RoutePath
+    /**
+     * 跳转参数（拼到 url 后面）。
+     * 入口行也能带参数之后，「进这个页面并直接做某件事」就不必再写一个自定义组件了
+     * （首个用户：知大厅的「费曼速记」→ 知识库并展开转述面板）。
+     */
+    params?: RouteParams
     disabled?: boolean
     badge?: EntryBadge
   }>(),
@@ -60,7 +66,7 @@ function onTap(): void {
   }
   emit('select')
   if (props.url) {
-    void navigateTo(props.url)
+    void navigateTo(props.url, props.params)
   }
 }
 </script>

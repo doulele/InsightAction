@@ -1,0 +1,122 @@
+<template>
+  <view class="hall-head" :class="{ 'hall-head--with-cap': hasCap }">
+    <!--
+      ⚠️ 必须走 modeStore.art（后端 /skins 下发 → 带版本号 → 命中本地缓存读盘），
+      不能用 modeMeta.art：那是构建期变量 VITE_SKIN_BASE_URL 拼的静态地址，
+      没配该变量时恒为 undefined ✗ → 图永远不出现（「观」页顶部空白就是这个原因）。
+    -->
+    <image v-if="modeStore.art" class="hall-head__art" :src="modeStore.art" mode="aspectFill" />
+    <view class="hall-head__veil" />
+    <view class="hall-head__body">
+      <view class="hall-head__row">
+        <!--
+          印章位：默认是印章字；「我」大厅传 avatar 时这里直接显示头像（同一个位置、同一个尺寸）。
+          有 action 时这一点也可点 —— 「点头像去起号 / 换头像」比只点右侧胶囊更符合直觉。
+        -->
+        <view
+          class="hall-head__mark"
+          :class="{ 'is-avatar': !!avatar }"
+          :hover-class="action ? 'gz-hover' : 'none'"
+          @click.stop="onMarkTap"
+        >
+          <image v-if="avatar" class="hall-head__avatar" :src="avatar" mode="aspectFill" />
+          <text v-else>{{ mark }}</text>
+        </view>
+        <!-- 印章右侧一列：主标题（昵称）/ 英文定位 / 状态，按传入的渲染 -->
+        <view class="hall-head__id">
+          <text v-if="title" class="hall-head__name">{{ title }}</text>
+          <text v-if="en" class="hall-head__en">{{ en }}</text>
+          <text v-if="state" class="hall-head__state">{{ state }}</text>
+        </view>
+        <!-- 右侧动作（如「起号 ›」）：只有传了才出现 -->
+        <text v-if="action" class="hall-head__action" hover-class="gz-hover" @click="emit('action')">
+          {{ action }}
+        </text>
+      </view>
+
+      <!-- 下半部：一句主张 + 关键数字（或「观」大厅的模式标签语），两者都空时整块不渲染 -->
+      <view v-if="hasCap" class="hall-head__cap">
+        <text v-if="capLabel" class="hall-head__eyebrow">{{ capLabel }}</text>
+        <text v-if="capLine" class="hall-head__quote">{{ capLine }}</text>
+        <view v-if="statList.length" class="hall-head__stats">
+          <view v-for="s in statList" :key="s.label" class="hall-head__stat">
+            <text class="hall-head__stat-value">{{ s.value }}</text>
+            <text class="hall-head__stat-label">{{ s.label }}</text>
+          </view>
+        </view>
+      </view>
+    </view>
+  </view>
+</template>
+
+<script setup lang="ts">
+/**
+ * HallHead —— 五个大厅页共用的「大厅头」（观 / 止 / 知 / 行 / 我）。
+ * ============================================================
+ *
+ * 结构：当前模式的主题艺术画作背景 → 压暗层 veil → 文字层。
+ * 文字层分上下两截：
+ *   上截（必在）——「印章（或头像）+ 主标题 / 英文定位 /（可选）状态 +（可选）右侧动作」，
+ *   下截（`capLabel` / `line` / `stats` 任一存在才渲染）—— 这块的主张与关键数字。
+ *
+ * 为什么值得抽成组件（2026-09-16）：五页原先各写一份「印章 + 英文 + 状态」，
+ * 观页单独升级成"艺术画卡片"后与其余四页不是一套视觉，且压暗强度、图上文字配色
+ * 都要按皮肤分别调 —— 五份复制等于以后每次调色要改五处。抽到这里后：
+ *   · 配色/压暗只在本组件（HallHead.scss）里改；
+ *   · 各页只传自己的印章字、定位与本页的"一句 + 数字"，模板里不再出现这些 class。
+ *
+ * 「我」大厅的名号（2026-09-16 合并）：原先首屏是「印章『我』+ 名号卡『我』」两个我，
+ * 现在头像直接进印章位、昵称当主标题、右侧挂「起号 / 修改」—— 名号只有这一处。
+ */
+import { computed } from 'vue'
+import { useModeStore } from '@/stores/mode'
+import { getModeMeta } from '@/config/modes'
+
+const props = withDefaults(
+  defineProps<{
+    /** 印章字（观 / 止 / 知 / 行 / 我）；传了 avatar 时它退居为无头像的兜底 */
+    mark: string
+    /** 头像地址：只有「我」大厅传，给了就占住印章位 */
+    avatar?: string
+    /** 印章右侧的主标题（「我」大厅放昵称）；与 `en` 可只用一个 */
+    title?: string
+    /** 英文定位行，例如 `INSIGHT · 观事 → 观理 → 观道` */
+    en?: string
+    /** 状态行（挂在主标题 / 定位下面） */
+    state?: string
+    /** 右侧动作文字（如「起号 ›」）：点击抛出 `action` 事件，由页面决定做什么 */
+    action?: string
+    /** 挂「今日修行 · 模式 + 模式标签语」，只有「观」大厅开 */
+    showCap?: boolean
+    /** 下半部那句主张（四个非「观」大厅用），文案来自 `lexicon.hallLine()` */
+    line?: string
+    /** 关键数字：值走大字、标签走小字；**两三个为宜**，多了这块就散了 */
+    stats?: Array<{ value: string; label: string }>
+  }>(),
+  { avatar: '', title: '', en: '', state: '', action: '', showCap: false, line: '' },
+)
+
+const emit = defineEmits<{ (e: 'action'): void }>()
+
+/** 点印章 / 头像位：有 action 时才当作"入口"（「我」大厅用它起号 / 换头像） */
+function onMarkTap(): void {
+  if (props.action) emit('action')
+}
+
+const modeStore = useModeStore()
+const meta = computed(() => getModeMeta(modeStore.id))
+
+/** 数字行（归一成数组，模板里不用再判 undefined） */
+const statList = computed(() => props.stats ?? [])
+
+/** 「观」大厅：小字是「今日修行 · 模式 · EN」，大字是模式标签语 */
+const capLabel = computed(() => (props.showCap ? `今日修行 · ${meta.value.label} · ${meta.value.labelEn}` : ''))
+const capLine = computed(() => (props.showCap ? meta.value.tagline : props.line ?? ''))
+
+/** 下半部有没有内容 —— 决定卡片走 250rpx（有下半部）还是 190rpx（只有印章行） */
+const hasCap = computed(() => !!capLabel.value || !!capLine.value || statList.value.length > 0)
+</script>
+
+<style lang="scss" scoped>
+@import './HallHead.scss';
+</style>

@@ -1,0 +1,437 @@
+/**
+ * 止 · 立约（当日档）—— 样式外置（超过 100 行，按项目约定拆出）。
+ * 由 subpkg-pause/vow/index.vue 通过 @import 引入。
+ */
+
+.page {
+  min-height: 100vh;
+  box-sizing: border-box;
+  padding: calc(var(--status-bar-height) + 16rpx) $gz-page-pad 60rpx;
+}
+
+.nav {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8rpx 0 10rpx;
+}
+
+.nav__side {
+  width: 76rpx;
+  height: 76rpx;
+}
+
+.nav__back {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 76rpx;
+  height: 76rpx;
+  border: 1rpx solid $gz-line;
+  border-radius: 50%;
+  background: $gz-surface;
+  color: $gz-ink-2;
+  font-size: 52rpx;
+  line-height: 1;
+  padding-bottom: 8rpx;
+}
+
+.nav__title {
+  font-size: 34rpx;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  color: $gz-ink;
+}
+
+/* ---- 头部 ---- */
+.head {
+  margin-top: 12rpx;
+}
+
+.head__eyebrow {
+  display: block;
+  font-size: $gz-fs-caption;
+  letter-spacing: 0.1em;
+  color: $gz-accent;
+}
+
+.head__title {
+  display: block;
+  margin-top: 12rpx;
+  font-size: 44rpx;
+  font-weight: 800;
+  color: $gz-ink;
+}
+
+.head__sub {
+  display: block;
+  margin-top: 10rpx;
+  font-size: $gz-fs-small;
+  line-height: 1.7;
+  color: $gz-ink-3;
+}
+
+/* ---- 表单 ---- */
+.form {
+  margin-top: 26rpx;
+  padding: 30rpx;
+  background: $gz-surface;
+  border: 1rpx solid $gz-line;
+  border-radius: $gz-radius-lg;
+}
+
+.field {
+  margin-bottom: 22rpx;
+}
+
+.field__label {
+  display: block;
+  margin-bottom: 10rpx;
+  font-size: $gz-fs-small;
+  color: $gz-ink-2;
+}
+
+.field__input {
+  padding: 20rpx 24rpx;
+  border: 1rpx solid $gz-line;
+  border-radius: $gz-radius-md;
+  background: $gz-input-bg;
+  font-size: $gz-fs-body;
+  color: $gz-ink;
+}
+
+.field__ph {
+  color: $gz-ink-3;
+}
+
+.btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 92rpx;
+  margin-top: 8rpx;
+  border-radius: $gz-radius-md;
+  background: $gz-accent;
+  color: $gz-on-cta;
+  font-size: $gz-fs-body;
+  font-weight: 700;
+}
+
+.form__note {
+  display: block;
+  margin-top: 16rpx;
+  font-size: $gz-fs-caption;
+  line-height: 1.8;
+  color: $gz-ink-3;
+}
+
+/* ---- 三要素卡 ---- */
+.card {
+  margin-top: 24rpx;
+  padding: 26rpx 30rpx;
+  background: $gz-surface;
+  border: 1rpx solid $gz-line;
+  border-radius: $gz-radius-lg;
+}
+
+.card__row {
+  display: flex;
+  align-items: baseline;
+  gap: 20rpx;
+  padding: 14rpx 0;
+  border-bottom: 1rpx solid $gz-line-soft;
+
+  &:last-child {
+    border-bottom: none;
+  }
+}
+
+.card__k {
+  flex: none;
+  width: 150rpx;
+  font-size: $gz-fs-caption;
+  color: $gz-ink-3;
+}
+
+.card__v {
+  flex: 1;
+  min-width: 0;
+  font-size: $gz-fs-body;
+  font-weight: 600;
+  color: $gz-ink;
+}
+
+/* ---- 回看 ---- */
+.review {
+  margin-top: 26rpx;
+}
+
+.review__label {
+  display: block;
+  font-size: $gz-fs-small;
+  color: $gz-ink-2;
+}
+
+.review__acts {
+  display: flex;
+  gap: 16rpx;
+  margin-top: 16rpx;
+}
+
+.review__btn {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 92rpx;
+  border-radius: $gz-radius-md;
+  font-size: $gz-fs-body;
+  font-weight: 700;
+}
+
+.review__btn--keep {
+  background: $gz-accent;
+  color: $gz-on-cta;
+}
+
+.review__btn--break {
+  border: 1rpx solid $gz-line;
+  color: $gz-ink-2;
+}
+
+.review__note {
+  display: block;
+  margin-top: 14rpx;
+  font-size: $gz-fs-caption;
+  line-height: 1.8;
+  color: $gz-ink-3;
+}
+
+/* ---- 结果 ---- */
+.result {
+  margin-top: 26rpx;
+  padding: 30rpx;
+  border: 1rpx solid $gz-line;
+  border-radius: $gz-radius-lg;
+  background: $gz-surface;
+}
+
+.result.is-kept {
+  border-color: $gz-accent;
+  background: linear-gradient(135deg, $gz-accent-soft, transparent 72%);
+}
+
+.result__title {
+  display: block;
+  font-size: 36rpx;
+  font-weight: 800;
+  color: $gz-ink;
+}
+
+.result__reason {
+  display: block;
+  margin-top: 12rpx;
+  padding: 16rpx 20rpx;
+  border-radius: $gz-radius-sm;
+  background: $gz-input-bg;
+  font-size: $gz-fs-small;
+  line-height: 1.7;
+  color: $gz-ink-2;
+}
+
+.result__note {
+  display: block;
+  margin-top: 14rpx;
+  font-size: $gz-fs-caption;
+  line-height: 1.8;
+  color: $gz-ink-3;
+}
+
+.result__reset {
+  margin-top: 18rpx;
+  font-size: $gz-fs-caption;
+  color: $gz-accent;
+}
+
+/* ---- 统计 ---- */
+.tally {
+  display: flex;
+  gap: 12rpx;
+  margin-top: 30rpx;
+}
+
+.tally__item {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8rpx;
+  padding: 22rpx 0;
+  background: $gz-surface;
+  border: 1rpx solid $gz-line;
+  border-radius: $gz-radius-md;
+}
+
+.tally__n {
+  font-size: 40rpx;
+  font-weight: 800;
+  color: $gz-accent;
+  font-variant-numeric: tabular-nums;
+}
+
+.tally__cap {
+  font-size: $gz-fs-caption;
+  color: $gz-ink-3;
+}
+
+/* ---- 历史 ---- */
+.section {
+  margin-top: 34rpx;
+}
+
+.section__title {
+  display: block;
+  margin-bottom: 14rpx;
+  font-size: 30rpx;
+  font-weight: 700;
+  color: $gz-ink;
+}
+
+.hist {
+  background: $gz-surface;
+  border: 1rpx solid $gz-line;
+  border-radius: $gz-radius-md;
+  padding: 6rpx 24rpx;
+}
+
+.hist__row {
+  display: flex;
+  align-items: center;
+  gap: 14rpx;
+  padding: 18rpx 0;
+  border-bottom: 1rpx solid $gz-line-soft;
+
+  &:last-child {
+    border-bottom: none;
+  }
+}
+
+.hist__day {
+  flex: none;
+  width: 72rpx;
+  font-size: $gz-fs-caption;
+  color: $gz-ink-3;
+  font-variant-numeric: tabular-nums;
+}
+
+.hist__promise {
+  flex: 1;
+  min-width: 0;
+  font-size: $gz-fs-small;
+  color: $gz-ink-2;
+}
+
+.hist__badge {
+  flex: none;
+  padding: 2rpx 14rpx;
+  border-radius: 999rpx;
+  font-size: 18rpx;
+  background: $gz-line-soft;
+  color: $gz-ink-3;
+}
+
+.hist__badge.is-kept {
+  background: $gz-accent-soft;
+  color: $gz-accent;
+}
+
+.foot {
+  display: block;
+  margin-top: 40rpx;
+  text-align: center;
+  font-size: $gz-fs-caption;
+  line-height: 1.8;
+  color: $gz-ink-3;
+}
+
+/* ---- 破约理由 ---- */
+.overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 260;
+  display: flex;
+  align-items: flex-end;
+  background: rgba(0, 0, 0, 0.35);
+}
+
+.sheet {
+  width: 100%;
+  box-sizing: border-box;
+  padding: 36rpx 32rpx calc(40rpx + env(safe-area-inset-bottom));
+  border-radius: $gz-radius-lg $gz-radius-lg 0 0;
+  background: $gz-surface;
+}
+
+.sheet__title {
+  display: block;
+  font-size: 32rpx;
+  font-weight: 800;
+  color: $gz-ink;
+}
+
+.sheet__q {
+  display: block;
+  margin-top: 10rpx;
+  font-size: $gz-fs-small;
+  color: $gz-ink-3;
+}
+
+.sheet__ta {
+  width: 100%;
+  box-sizing: border-box;
+  height: 170rpx;
+  margin-top: 20rpx;
+  padding: 20rpx 24rpx;
+  border: 1rpx solid $gz-line;
+  border-radius: $gz-radius-md;
+  background: $gz-input-bg;
+  font-size: $gz-fs-small;
+  line-height: 1.7;
+  color: $gz-ink;
+}
+
+.sheet__hint {
+  display: block;
+  margin-top: 12rpx;
+  font-size: $gz-fs-caption;
+  color: $gz-accent;
+}
+
+.sheet__row {
+  display: flex;
+  gap: 16rpx;
+  margin-top: 26rpx;
+}
+
+.sheet__btn {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 88rpx;
+  border-radius: $gz-radius-md;
+  background: $gz-accent;
+  color: $gz-on-cta;
+  font-size: $gz-fs-body;
+  font-weight: 600;
+}
+
+.sheet__btn.is-off {
+  opacity: 0.45;
+}
+
+.sheet__btn--ghost {
+  background: transparent;
+  border: 1rpx solid $gz-line;
+  color: $gz-ink-2;
+}

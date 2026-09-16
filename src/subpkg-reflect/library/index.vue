@@ -11,8 +11,11 @@
 
     <!-- 顶部操作 -->
     <view class="ops">
-      <view class="op op--main" hover-class="gz-hover" @click="addOpen = true">＋ 转述一条（Lv.1）</view>
-      <view class="op" hover-class="gz-hover" @click="importOpen = true">从播种导入收成</view>
+      <view class="op op--main" hover-class="gz-hover" @click="openAdd">＋ 转述一条（Lv.1）</view>
+      <view class="op" hover-class="gz-hover" @click="importOpen = true">播种收成</view>
+      <view class="op" hover-class="gz-hover" @click="openDigest">
+        {{ aiAvailable ? 'AI 极简报' : '极简报' }}
+      </view>
     </view>
 
     <!-- 检索 -->
@@ -94,6 +97,26 @@
           :maxlength="400"
           auto-height
         />
+        <!--
+          语音转写（微信同声传译插件）：按住说话、松开出字。
+          识别在微信侧完成，音频不出微信 —— 我们连录音文件都不读（见 utils/voice.ts）。
+          插件不可用（没在后台添加 / 基础库过低）时整条不渲染：宁可没有按钮，
+          也不给一个按下去没反应的按钮。
+        -->
+        <view v-if="voiceOk" class="voice">
+          <view
+            class="voice__btn"
+            :class="{ 'is-rec': recording }"
+            hover-class="none"
+            @touchstart.prevent="onVoiceStart"
+            @touchend.prevent="onVoiceStop"
+            @touchcancel.prevent="onVoiceCancel"
+          >
+            <text class="voice__dot">●</text>
+            <text class="voice__label">{{ recording ? '松开 · 出字' : '按住说话' }}</text>
+          </view>
+          <text class="voice__hint">{{ voiceHint || '说一遍就等于转述一遍 · 最长 60 秒' }}</text>
+        </view>
         <view class="sheet__tag-row">
           <view
             v-for="t in SUGGEST_TAGS"
@@ -106,6 +129,56 @@
             {{ t }}
           </view>
         </view>
+        <!--
+          已选标签（含 AI 给的）：预设之外的标签也在这里 —— 否则 AI 打了个"复利"，
+          它不在预设里，用户根本看不见自己存了什么。AI 给的带角标，点一下移除。
+        -->
+        <view v-if="noteTags.length" class="sheet__tag-row">
+          <view
+            v-for="t in noteTags"
+            :key="t"
+            class="sheet__chip is-on"
+            hover-class="gz-hover"
+            @click="toggleNoteTag(t)"
+          >
+            {{ t }}
+            <AiBadge v-if="aiAddedTags.includes(t)" source="ai" mini />
+          </view>
+        </view>
+        <!-- 打标签 / 费曼检验：AI 可用走 AI，不可用自动落基础规则（utils/localAi），功能始终可用 -->
+        <view class="ai-row">
+          <view class="ai-row__btn" :class="{ 'is-off': busy === 'tags' }" hover-class="gz-hover" @click="aiTag">
+            {{ aiAvailable ? 'AI 打个标签' : '打个标签' }}
+          </view>
+          <view
+            class="ai-row__btn"
+            :class="{ 'is-off': busy === 'feynman' }"
+            hover-class="gz-hover"
+            @click="aiCheck"
+          >
+            费曼检验一下
+          </view>
+        </view>
+        <text class="ai-row__hint">
+          {{ aiAvailable ? '标签还能再改 · 检验只针对你写的正文' : '当前为基础规则 · 标签还能再改' }}
+        </text>
+
+        <!-- 费曼检验结果：先给结论，再给大白话版，最后抛一个追问 -->
+        <view v-if="feynman" class="fy">
+          <view class="fy__head-row">
+            <text class="fy__head" :class="{ 'is-clear': feynman.clear }">
+              {{ feynman.clear ? '讲明白了' : '还有没讲透的地方' }}
+            </text>
+            <!-- AI 出的要标 AI，基础出的也要标基础方便区分：两个方向都不能含糊 -->
+            <AiBadge :source="feynman.source" :text="feynman.source === 'ai' ? 'AI 检验' : '基础规则'" />
+          </view>
+          <!-- 基础兜底额外说一句：规则查不出真正的逻辑漏洞，别让用户以为是模型判断 -->
+          <text v-if="feynman.source === 'local'" class="fy__src">按规则检查，不是 AI 判断</text>
+          <text v-if="feynman.plainVersion" class="fy__plain">大白话：{{ feynman.plainVersion }}</text>
+          <text v-for="(x, i) in feynman.issues" :key="i" class="fy__item">· {{ x }}</text>
+          <text v-if="feynman.question" class="fy__ask">追问：{{ feynman.question }}</text>
+        </view>
+
         <button class="sheet__btn" hover-class="gz-hover" @click="saveNote">存进知识库</button>
       </view>
     </view>
@@ -127,6 +200,32 @@
             <view class="import-row__btn" hover-class="gz-hover" @click="doImport(s)">导入</view>
           </view>
         </view>
+      </view>
+    </view>
+
+    <!-- AI 极简报：最近一批卡片压成一条 -->
+    <view v-if="digestOpen" class="mask" @click="digestOpen = false">
+      <view class="sheet" @click.stop>
+        <view class="sheet__title-row">
+          <text class="sheet__title">极简报</text>
+          <AiBadge
+            v-if="digest"
+            :source="digest.source"
+            :text="digest.source === 'ai' ? 'AI 生成' : '基础汇总'"
+          />
+        </view>
+        <text class="sheet__sub">
+          {{ digest ? `最近 ${digestSource.length} 张卡，压成了这一条` : '正在整理这批卡片…' }}
+        </text>
+        <text v-if="digest && digest.source === 'local'" class="sheet__src">
+          只做归纳，不判断这几条之间的联系
+        </text>
+        <text v-if="digest" class="sheet__content">{{ digest.summary }}</text>
+        <view v-if="digest && digest.highlights.length" class="hl">
+          <text v-for="(h, i) in digest.highlights" :key="i" class="hl__item">{{ h }}</text>
+        </view>
+        <view class="sheet__btn" hover-class="gz-hover" @click="makeDigest">再压一次</view>
+        <view class="sheet__close" hover-class="gz-hover" @click="digestOpen = false">关闭</view>
       </view>
     </view>
 
@@ -168,16 +267,22 @@
       @cancel="dropOpen = false"
       @confirm="dropConfirm"
     />
+
+    <!-- 隐私授权拦截弹窗：录音（scope.record）属隐私接口，首次调用前要过这道门 -->
+    <PrivacyGate />
   </view>
 </template>
 
 <script setup lang="ts">
 /**
  * 知识库（批次 C）· 分包 subpkg-reflect：全部知识卡片按关键词/标签/深度检索；
- * 支持手动「转述一条」作为 Lv.1 起点、把概念播种的收成导入为 Lv.2；
- * 单卡可加深一层（Lv.1→2→3）。AI 智能打标签为后端期能力，此处手动。
+ * 支持「转述一条」作为 Lv.1 起点（可**按住说话**口述，见 utils/voice.ts）、
+ * 把概念播种的收成导入为 Lv.2；单卡可加深一层（Lv.1→2→3）。
+ * **AI 智能打标与费曼检验已接线**（`/ai/tags`、`/ai/feynman`）：未授权、未在白名单或失败时
+ * 自动落 `utils/localAi` 的本机规则，按钮永远不会变成死按钮。
  */
 import { computed, ref } from 'vue'
+import { onLoad, onUnload } from '@dcloudio/uni-app'
 import GzDialog from '@/components/GzDialog/GzDialog.vue'
 import {
   DEPTH_LABEL,
@@ -188,11 +293,21 @@ import {
 } from '@/stores/knowledge'
 import { useSeedStore, type Seed } from '@/stores/seed'
 import { useSkinClass } from '@/composables/useSkin'
+import AiBadge from '@/components/AiBadge/AiBadge.vue'
+import { useAi } from '@/composables/useAi'
+import { startVoice, voiceAvailable, type VoiceSession } from '@/utils/voice'
 import { ROUTES } from '@/router/routes'
+import type { DigestResult, FeynmanResult } from '@/api/modules/ai'
 
 const knowledge = useKnowledgeStore()
 const seed = useSeedStore()
 const skinClass = useSkinClass()
+/** AI 三能力：智能标签 / 费曼速记 / 极简报。失败只提示，不打断手动录入 */
+const ai = useAi()
+/** 顶层 ref，模板里可直接判断"哪一项在跑"（busy === 'tags'） */
+const busy = ai.busy
+/** 当前是否走真 AI（false = 基础兜底，按钮文案要去掉"AI"二字） */
+const aiAvailable = ai.available
 
 const SUGGEST_TAGS = ['认知', '方法', '关系', '身心', '观', '止', '行'] as const
 
@@ -237,8 +352,70 @@ const noteTitle = ref('')
 const noteBody = ref('')
 const noteTags = ref<string[]>([])
 
+/**
+ * 本次由 AI 给的标签 —— 只记**真正新加**的，用户自己点过的不算。
+ *
+ * 为什么非要记下来：这些标签会跟着卡片存进知识库，事后根本分不清
+ * 「这是我写的还是 AI 加的」。当下不打标，过一周就永远说不清了。
+ */
+const aiAddedTags = ref<string[]>([])
+
 function toggleNoteTag(t: string): void {
   noteTags.value = noteTags.value.includes(t) ? noteTags.value.filter((x) => x !== t) : [...noteTags.value, t]
+  // 移除标签时同步摘掉它的 AI 角标，否则再选一次会误标成 AI 给的
+  if (!noteTags.value.includes(t)) aiAddedTags.value = aiAddedTags.value.filter((x) => x !== t)
+}
+
+/* 智能标签 + 费曼速记 —— 都是增强，AI 不可用时自动落基础规则，功能始终可用 */
+
+/** 费曼检验结果。换一条转述就清掉，避免上一条的结论误导下一条 */
+const feynman = ref<FeynmanResult | null>(null)
+
+/** 打标签的素材：标题 + 正文一起给，标题往往已经点明了领域 */
+const tagSource = computed(() => `${noteTitle.value.trim()} ${noteBody.value.trim()}`.trim())
+
+/** 正文太短就没必要花这一次调用（也问不出什么） */
+const canAi = computed(() => noteBody.value.trim().length >= 10 && !busy.value)
+
+async function aiTag(): Promise<void> {
+  if (!canAi.value) {
+    uni.showToast({ title: '先写几句正文', icon: 'none' })
+    return
+  }
+  const before = [...noteTags.value]
+  const r = await ai.tags(tagSource.value)
+  if (!r) return
+  // 与已选标签合并去重，AI 的排在后面 —— 不覆盖用户自己选的
+  const merged = [...noteTags.value]
+  r.tags.forEach((t) => {
+    if (!merged.includes(t)) merged.push(t)
+  })
+  noteTags.value = merged
+  // 只标记本次真正新加的：用户自己选过的不算 AI 给的
+  const added = merged.filter((t) => !before.includes(t))
+  aiAddedTags.value = [...new Set([...aiAddedTags.value, ...added])]
+  // toast 里也说明来源，别让用户以为基础规则的结果是模型打的
+  uni.showToast({
+    title: added.length
+      ? `${r.source === 'ai' ? 'AI' : '基础规则'}加了 ${added.length} 个标签`
+      : '没想出合适的标签',
+    icon: 'none',
+  })
+}
+
+async function aiCheck(): Promise<void> {
+  if (!canAi.value) {
+    uni.showToast({ title: '先写几句正文', icon: 'none' })
+    return
+  }
+  const r = await ai.feynman(noteBody.value.trim())
+  if (r) feynman.value = r
+}
+
+function openAdd(): void {
+  feynman.value = null
+  aiAddedTags.value = []
+  addOpen.value = true
 }
 
 function saveNote(): void {
@@ -254,8 +431,101 @@ function saveNote(): void {
   noteTitle.value = ''
   noteBody.value = ''
   noteTags.value = []
+  aiAddedTags.value = []
+  feynman.value = null
   uni.showToast({ title: '已存进知识库 · Lv.1', icon: 'none' })
 }
+
+/* ---------------- 语音转写：按住说话 → 松开出字（费曼速记的入口） ---------------- */
+
+/**
+ * 插件可用性在**进页面时探一次**即可：
+ * 不可用（没在后台添加插件 / 基础库过低）就整条不渲染 ——
+ * 宁可没有按钮，也不给一个按下去没反应的按钮。
+ */
+const voiceOk = ref(voiceAvailable())
+const recording = ref(false)
+const voiceHint = ref('')
+let voiceSession: VoiceSession | null = null
+
+function onVoiceStart(): void {
+  if (recording.value) return
+  voiceHint.value = '正在听…'
+  voiceSession = startVoice({
+    onPartial: (t) => {
+      /* 只做"正在听"的即时反馈，不回写正文 —— 边说边改会让整段字在眼前跳 */
+      voiceHint.value = `正在听：${t.slice(-10)}`
+    },
+    onDone: (text) => {
+      recording.value = false
+      voiceSession = null
+      appendVoice(text)
+    },
+    onFail: (f) => {
+      recording.value = false
+      voiceSession = null
+      if (f.reason === 'unsupported') {
+        voiceOk.value = false
+        return
+      }
+      if (f.reason === 'empty') {
+        voiceHint.value = '没听清 · 按住再说一遍'
+        return
+      }
+      voiceHint.value = ''
+      if (f.reason === 'denied') {
+        /* 不硬讨授权：给一条同样走得通的路（手打字），别把用户堵在门口 */
+        uni.showModal({
+          title: '需要麦克风权限',
+          content: '语音转写要用麦克风。可以在设置里打开权限，也可以直接手打 —— 两条路都通向同一张卡片。',
+          confirmText: '去设置',
+          cancelText: '手打字',
+          success: (r) => {
+            if (r.confirm) uni.openSetting({})
+          },
+        })
+        return
+      }
+      uni.showToast({ title: f.message, icon: 'none' })
+    },
+  })
+  if (voiceSession) recording.value = true
+  else voiceHint.value = ''
+}
+
+function onVoiceStop(): void {
+  if (!recording.value || !voiceSession) return
+  voiceHint.value = '正在转成文字…'
+  voiceSession.stop()
+}
+
+/** 手指滑出按钮范围 → 这次不算（与微信语音消息的手感一致） */
+function onVoiceCancel(): void {
+  if (!voiceSession) return
+  voiceSession.abort()
+  voiceSession = null
+  recording.value = false
+  voiceHint.value = ''
+}
+
+/**
+ * 转写结果**追加**进正文：手打过的字不能被一次语音抹掉。
+ * 超出 400 字就截断（与 textarea 的 maxlength 同一口径，不然存下来会被页面截成两半）。
+ */
+function appendVoice(text: string): void {
+  const prev = noteBody.value.trim()
+  const merged = prev ? `${prev}${text}` : text
+  noteBody.value = merged.slice(0, 400)
+  voiceHint.value = merged.length > 400 ? '已转成文字 · 超出 400 字的部分已截断' : '已转成文字 · 再检验一下就更值'
+  /* 正文变了，上一条检验结论就作废 —— 理由同 openAdd()：旧结论会误导新内容 */
+  feynman.value = null
+}
+
+/* 离开页面时把还在录的那次收掉，别让麦克风在后台开着 */
+onUnload(() => {
+  voiceSession?.abort()
+  voiceSession = null
+})
 
 /* 播种导入 */
 const importOpen = ref(false)
@@ -270,6 +540,32 @@ function doImport(s: Seed): void {
   } else {
     uni.showToast({ title: '收成内容为空，无法导入', icon: 'none' })
   }
+}
+
+/* AI 极简报：把最近一批卡片压成一条 */
+
+/** 一次最多压这么多张 —— 再多的边际价值低于多花的钱 */
+const DIGEST_N = 12
+const digestOpen = ref(false)
+const digest = ref<DigestResult | null>(null)
+
+/** 知识库按时间倒序，取前 N 条即"最近这批" */
+const digestSource = computed(() => knowledge.cards.slice(0, DIGEST_N).map((c) => `${c.title}：${c.content}`))
+
+async function makeDigest(): Promise<void> {
+  if (!digestSource.value.length) {
+    uni.showToast({ title: '知识库还是空的', icon: 'none' })
+    return
+  }
+  const r = await ai.digest(digestSource.value)
+  if (r) digest.value = r
+}
+
+/** 打开即压一次：少一步点击，也让"还没内容时"有明确的进度感 */
+function openDigest(): void {
+  digestOpen.value = true
+  digest.value = null
+  void makeDigest()
 }
 
 /* 详情 */
@@ -314,438 +610,17 @@ function goBack(): void {
     uni.switchTab({ url: ROUTES.tabReflect })
   }
 }
+
+/**
+ * `?add=1` = 直接展开转述面板。
+ * 知大厅的「费曼速记」入口就是带着它进来的 —— 那个入口要的是"立刻说一段"，
+ * 不该让人先看一屏卡片列表再自己找「转述一条」。
+ */
+onLoad((query) => {
+  if ((query as Record<string, string>)?.add === '1') openAdd()
+})
 </script>
 
 <style lang="scss" scoped>
-.page {
-  min-height: 100vh;
-  padding: calc(var(--status-bar-height) + 16rpx) $gz-page-pad 60rpx;
-  box-sizing: border-box;
-}
-
-.nav {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 8rpx 0 10rpx;
-}
-
-.nav__side {
-  width: 76rpx;
-  height: 76rpx;
-}
-
-.nav__back {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 76rpx;
-  height: 76rpx;
-  border: 1rpx solid $gz-line;
-  border-radius: 50%;
-  background: $gz-surface;
-  color: $gz-ink-2;
-  font-size: 52rpx;
-  line-height: 1;
-  padding-bottom: 8rpx;
-}
-
-.nav__title {
-  font-size: 34rpx;
-  font-weight: 700;
-  letter-spacing: 0.08em;
-  color: $gz-ink;
-}
-
-/* 顶部操作 */
-.ops {
-  display: flex;
-  gap: 16rpx;
-  margin-top: 16rpx;
-}
-
-.op {
-  flex: 1;
-  text-align: center;
-  padding: 22rpx 0;
-  border-radius: $gz-radius-md;
-  border: 1rpx solid $gz-line;
-  font-size: $gz-fs-small;
-  color: $gz-ink-2;
-}
-
-.op--main {
-  background: $gz-accent;
-  border-color: $gz-accent;
-  color: $gz-on-cta;
-  font-weight: 600;
-}
-
-/* 检索 */
-.search {
-  display: flex;
-  align-items: center;
-  gap: 16rpx;
-  margin-top: 26rpx;
-  padding: 18rpx 24rpx;
-  background: $gz-input-bg;
-  border: 1rpx solid $gz-line;
-  border-radius: $gz-radius-md;
-}
-
-.search__mark {
-  color: $gz-accent;
-  font-size: $gz-fs-small;
-}
-
-.search__input {
-  flex: 1;
-  font-size: $gz-fs-small;
-  color: $gz-ink;
-}
-
-.search__ph {
-  color: $gz-ink-3;
-}
-
-.filters {
-  display: flex;
-  gap: 12rpx;
-  margin-top: 18rpx;
-}
-
-.filter {
-  padding: 8rpx 22rpx;
-  border-radius: 999rpx;
-  border: 1rpx solid $gz-line;
-  font-size: $gz-fs-caption;
-  color: $gz-ink-3;
-}
-
-.filter.is-on {
-  color: $gz-accent;
-  border-color: $gz-accent;
-  background: $gz-accent-soft;
-  font-weight: 600;
-}
-
-.tag-row {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 12rpx;
-  margin-top: 16rpx;
-}
-
-.tag {
-  padding: 6rpx 18rpx;
-  border-radius: 999rpx;
-  border: 1rpx solid $gz-line;
-  font-size: $gz-fs-caption;
-  color: $gz-ink-3;
-}
-
-.tag.is-on {
-  border-color: $gz-accent;
-  background: $gz-accent-soft;
-  color: $gz-accent;
-}
-
-.list {
-  display: flex;
-  flex-direction: column;
-  gap: 18rpx;
-  margin-top: 24rpx;
-}
-
-.card {
-  padding: 26rpx 28rpx;
-  background: $gz-surface;
-  border: 1rpx solid $gz-line;
-  border-radius: $gz-radius-md;
-}
-
-.card__top {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-}
-
-.card__tag {
-  padding: 4rpx 14rpx;
-  border-radius: 999rpx;
-  font-size: $gz-fs-caption;
-}
-
-.card__src {
-  font-size: $gz-fs-caption;
-  color: $gz-ink-3;
-}
-
-.card__title {
-  display: block;
-  margin-top: 14rpx;
-  font-size: $gz-fs-body;
-  font-weight: 700;
-  line-height: 1.5;
-  color: $gz-ink;
-}
-
-.card__digest {
-  display: block;
-  margin-top: 10rpx;
-  font-size: $gz-fs-small;
-  line-height: 1.8;
-  color: $gz-ink-2;
-}
-
-.card__tags {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 10rpx;
-  margin-top: 14rpx;
-}
-
-.card__tag-mini {
-  padding: 4rpx 14rpx;
-  border-radius: 999rpx;
-  font-size: 20rpx;
-  background: var(--gz-line-soft);
-  color: $gz-ink-3;
-}
-
-.empty {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  padding: 90rpx 30rpx 0;
-}
-
-.empty__seal {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 100rpx;
-  height: 100rpx;
-  border: 2rpx solid $gz-accent;
-  border-radius: 24rpx;
-  background: $gz-accent-soft;
-  color: $gz-accent;
-  font-size: 44rpx;
-  font-weight: 700;
-}
-
-.empty__title {
-  margin-top: 26rpx;
-  font-size: $gz-fs-title;
-  font-weight: 700;
-  color: $gz-ink;
-}
-
-.empty__desc {
-  margin-top: 14rpx;
-  font-size: $gz-fs-small;
-  line-height: 1.9;
-  text-align: center;
-  color: $gz-ink-3;
-  white-space: pre-line;
-}
-
-/* 底部面板通用 */
-.mask {
-  position: fixed;
-  inset: 0;
-  z-index: 20;
-  display: flex;
-  align-items: flex-end;
-  background: rgba(20, 16, 10, 0.5);
-}
-
-.sheet {
-  width: 100%;
-  max-height: 78vh;
-  padding: 32rpx 32rpx calc(env(safe-area-inset-bottom) + 30rpx);
-  background: $gz-surface;
-  border-radius: 32rpx 32rpx 0 0;
-  box-sizing: border-box;
-  overflow-y: auto;
-}
-
-.sheet__title {
-  display: block;
-  font-size: 32rpx;
-  font-weight: 700;
-  color: $gz-ink;
-}
-
-.sheet__sub {
-  display: block;
-  margin-top: 8rpx;
-  font-size: $gz-fs-small;
-  color: $gz-ink-3;
-}
-
-.sheet__field {
-  margin-top: 22rpx;
-  padding: 18rpx 20rpx;
-  background: $gz-input-bg;
-  border: 1rpx solid $gz-line;
-  border-radius: $gz-radius-md;
-  font-size: $gz-fs-small;
-  color: $gz-ink;
-}
-
-.sheet__area {
-  width: 100%;
-  margin-top: 16rpx;
-  padding: 18rpx 20rpx;
-  min-height: 150rpx;
-  background: $gz-input-bg;
-  border: 1rpx solid $gz-line;
-  border-radius: $gz-radius-md;
-  font-size: $gz-fs-small;
-  line-height: 1.8;
-  color: $gz-ink;
-  box-sizing: border-box;
-}
-
-.sheet__ph {
-  color: $gz-ink-3;
-}
-
-.sheet__tag-row {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 12rpx;
-  margin-top: 18rpx;
-}
-
-.sheet__chip {
-  padding: 6rpx 20rpx;
-  border-radius: 999rpx;
-  border: 1rpx solid $gz-line;
-  font-size: $gz-fs-caption;
-  color: $gz-ink-3;
-}
-
-.sheet__chip.is-on {
-  border-color: $gz-accent;
-  background: $gz-accent-soft;
-  color: $gz-accent;
-}
-
-.sheet__btn {
-  margin-top: 26rpx;
-  /* button 被 App.vue 全局重置过 padding/border-radius，必须补回，否则高度塌成一行文字 */
-  padding: 26rpx 0;
-  border-radius: $gz-radius-md;
-  line-height: 1.4;
-  background: $gz-accent;
-  color: $gz-on-cta;
-  font-size: $gz-fs-body;
-  font-weight: 600;
-}
-
-.sheet__top {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-}
-
-.sheet__src {
-  font-size: $gz-fs-caption;
-  color: $gz-ink-3;
-}
-
-.sheet__content {
-  display: block;
-  margin-top: 16rpx;
-  font-size: $gz-fs-small;
-  line-height: 1.9;
-  color: $gz-ink-2;
-}
-
-.sheet__deepen {
-  margin-top: 26rpx;
-  padding: 20rpx 0;
-  text-align: center;
-  background: $gz-accent-soft;
-  color: $gz-accent;
-  border-radius: $gz-radius-md;
-  font-size: $gz-fs-body;
-  font-weight: 600;
-}
-
-.sheet__danger {
-  margin-top: 16rpx;
-  padding: 16rpx 0;
-  text-align: center;
-  border: 1rpx solid rgba(196, 96, 46, 0.5);
-  color: #b25a2c;
-  border-radius: $gz-radius-md;
-  font-size: $gz-fs-small;
-}
-
-.sheet__close {
-  margin-top: 18rpx;
-  padding: 12rpx 0;
-  text-align: center;
-  font-size: $gz-fs-small;
-  color: $gz-ink-3;
-}
-
-.import-void {
-  margin-top: 24rpx;
-  padding: 34rpx 24rpx;
-  border: 1rpx dashed $gz-line;
-  border-radius: $gz-radius-md;
-  font-size: $gz-fs-caption;
-  line-height: 1.8;
-  text-align: center;
-  color: $gz-ink-3;
-}
-
-.import-list {
-  display: flex;
-  flex-direction: column;
-  gap: 16rpx;
-  margin-top: 24rpx;
-}
-
-.import-row {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 20rpx;
-  padding: 20rpx 22rpx;
-  background: $gz-input-bg;
-  border-radius: $gz-radius-md;
-}
-
-.import-row__body {
-  min-width: 0;
-}
-
-.import-row__name {
-  display: block;
-  font-size: $gz-fs-body;
-  font-weight: 700;
-  color: $gz-ink;
-}
-
-.import-row__note {
-  display: block;
-  margin-top: 6rpx;
-  font-size: $gz-fs-caption;
-  line-height: 1.6;
-  color: $gz-ink-3;
-}
-
-.import-row__btn {
-  flex: none;
-  padding: 10rpx 26rpx;
-  border-radius: 999rpx;
-  background: $gz-accent;
-  color: $gz-on-cta;
-  font-size: $gz-fs-caption;
-}
+@import './index.scss';
 </style>

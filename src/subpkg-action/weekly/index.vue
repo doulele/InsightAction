@@ -28,6 +28,70 @@
       </view>
     </view>
 
+    <!-- 这一周：四环分布 + 修为（规格 §14） -->
+    <view class="sum">
+      <view class="sum__row">
+        <text class="sum__k">四环分布</text>
+        <view class="sum__halls">
+          <text v-for="h in HALLS" :key="h" class="sum__hall" :class="`is-${h}`">
+            {{ TAB_LABEL[h] }} {{ report.hallCount[h] }}
+          </text>
+        </view>
+      </view>
+      <view class="sum__row">
+        <text class="sum__k">修为入账</text>
+        <text class="sum__v">+{{ report.xpGain }}（累计 {{ report.xpTotal }} · {{ report.level }}）</text>
+      </view>
+    </view>
+
+    <!-- 一条路：只能由 trace 的 ref 生成；没有跨环关联就不编 -->
+    <view class="section">
+      <view class="section__title">一条路</view>
+      <text v-if="!report.path.length" class="empty-line">{{ pathEmpty }}</text>
+      <view v-else class="path">
+        <view v-for="(p, i) in report.path" :key="i" class="path__row">
+          <text class="path__dot">·</text>
+          <text class="path__text">{{ p }}</text>
+        </view>
+      </view>
+    </view>
+
+    <!-- 四环各自 -->
+    <view class="section">
+      <view class="section__title">四环各自</view>
+      <view v-for="h in HALLS" :key="h" class="hrow">
+        <text class="hrow__mark" :class="`is-${h}`">{{ TAB_LABEL[h] }}</text>
+        <text class="hrow__text">{{ report.halls[h] }}</text>
+      </view>
+    </view>
+
+    <!-- 小枢的一句话：规则生成，不靠 AI -->
+    <view v-if="report.buddy" class="buddy">
+      <text class="buddy__mark">枢</text>
+      <text class="buddy__text">{{ report.buddy }}</text>
+    </view>
+
+    <!--
+      在走的计划（2026-09-15）：周报只看「这周做了什么」，跨天的路不属于任何一周，
+      所以这里不做完成率统计，只把它们摆出来 —— 让「我还在走一条路」这件事被看见。
+    -->
+    <view v-if="activePlans.length" class="plans">
+      <view class="plans__head">
+        <text class="plans__title">在走的{{ planW.plan }}</text>
+        <text class="plans__n">{{ activePlans.length }}</text>
+      </view>
+      <view
+        v-for="p in activePlans"
+        :key="p.id"
+        class="prow"
+        hover-class="gz-hover"
+        @click="openPlan(p)"
+      >
+        <text class="prow__title">{{ p.title }}</text>
+        <text class="prow__progress">{{ planW.progress(planStore.progressOf(p).done, planStore.progressOf(p).total) }}</text>
+      </view>
+    </view>
+
     <!-- 近 7 日柱状 -->
     <view class="section">
       <view class="section__title">近 7 日痕迹</view>
@@ -66,6 +130,26 @@
       </view>
     </view>
 
+    <!--
+      情境化省察（规格 §4.3）：周报本身就是「由头」，看完就地反问一句。
+      锚点按周计（weekly-<周一>），所以一周只问一次，答过就留着那句答案。
+    -->
+    <!-- 下周：留白，用户自己写（规格 §14 · 不自动填） -->
+    <view class="section">
+      <view class="section__title">下周</view>
+      <textarea
+        v-model="nextNote"
+        class="next"
+        :maxlength="60"
+        placeholder="给自己留一句（不填也行）"
+        placeholder-class="next__ph"
+        @blur="saveNext"
+      />
+      <text class="next__hint">这一句只有你自己能改 —— 系统不替你写。</text>
+    </view>
+
+    <SceneProbe scene="weekly" :anchor="weekAnchor" />
+
     <view class="foot">
       <text class="foot__text">一周回头看 · 才知道脚步没白走</text>
     </view>
@@ -83,13 +167,29 @@ import { useTraceStore, type Trace } from '@/stores/trace'
 import { TRACE_LABEL } from '@/config/trace'
 import type { TraceKind } from '@/config/trace'
 import { useHabitStore } from '@/stores/habit'
+import { usePlanStore, type Plan } from '@/stores/plan'
+import { planWords } from '@/config/lexicon'
+import { useModeStore } from '@/stores/mode'
 import { todayKey } from '@/stores/daily'
 import { useSkinClass } from '@/composables/useSkin'
+import SceneProbe from '@/components/SceneProbe/SceneProbe.vue'
 import { navigateTo, ROUTES } from '@/router/routes'
+import { buildWeekly, HALLS } from '@/utils/weekly'
+import { TAB_LABEL } from '@/config/skins'
 
 const trace = useTraceStore()
 const habit = useHabitStore()
+const planStore = usePlanStore()
+const mode = useModeStore()
+const planW = computed(() => planWords(mode.id))
 const skinClass = useSkinClass()
+
+/** 在走的长期计划：周报不做完成率，只让它们被看见 */
+const activePlans = computed(() => planStore.activeLong)
+
+function openPlan(p: Plan): void {
+  navigateTo(ROUTES.actionPlanDetail, { id: p.id })
+}
 
 function pad(n: number): string {
   return String(n).padStart(2, '0')
@@ -111,6 +211,27 @@ const now = new Date()
 const monday = mondayOf(now)
 const mondayKey = fmtDate(monday)
 const todayK = todayKey()
+
+/** 本周的省察锚点：一周一个，天然一周只问一次 */
+const weekAnchor = `weekly-${mondayKey}`
+
+/** 周报（规格 §14）：四环分布 / 一条路 / 四环各自 / 小枢一句话 */
+const report = computed(() => buildWeekly(mondayKey, todayK, mode.id))
+
+/** 「一条路」为空时的文案：空周与「没连成线」是两回事，分开说 */
+const pathEmpty = computed(() =>
+  report.value.empty
+    ? '这周你没有留下痕迹 —— 也可以，那是休息的一周。'
+    : '这周的痕迹还没有连成线：在【行】的三件事上挂一个出处，下周这里就会有路。',
+)
+
+/** 下周留白：按周存本地，只有用户自己能改 */
+const NEXT_KEY = `insight:weekly:next:${mondayKey}`
+const nextNote = ref<string>((uni.getStorageSync(NEXT_KEY) as string) || '')
+
+function saveNext(): void {
+  uni.setStorageSync(NEXT_KEY, nextNote.value)
+}
 
 /* 本周事件数 */
 const weekTraces = computed(() => trace.between(mondayKey, todayK))
@@ -207,265 +328,5 @@ function goBack(): void {
 </script>
 
 <style lang="scss" scoped>
-.page {
-  min-height: 100vh;
-  padding: calc(var(--status-bar-height) + 16rpx) $gz-page-pad 60rpx;
-  box-sizing: border-box;
-}
-
-.nav {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 8rpx 0 10rpx;
-}
-
-.nav__side {
-  width: 76rpx;
-  height: 76rpx;
-}
-
-.nav__back {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 76rpx;
-  height: 76rpx;
-  border: 1rpx solid $gz-line;
-  border-radius: 50%;
-  background: $gz-surface;
-  color: $gz-ink-2;
-  font-size: 52rpx;
-  line-height: 1;
-  padding-bottom: 8rpx;
-}
-
-.nav__title {
-  font-size: 34rpx;
-  font-weight: 700;
-  letter-spacing: 0.08em;
-  color: $gz-ink;
-}
-
-.head {
-  margin-top: 16rpx;
-  padding: 28rpx;
-  background: $gz-surface;
-  border: 1rpx solid $gz-line;
-  border-radius: $gz-radius-lg;
-}
-
-.head__range {
-  font-size: $gz-fs-caption;
-  letter-spacing: 0.1em;
-  color: $gz-accent;
-}
-
-.stats {
-  display: flex;
-  margin-top: 26rpx;
-}
-
-.stat {
-  flex: 1;
-  text-align: center;
-}
-
-.stat__n {
-  display: block;
-  font-size: 52rpx;
-  font-weight: 800;
-  color: $gz-ink;
-  line-height: 1;
-}
-
-.stat__cap {
-  display: block;
-  margin-top: 10rpx;
-  font-size: $gz-fs-caption;
-  color: $gz-ink-3;
-}
-
-.section {
-  margin-top: 36rpx;
-}
-
-.section__title {
-  display: block;
-  font-size: 32rpx;
-  font-weight: 700;
-  color: $gz-ink;
-}
-
-.section__row {
-  display: flex;
-  align-items: baseline;
-  justify-content: space-between;
-}
-
-.section__more {
-  font-size: $gz-fs-caption;
-  color: $gz-accent;
-}
-
-/* 柱状 */
-.bars {
-  margin-top: 22rpx;
-  display: flex;
-  gap: 12rpx;
-  padding: 24rpx 20rpx 18rpx;
-  background: $gz-surface;
-  border: 1rpx solid $gz-line;
-  border-radius: $gz-radius-md;
-}
-
-.bar-col {
-  flex: 1;
-  min-width: 0;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-}
-
-.bar-col__track {
-  width: 28rpx;
-  height: 150rpx;
-  border-radius: 10rpx;
-  background: var(--gz-line-soft);
-  display: flex;
-  align-items: flex-end;
-  overflow: hidden;
-}
-
-.bar-col__fill {
-  width: 100%;
-  border-radius: 10rpx;
-  background: linear-gradient(180deg, $gz-accent, $gz-grad-to);
-  transition: height 0.4s ease;
-}
-
-.bar-col__fill.is-cur {
-  box-shadow: 0 0 0 4rpx $gz-accent-soft;
-}
-
-.bar-col__n {
-  margin-top: 8rpx;
-  font-size: $gz-fs-caption;
-  font-weight: 700;
-  color: $gz-ink-2;
-}
-
-.bar-col__label {
-  margin-top: 4rpx;
-  font-size: 18rpx;
-  color: $gz-ink-3;
-  transform: scale(0.92);
-}
-
-.bar-col__label.is-cur {
-  color: $gz-accent;
-  font-weight: 600;
-}
-
-.bars__note {
-  display: block;
-  margin-top: 14rpx;
-  font-size: $gz-fs-caption;
-  color: $gz-ink-3;
-}
-
-/* 明细 */
-.mini-list {
-  margin-top: 18rpx;
-  display: flex;
-  flex-direction: column;
-  gap: 12rpx;
-}
-
-.mini {
-  display: flex;
-  align-items: center;
-  gap: 14rpx;
-  padding: 18rpx 22rpx;
-  background: $gz-surface;
-  border: 1rpx solid $gz-line;
-  border-radius: $gz-radius-md;
-}
-
-.mini__dot {
-  flex: none;
-  width: 16rpx;
-  height: 16rpx;
-  border-radius: 50%;
-}
-
-.mini__dot.is-todo {
-  background: #84a268;
-}
-
-.mini__dot.is-habit {
-  background: #4e8fd4;
-}
-
-.mini__dot.is-box {
-  background: #9c8ac4;
-}
-
-/* 四环配色：观 / 止 / 知 / 行 */
-.mini__dot.is-observe {
-  background: #84a268;
-}
-
-.mini__dot.is-pause {
-  background: #4e8fd4;
-}
-
-.mini__dot.is-reflect {
-  background: #9c8ac4;
-}
-
-.mini__dot.is-action {
-  background: #c98a4b;
-}
-
-.mini__label {
-  flex: none;
-  font-size: $gz-fs-caption;
-  color: $gz-ink-3;
-}
-
-.mini__text {
-  flex: 1;
-  min-width: 0;
-  font-size: $gz-fs-caption;
-  color: $gz-ink-2;
-}
-
-.mini__time {
-  flex: none;
-  font-size: 18rpx;
-  color: $gz-ink-3;
-}
-
-.empty-line {
-  margin-top: 18rpx;
-  padding: 30rpx 20rpx;
-  text-align: center;
-  font-size: $gz-fs-caption;
-  color: $gz-ink-3;
-  border: 1rpx dashed $gz-line;
-  border-radius: $gz-radius-md;
-}
-
-.foot {
-  margin-top: 46rpx;
-  display: flex;
-  justify-content: center;
-}
-
-.foot__text {
-  font-size: $gz-fs-caption;
-  letter-spacing: 0.06em;
-  color: $gz-ink-3;
-}
+@import './index.scss';
 </style>

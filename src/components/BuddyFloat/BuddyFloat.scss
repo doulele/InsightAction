@@ -1,0 +1,706 @@
+/**
+ * BuddyFloat.vue 的样式（超过 100 行，按项目约定外置到同目录 BuddyFloat.scss）。
+ * 由 BuddyFloat.vue 通过 @import 引入；以后改样式改本文件。
+ */
+.bf {
+  /* 本组件不占布局空间 */
+}
+
+/* ---- 到点激励横幅 ---- */
+.bf__tip {
+  position: fixed;
+  right: 28rpx;
+  bottom: 168rpx;
+  left: 28rpx;
+  z-index: 90;
+  display: flex;
+  align-items: center;
+  gap: 18rpx;
+  padding: 20rpx 22rpx;
+  border-radius: $gz-radius-lg;
+  background: var(--gz-surface);
+  border: 1rpx solid var(--gz-line);
+  box-shadow: 0 18rpx 56rpx rgba(0, 0, 0, 0.16);
+  animation: bf-rise 0.28s ease;
+}
+
+.bf__tip.is-reminder {
+  border-color: var(--gz-accent);
+}
+
+@keyframes bf-rise {
+  from {
+    transform: translateY(24rpx);
+    opacity: 0;
+  }
+  to {
+    transform: translateY(0);
+    opacity: 1;
+  }
+}
+
+.bf__tip-mark {
+  flex: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 64rpx;
+  height: 64rpx;
+  border-radius: 50%;
+  background: var(--gz-accent-soft);
+  color: var(--gz-accent);
+  font-size: 32rpx;
+  font-weight: 800;
+}
+
+.bf__tip-body {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.bf__tip-title {
+  font-size: $gz-fs-body;
+  font-weight: 700;
+  color: var(--gz-ink);
+}
+
+.bf__tip-text {
+  margin-top: 4rpx;
+  font-size: $gz-fs-caption;
+  line-height: 1.6;
+  color: var(--gz-ink-2);
+}
+
+.bf__tip-act {
+  flex: none;
+  padding: 12rpx 24rpx;
+  border-radius: 999rpx;
+  background: var(--gz-accent);
+  color: var(--gz-on-cta);
+  font-size: $gz-fs-small;
+  font-weight: 600;
+}
+
+.bf__tip-x {
+  flex: none;
+  width: 44rpx;
+  height: 44rpx;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--gz-ink-3);
+  font-size: 32rpx;
+}
+
+/* ---- 悬浮球 ---- */
+.bf__fob {
+  position: fixed;
+  right: 28rpx;
+  bottom: 40rpx;
+  z-index: 80;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 108rpx;
+  height: 108rpx;
+  border-radius: 50%;
+  background: radial-gradient(circle at 30% 24%, var(--gz-grad-to), var(--gz-accent) 68%);
+  box-shadow: 0 16rpx 40rpx rgba(0, 0, 0, 0.22), 0 0 0 1rpx rgba(255, 255, 255, 0.14);
+}
+
+.bf__fob-halo {
+  position: absolute;
+  inset: -8rpx;
+  border-radius: 50%;
+  border: 1rpx solid var(--gz-accent-soft);
+  animation: bf-breathe 3.2s ease-in-out infinite;
+}
+
+@keyframes bf-breathe {
+  0%,
+  100% {
+    transform: scale(1);
+    opacity: 0.5;
+  }
+  50% {
+    transform: scale(1.14);
+    opacity: 0.9;
+  }
+}
+
+.bf__fob-glyph {
+  position: relative;
+  color: #fff;
+  font-size: 44rpx;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+}
+
+.bf__fob-dot {
+  position: absolute;
+  top: 6rpx;
+  right: 6rpx;
+  width: 22rpx;
+  height: 22rpx;
+  border-radius: 50%;
+  background: #e04f3f;
+  border: 3rpx solid var(--gz-surface);
+}
+
+/* ---- 小枢的三套外形 ----
+ * 颜色本来就随 --gz-accent 变，缺的是"形"；这里只改形状、描边与光环动效，
+ * 位置、尺寸、点击行为一律不动（所以不会影响任何页面的布局与可用性）。
+ *   普通 · 圆润纸印：圆形 + 柔和外晕（即默认样式，无需覆盖）
+ *   科技 · 切角面板：方形切角 + 硬描边 + 光环上下扫描（仪表指示灯）
+ *   修仙 · 双环道印：圆形 + 墨线双环 + 更慢的呼吸（道场灯）
+ */
+.bf__fob.is-tech,
+.bf__orb.is-tech {
+  border-radius: 16rpx;
+  box-shadow: 0 0 0 1rpx rgba(63, 169, 255, 0.5), 0 10rpx 26rpx rgba(0, 0, 0, 0.45);
+}
+
+.bf__fob.is-tech .bf__fob-halo {
+  border-radius: 16rpx;
+  border-color: rgba(63, 169, 255, 0.35);
+  animation: bf-scan-y 3.6s ease-in-out infinite;
+}
+
+.bf__fob.is-dao,
+.bf__orb.is-dao {
+  box-shadow: 0 0 0 1rpx rgba(42, 37, 30, 0.28), 0 0 0 8rpx var(--gz-accent-soft),
+    0 12rpx 28rpx rgba(42, 37, 30, 0.18);
+}
+
+.bf__fob.is-dao .bf__fob-halo {
+  inset: -12rpx;
+  border-width: 2rpx;
+  border-color: rgba(164, 71, 31, 0.32);
+  animation-duration: 5.4s;
+}
+
+@keyframes bf-scan-y {
+  0%,
+  100% {
+    transform: translateY(-6rpx);
+    opacity: 0.35;
+  }
+  50% {
+    transform: translateY(6rpx);
+    opacity: 0.9;
+  }
+}
+
+/* ---- 形阶：本体之外，按修为等级长的装饰 ----
+ * 规则是「只加不减」：tier-0 素 / tier-1 纹 / tier-2 光 / tier-3 器，
+ * 每一阶都在上一阶的基础上**加**一层，用户一眼能看出"它今天比昨天完整"。
+ * 放在三套本体样式之后：靠保序压过 .is-dao / .is-tech 同权重的 box-shadow 覆盖。
+ *   tier-0 素：光环静止（还没醒）
+ *   tier-1 纹：光环开始呼吸（即基样式，无需覆盖）
+ *   tier-2 光：+ 三点浮光环绕
+ *   tier-3 器：+ 一圈旋转光带
+ */
+.bf__fob.tier-0 .bf__fob-halo {
+  animation: none;
+  opacity: 0.32;
+}
+
+.bf__fob-sparks {
+  position: absolute;
+  inset: -18rpx;
+  border-radius: 50%;
+  animation: bf-spin 9s linear infinite;
+}
+
+.bf__fob-spark {
+  position: absolute;
+  width: 10rpx;
+  height: 10rpx;
+  border-radius: 50%;
+  background: var(--gz-grad-to);
+  box-shadow: 0 0 12rpx var(--gz-accent);
+}
+
+.bf__fob-spark.is-1 {
+  top: 0;
+  left: 50%;
+  margin-left: -5rpx;
+}
+
+.bf__fob-spark.is-2 {
+  bottom: 14rpx;
+  left: 14rpx;
+}
+
+.bf__fob-spark.is-3 {
+  bottom: 14rpx;
+  right: 14rpx;
+}
+
+.bf__fob-band {
+  position: absolute;
+  inset: -14rpx;
+  border-radius: 50%;
+  border: 2rpx dashed var(--gz-grad-to);
+  opacity: 0.55;
+  animation: bf-spin 16s linear infinite reverse;
+}
+
+@keyframes bf-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+/* 职司印：挂在小枢右下角，换大厅只换一个字（观=鉴 / 止=漏 / 知=卷 / 行=履） */
+.bf__fob-duty {
+  position: absolute;
+  right: -4rpx;
+  bottom: -4rpx;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 40rpx;
+  height: 40rpx;
+  padding: 0 10rpx;
+  box-sizing: border-box;
+  border-radius: 999rpx;
+  background: var(--gz-surface);
+  border: 1rpx solid var(--gz-accent);
+  color: var(--gz-accent);
+  font-size: 22rpx;
+  font-weight: 700;
+  line-height: 1;
+}
+
+/* 科技本体是切角方块，环绕层跟着切角，否则圆环套方板很违和 */
+.bf__fob.is-tech .bf__fob-sparks,
+.bf__fob.is-tech .bf__fob-band {
+  border-radius: 20rpx;
+}
+
+/* ---- 展开面板 ---- */
+.bf__mask {
+  position: fixed;
+  inset: 0;
+  z-index: 95;
+  background: rgba(0, 0, 0, 0.3);
+}
+
+.bf__panel {
+  position: fixed;
+  right: 20rpx;
+  bottom: 170rpx;
+  left: 20rpx;
+  z-index: 96;
+  padding: 30rpx 28rpx 28rpx;
+  border-radius: $gz-radius-lg;
+  background: var(--gz-surface);
+  border: 1rpx solid var(--gz-line);
+  box-shadow: 0 24rpx 80rpx rgba(0, 0, 0, 0.24);
+  animation: bf-rise 0.24s ease;
+}
+
+.bf__panel-head {
+  display: flex;
+  align-items: center;
+  gap: 18rpx;
+}
+
+.bf__orb {
+  position: relative;
+  flex: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 76rpx;
+  height: 76rpx;
+  border-radius: 50%;
+  background: linear-gradient(145deg, var(--gz-grad-to) 0%, var(--gz-accent) 70%);
+}
+
+/* 面板头的小枢球：纹阶起一圈，器阶再加一圈（与悬浮球同一套"只加不减"） */
+.bf__orb-ring {
+  position: absolute;
+  inset: -10rpx;
+  border-radius: 50%;
+  border: 2rpx solid var(--gz-accent);
+  opacity: 0.45;
+}
+
+.bf__orb-ring--out {
+  inset: -18rpx;
+  opacity: 0.22;
+}
+
+.bf__orb.is-tech .bf__orb-ring {
+  border-radius: 22rpx;
+}
+
+.bf__orb-glyph {
+  color: #fff;
+  font-size: 34rpx;
+  font-weight: 800;
+}
+
+.bf__panel-id {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.bf__panel-namerow {
+  display: flex;
+  align-items: center;
+  gap: 12rpx;
+}
+
+.bf__panel-name {
+  font-size: 36rpx;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  color: var(--gz-ink);
+}
+
+/* 形阶名（光团 / 光晕 / 花影 / 树影…）：一直挂在这里，成长有个看得见的落点 */
+.bf__panel-stage {
+  flex: none;
+  padding: 2rpx 14rpx;
+  border-radius: 999rpx;
+  background: var(--gz-accent-soft);
+  color: var(--gz-accent);
+  font-size: 20rpx;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+}
+
+.bf__panel-mode {
+  margin-top: 2rpx;
+  font-size: $gz-fs-caption;
+  color: var(--gz-ink-3);
+}
+
+.bf__close {
+  flex: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 52rpx;
+  height: 52rpx;
+  border-radius: 50%;
+  border: 1rpx solid var(--gz-line);
+  color: var(--gz-ink-2);
+  font-size: 36rpx;
+  line-height: 1;
+}
+
+.bf__panel-greet {
+  display: block;
+  margin-top: 20rpx;
+  font-size: $gz-fs-body;
+  line-height: 1.7;
+  color: var(--gz-ink-2);
+}
+
+.bf__greet-fav {
+  display: inline-flex;
+  margin-top: 8rpx;
+  padding: 4rpx 2rpx;
+  font-size: $gz-fs-caption;
+  color: var(--gz-accent);
+}
+
+.bf__dims {
+  margin-top: 22rpx;
+  display: flex;
+  flex-direction: column;
+  gap: 16rpx;
+}
+
+.bf__dim-line {
+  display: flex;
+  align-items: center;
+  gap: 16rpx;
+}
+
+.bf__dim-dot {
+  flex: none;
+  width: 16rpx;
+  height: 16rpx;
+  border-radius: 50%;
+  background: var(--gz-line);
+}
+
+.bf__dim-dot.is-on {
+  box-shadow: 0 0 0 6rpx var(--gz-accent-soft);
+}
+
+.bf__dim-label {
+  flex: none;
+  width: 160rpx;
+  font-size: $gz-fs-body;
+  color: var(--gz-ink);
+}
+
+.bf__dim-value {
+  font-size: $gz-fs-body;
+  font-weight: 700;
+  color: var(--gz-accent);
+  font-variant-numeric: tabular-nums;
+}
+
+.bf__dim-value.is-dim {
+  color: var(--gz-ink-3);
+  font-weight: 400;
+}
+
+.bf__suggest {
+  margin-top: 22rpx;
+  padding: 18rpx 20rpx;
+  border-radius: $gz-radius-md;
+  background: var(--gz-accent-soft);
+}
+
+.bf__suggest-label {
+  display: block;
+  font-size: $gz-fs-caption;
+  letter-spacing: 0.1em;
+  color: var(--gz-accent);
+}
+
+.bf__suggest-text {
+  display: block;
+  margin-top: 4rpx;
+  font-size: $gz-fs-small;
+  line-height: 1.7;
+  color: var(--gz-ink-2);
+}
+
+/* 你记住的那句：小枢把它带在身上，点了去「我的箴言」 */
+.bf__prov {
+  margin-top: 18rpx;
+  padding: 16rpx 20rpx;
+  border: 1rpx dashed var(--gz-accent);
+  border-radius: $gz-radius-md;
+}
+
+.bf__prov-label {
+  display: block;
+  font-size: $gz-fs-caption;
+  letter-spacing: 0.1em;
+  color: var(--gz-accent);
+}
+
+.bf__prov-text {
+  display: block;
+  margin-top: 4rpx;
+  font-size: $gz-fs-small;
+  line-height: 1.7;
+  color: var(--gz-ink);
+}
+
+.bf__prov-from {
+  display: block;
+  margin-top: 4rpx;
+  font-size: $gz-fs-caption;
+  color: var(--gz-ink-3);
+  text-align: right;
+}
+
+.bf__acts {
+  margin-top: 24rpx;
+  display: flex;
+  gap: 16rpx;
+}
+
+.bf__btn {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 84rpx;
+  border-radius: $gz-radius-md;
+  font-size: $gz-fs-body;
+  font-weight: 600;
+}
+
+.bf__btn--ghost {
+  border: 1rpx solid var(--gz-line);
+  color: var(--gz-ink-2);
+}
+
+.bf__btn--main {
+  background: var(--gz-accent);
+  color: var(--gz-on-cta);
+}
+
+/* ==========================================================================
+ * 每日结算（23:00 后首次打开 · 一天一次）
+ * 全屏但不遮住信息：面板自带上限高度，内容在内部滚动。
+ * ========================================================================== */
+
+.stl {
+  position: fixed;
+  left: 0;
+  top: 0;
+  width: 100%;
+  height: 100vh;
+  box-sizing: border-box;
+  z-index: 320;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0 48rpx;
+  background: rgba(0, 0, 0, 0.52);
+}
+
+.stl__card {
+  width: 100%;
+  max-height: 82vh;
+  box-sizing: border-box;
+  overflow-y: auto;
+  padding: 44rpx 36rpx 34rpx;
+  background: var(--gz-surface);
+  border: 1rpx solid var(--gz-line);
+  border-radius: var(--gz-radius-lg);
+  box-shadow: 0 24rpx 80rpx rgba(0, 0, 0, 0.3);
+  /* 复用本文件已有的入场动画（bf-rise），不再另造一套 keyframes */
+  animation: bf-rise 0.24s ease both;
+}
+
+.stl__eyebrow {
+  display: block;
+  font-size: 22rpx;
+  letter-spacing: 0.14em;
+  color: var(--gz-ink-3);
+}
+
+.stl__title {
+  display: block;
+  margin-top: 10rpx;
+  font-size: 48rpx;
+  font-weight: 800;
+  color: var(--gz-ink);
+}
+
+.stl__dims {
+  margin-top: 30rpx;
+}
+
+.stl__dim {
+  padding: 14rpx 0;
+}
+
+.stl__dim-head {
+  display: flex;
+  align-items: center;
+  gap: 12rpx;
+}
+
+.stl__dim-dot {
+  width: 14rpx;
+  height: 14rpx;
+  border: 2rpx solid var(--gz-ink-3);
+  border-radius: 50%;
+}
+
+.stl__dim-label {
+  flex: 1;
+  min-width: 0;
+  font-size: 26rpx;
+  color: var(--gz-ink-2);
+}
+
+.stl__dim-value {
+  font-size: 26rpx;
+  font-weight: 700;
+  color: var(--gz-ink);
+  font-variant-numeric: tabular-nums;
+}
+
+.stl__dim-value.is-dim {
+  color: var(--gz-ink-3);
+  font-weight: 400;
+}
+
+.stl__dim-bar {
+  height: 8rpx;
+  margin-top: 10rpx;
+  border-radius: 999rpx;
+  background: var(--gz-line-soft);
+  overflow: hidden;
+}
+
+.stl__dim-fill {
+  height: 100%;
+  border-radius: 999rpx;
+  transition: width 0.5s ease;
+}
+
+.stl__rows {
+  margin-top: 26rpx;
+  padding-top: 20rpx;
+  border-top: 1rpx solid var(--gz-line);
+}
+
+.stl__row {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 18rpx;
+  padding: 10rpx 0;
+}
+
+.stl__k {
+  flex: none;
+  font-size: 22rpx;
+  color: var(--gz-ink-3);
+}
+
+.stl__v {
+  flex: 1;
+  min-width: 0;
+  text-align: right;
+  font-size: 26rpx;
+  color: var(--gz-ink);
+}
+
+.stl__comment {
+  display: block;
+  margin-top: 24rpx;
+  padding: 20rpx 24rpx;
+  /* ⚠️ 用 $gz-radius-sm 而不是 var(--gz-radius-sm)：后者全项目没有定义 */
+  border-radius: $gz-radius-sm;
+  background: var(--gz-accent-soft);
+  font-size: 26rpx;
+  line-height: 1.8;
+  color: var(--gz-ink-2);
+}
+
+.stl__acts {
+  display: flex;
+  gap: 16rpx;
+  margin-top: 30rpx;
+}
+
+.stl__btn {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 88rpx;
+  border-radius: var(--gz-radius-md);
+  background: var(--gz-accent);
+  color: var(--gz-on-cta);
+  font-size: 28rpx;
+  font-weight: 600;
+}
+
+.stl__btn--ghost {
+  background: transparent;
+  border: 1rpx solid var(--gz-line);
+  color: var(--gz-ink-2);
+}

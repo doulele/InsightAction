@@ -1,0 +1,383 @@
+/**
+ * index.vue 的样式（超过 100 行，按项目约定外置到同目录 index.scss）。
+ * 由 index.vue 通过 @import 引入；以后改样式改本文件。
+ */
+.page {
+  min-height: 100vh;
+  padding: calc(var(--status-bar-height) + 16rpx) $gz-page-pad 60rpx;
+  box-sizing: border-box;
+}
+
+/* 顶栏 */
+.nav {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8rpx 0 10rpx;
+}
+
+.nav__side {
+  width: 76rpx;
+  height: 76rpx;
+}
+
+.nav__back {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 76rpx;
+  height: 76rpx;
+  border: 1rpx solid $gz-line;
+  border-radius: 50%;
+  background: $gz-surface;
+  color: $gz-ink-2;
+  font-size: 52rpx;
+  line-height: 1;
+  padding-bottom: 8rpx; /* 视觉居中 ‹ */
+}
+
+.nav__title {
+  font-size: 34rpx;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  color: $gz-ink;
+}
+
+/* 分组 */
+.section {
+  margin-top: 36rpx;
+}
+
+.section__head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  margin-bottom: 20rpx;
+}
+
+.section__title {
+  font-size: 32rpx;
+  font-weight: 700;
+  color: $gz-ink;
+}
+
+.section__hint {
+  font-size: $gz-fs-caption;
+  color: $gz-ink-3;
+}
+
+.cards {
+  display: flex;
+  flex-direction: column;
+  gap: 18rpx;
+}
+
+/* 修行语言卡 */
+.lang {
+  display: flex;
+  align-items: center;
+  gap: 22rpx;
+  padding: 26rpx 28rpx;
+  background: $gz-surface;
+  border: 1rpx solid $gz-line;
+  border-radius: $gz-radius-md;
+  transition: border-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+.lang.is-on {
+  border-color: $gz-accent;
+  box-shadow: 0 0 0 1rpx $gz-accent, 0 10rpx 30rpx $gz-accent-soft;
+}
+
+.lang__dot {
+  flex: none;
+  width: 16rpx;
+  height: 16rpx;
+  border-radius: 50%;
+}
+
+.lang__body {
+  flex: 1;
+  min-width: 0;
+}
+
+.lang__head {
+  display: flex;
+  align-items: baseline;
+  gap: 14rpx;
+}
+
+.lang__name {
+  font-size: $gz-fs-title;
+  font-weight: 700;
+  color: $gz-ink;
+}
+
+.lang__en {
+  font-size: $gz-fs-caption;
+  color: $gz-ink-3;
+}
+
+.lang__desc {
+  display: block;
+  margin-top: 6rpx;
+  font-size: $gz-fs-caption;
+  line-height: 1.6;
+  color: $gz-ink-2;
+}
+
+.radio {
+  flex: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 36rpx;
+  height: 36rpx;
+  border: 2rpx solid $gz-ink-3;
+  border-radius: 50%;
+  transition: border-color 0.2s ease;
+}
+
+.radio.is-on {
+  border-color: $gz-accent;
+}
+
+.radio__dot {
+  width: 18rpx;
+  height: 18rpx;
+  border-radius: 50%;
+  background: $gz-accent;
+}
+
+/* 通用行 */
+.row {
+  display: flex;
+  align-items: center;
+  gap: 22rpx;
+  padding: 26rpx 28rpx;
+  background: $gz-surface;
+  border: 1rpx solid $gz-line;
+  border-radius: $gz-radius-md;
+}
+
+.row__body {
+  flex: 1;
+  min-width: 0;
+}
+
+.row__title {
+  display: block;
+  font-size: $gz-fs-body;
+  font-weight: 600;
+  color: $gz-ink;
+}
+
+/* 危险动作：固定语义红（区别于任意模式主色） */
+.row__title.is-danger {
+  color: #b5482c;
+}
+
+.row__sub {
+  display: block;
+  margin-top: 4rpx;
+  font-size: $gz-fs-caption;
+  line-height: 1.6;
+  color: $gz-ink-3;
+}
+
+.row__arrow {
+  flex: none;
+  color: $gz-ink-3;
+  font-size: 32rpx;
+}
+
+/*
+ * 未开放的项：整行降饱和 + 右侧一个小印。
+ * 刻意不用 disabled 开关（假开关比没开关更糟）—— 只陈述它还没做。
+ *
+ * 小印文案按实际情况分档，别一律写「后端期」（很多项缺的不是后端）：
+ *   未开放 —— 平台条件不满足（订阅消息：个人主体拿不到长期订阅）
+ *   未排期 —— 技术可行但没排（截图 OCR）
+ *   后续做 —— 产品上还没想清楚（道侣/结缘）
+ * 全部未做项与原因见 docs/观止知行-未做事项.md
+ */
+.row.is-off .row__title,
+.row.is-off .row__sub {
+  opacity: 0.55;
+}
+
+.row__badge {
+  flex: none;
+  padding: 4rpx 14rpx;
+  border-radius: 999rpx;
+  border: 1rpx solid $gz-line;
+  font-size: $gz-fs-caption;
+  color: $gz-ink-3;
+}
+
+.row__switch {
+  flex: none;
+  transform: scale(0.85);
+  transform-origin: right center;
+}
+
+/* 关于 */
+.about {
+  padding: 30rpx;
+  background: $gz-surface;
+  border: 1rpx solid $gz-line;
+  border-radius: $gz-radius-md;
+}
+
+.about__head {
+  display: flex;
+  align-items: baseline;
+  gap: 16rpx;
+}
+
+.about__name {
+  font-size: $gz-fs-title;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  color: $gz-ink;
+}
+
+.about__ver {
+  font-size: $gz-fs-caption;
+  color: $gz-ink-3;
+}
+
+.about__desc {
+  display: block;
+  margin-top: 12rpx;
+  font-size: $gz-fs-small;
+  line-height: 1.8;
+  color: $gz-ink-2;
+}
+
+.foot {
+  margin-top: 44rpx;
+  display: flex;
+  justify-content: center;
+}
+
+.foot__text {
+  font-size: $gz-fs-caption;
+  letter-spacing: 0.08em;
+  color: $gz-ink-3;
+}
+
+/*
+ * ⚠️ 以下 .mask / .dialog / .dialog__* / .dbtn 整段是**历史遗留死样式**：
+ * 换肤确认框早已改为使用共用组件 GzDialog，本页模板里没有任何对应节点
+ * （只有 5 处 <GzDialog>），这些规则不会被编译进任何界面。
+ *
+ * 顺带更正一条被推翻的结论：这里原先写着"只靠 flex 的 align-items 居中，
+ * 面板会被交叉轴 stretch 顶成整屏高"——**不是的**，2026-09-16 第三次排查确认，
+ * 面板整屏高的真因是面板挂了 `gz-skin` 类、被全局 `.gz-skin { min-height: 100vh }`
+ * 命中（min-height 大于 max-height 时 min 赢，见 PrivacyGate.scss 的注）。
+ * flex 居中本身没问题（GzDialog 一直用它，几十处弹框都正常）。
+ * 本段待清理，清理前请勿据此改动其它弹层。
+ */
+.mask {
+  position: fixed;
+  left: 0;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  width: 100%;
+  height: 100vh;
+  box-sizing: border-box;
+  z-index: 50;
+  background: rgba(0, 0, 0, 0.48);
+}
+
+.dialog {
+  position: absolute;
+  left: 56rpx;
+  right: 56rpx;
+  top: 50%;
+  transform: translateY(-50%);
+  max-height: 78vh;
+  /* auto 而不是 hidden：auto 一样会裁出圆角，内容超高时还能在框内滚动 */
+  overflow-y: auto;
+  background: $gz-surface;
+  border: 1rpx solid $gz-line;
+  border-radius: $gz-radius-lg;
+  box-shadow: 0 24rpx 80rpx rgba(0, 0, 0, 0.28);
+}
+
+.dialog__art {
+  display: block;
+  width: 100%;
+  height: 240rpx;
+}
+
+.dialog__body {
+  padding: 28rpx 30rpx 4rpx;
+}
+
+.dialog__head {
+  display: flex;
+  flex-direction: column;
+  gap: 8rpx;
+}
+
+.dialog__name {
+  font-size: 40rpx;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  color: $gz-ink;
+}
+
+.dialog__en {
+  font-size: $gz-fs-caption;
+  color: $gz-ink-3;
+}
+
+.dialog__tag {
+  display: block;
+  margin-top: 14rpx;
+  font-size: $gz-fs-small;
+  line-height: 1.7;
+  color: $gz-ink-2;
+}
+
+.dialog__note {
+  margin-top: 22rpx;
+  padding: 20rpx 22rpx;
+  border-radius: $gz-radius-sm;
+  background: $gz-accent-soft;
+  font-size: $gz-fs-caption;
+  line-height: 1.7;
+  color: $gz-ink-2;
+}
+
+.dialog__acts {
+  display: flex;
+  gap: 18rpx;
+  padding: 26rpx 30rpx 32rpx;
+}
+
+.dbtn {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 84rpx;
+  border-radius: $gz-radius-md;
+  font-size: $gz-fs-body;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+}
+
+.dbtn--ghost {
+  background: transparent;
+  border: 1rpx solid $gz-line;
+  color: $gz-ink-2;
+}
+
+.dbtn--main {
+  background: $gz-accent;
+  color: $gz-on-cta;
+}

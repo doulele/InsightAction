@@ -1,0 +1,500 @@
+/**
+ * assessment.vue 的样式（超过 100 行，按项目约定外置到同目录 assessment.scss）。
+ * 由 assessment.vue 通过 @import 引入；以后改样式改本文件。
+ */
+.page {
+  min-height: 100vh;
+  padding: calc(var(--status-bar-height) + 16rpx) $gz-page-pad 70rpx;
+  box-sizing: border-box;
+}
+
+.nav {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8rpx 0 10rpx;
+}
+
+.nav__side {
+  width: 120rpx;
+  height: 76rpx;
+}
+
+.nav__back {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 76rpx;
+  height: 76rpx;
+  border: 1rpx solid $gz-line;
+  border-radius: 50%;
+  background: $gz-surface;
+  color: $gz-ink-2;
+  font-size: 52rpx;
+  line-height: 1;
+  padding-bottom: 8rpx;
+}
+
+.nav__skip {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  font-size: $gz-fs-small;
+  color: $gz-ink-3;
+}
+
+.nav__title {
+  font-size: 32rpx;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  color: $gz-ink;
+}
+
+/* 进度 */
+.prog {
+  margin-top: 16rpx;
+}
+
+.prog__bar {
+  height: 10rpx;
+  border-radius: 999rpx;
+  background: var(--gz-line-soft);
+  overflow: hidden;
+}
+
+.prog__fill {
+  height: 100%;
+  border-radius: 999rpx;
+  background: linear-gradient(90deg, $gz-accent, $gz-grad-to);
+  transition: width 0.35s ease;
+}
+
+.prog__text {
+  display: block;
+  margin-top: 14rpx;
+  font-size: $gz-fs-caption;
+  color: $gz-ink-3;
+}
+
+/* 题目卡 */
+.qcard {
+  margin-top: 22rpx;
+  padding: 36rpx 30rpx;
+  background: $gz-surface;
+  border: 1rpx solid $gz-line;
+  border-radius: $gz-radius-lg;
+}
+
+.qcard__text {
+  display: block;
+  font-size: 36rpx;
+  font-weight: 700;
+  line-height: 1.6;
+  color: $gz-ink;
+}
+
+.opts {
+  margin-top: 30rpx;
+  display: flex;
+  flex-direction: column;
+  gap: 18rpx;
+}
+
+.opt {
+  display: flex;
+  align-items: center;
+  gap: 20rpx;
+  padding: 24rpx 26rpx;
+  border: 1rpx solid $gz-line;
+  border-radius: $gz-radius-md;
+  background: $gz-input-bg;
+}
+
+.opt.is-on {
+  border-color: $gz-accent;
+  background: $gz-accent-soft;
+}
+
+.opt__dot {
+  flex: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 36rpx;
+  height: 36rpx;
+  border: 2rpx solid $gz-ink-3;
+  border-radius: 50%;
+}
+
+.opt__dot.is-on {
+  border-color: $gz-accent;
+}
+
+.opt__dot-in {
+  width: 18rpx;
+  height: 18rpx;
+  border-radius: 50%;
+  background: $gz-accent;
+}
+
+.opt__text {
+  font-size: $gz-fs-small;
+  line-height: 1.6;
+  color: $gz-ink-2;
+}
+
+.opt.is-on .opt__text {
+  color: $gz-ink;
+  font-weight: 600;
+}
+
+/* 导航 */
+.qnav {
+  display: flex;
+  align-items: stretch; /* 上一题/下一题等高，避免一高一矮 */
+  justify-content: space-between;
+  gap: 20rpx;
+  margin-top: 30rpx;
+}
+
+/**
+ * 上一题 / 下一题共用外观。
+ * ⚠️ App.vue 对 <button> 做了全局重置（padding / line-height / border-radius 全部清零），
+ * 所以 <button> 必须自己给 padding 或 min-height，否则高度只剩一行文字（≈48rpx），
+ * 比旁边的 <view> 矮近一半，且是直角。
+ */
+.qnav__prev,
+.qnav__next {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 92rpx; /* 与题目选项 .opt 同一视觉高度 */
+  padding: 0 40rpx;
+  border-radius: $gz-radius-md;
+  line-height: 1.4;
+}
+
+.qnav__prev {
+  flex: none;
+  border: 1rpx solid $gz-line;
+  color: $gz-ink-3;
+  font-size: $gz-fs-small;
+}
+
+.qnav__next {
+  flex: 1;
+  margin: 0;
+  background: $gz-accent;
+  color: $gz-on-cta;
+  font-size: $gz-fs-body;
+  font-weight: 600;
+}
+
+.qnav__next.is-off {
+  opacity: 0.45;
+}
+
+/* 第一题下方的跳过出口：弱化为文字按钮，但保证一眼看得见 */
+.qskip {
+  margin-top: 24rpx;
+  padding: 20rpx 0;
+  border-radius: $gz-radius-md;
+  background: var(--gz-line-soft);
+  text-align: center;
+  font-size: $gz-fs-small;
+  color: $gz-ink-3;
+}
+
+/* 结果 */
+.done {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  margin-top: 40rpx;
+}
+
+.done__seal {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 150rpx;
+  height: 150rpx;
+  border-radius: 34rpx;
+  font-size: 68rpx;
+  font-weight: 800;
+  background: $gz-accent-soft;
+  color: $gz-accent;
+  border: 3rpx solid $gz-accent;
+  transform: rotate(-6deg);
+}
+
+.done__seal.is-high {
+  background: rgba(196, 96, 46, 0.14);
+  color: #b25a2c;
+  border-color: #b25a2c;
+}
+
+.done__eyebrow {
+  margin-top: 36rpx;
+  font-size: $gz-fs-caption;
+  letter-spacing: 0.16em;
+  color: $gz-ink-3;
+}
+
+.done__tier {
+  margin-top: 14rpx;
+  font-size: 60rpx;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  color: $gz-accent;
+}
+
+.done__score {
+  margin-top: 18rpx;
+  display: flex;
+  align-items: baseline;
+  gap: 8rpx;
+}
+
+.done__score-n {
+  font-size: 48rpx;
+  font-weight: 800;
+  color: $gz-ink;
+}
+
+.done__score-cap {
+  font-size: $gz-fs-caption;
+  color: $gz-ink-3;
+}
+
+.done__desc {
+  margin-top: 26rpx;
+  max-width: 560rpx;
+  font-size: $gz-fs-small;
+  line-height: 1.9;
+  text-align: center;
+  color: $gz-ink-2;
+}
+
+/* 维度分布 */
+.dims {
+  align-self: stretch;
+  margin-top: 32rpx;
+  padding: 26rpx 28rpx;
+  border: 1rpx solid $gz-line;
+  border-radius: $gz-radius-md;
+  background: $gz-surface;
+}
+
+.dims__title {
+  display: block;
+  font-size: $gz-fs-caption;
+  letter-spacing: 0.14em;
+  color: $gz-ink-3;
+}
+
+.dimrow {
+  margin-top: 20rpx;
+}
+
+.dimrow__head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+}
+
+.dimrow__label {
+  font-size: $gz-fs-small;
+  color: $gz-ink-2;
+}
+
+/* 「观 · 辨源 · 2 题」里的题数后缀：提醒这一维由几题得来，避免过度解读 */
+.dimrow__count {
+  font-size: $gz-fs-caption;
+  color: $gz-ink-3;
+}
+
+.dimrow__val {
+  font-size: $gz-fs-caption;
+  color: $gz-ink-3;
+}
+
+.dimrow__bar {
+  margin-top: 10rpx;
+  height: 10rpx;
+  border-radius: 999rpx;
+  background: var(--gz-line-soft);
+  overflow: hidden;
+}
+
+.dimrow__fill {
+  height: 100%;
+  border-radius: 999rpx;
+  background: linear-gradient(90deg, $gz-accent, $gz-grad-to);
+  transition: width 0.4s ease;
+}
+
+/* 与上次对比 */
+.done__trend {
+  margin-top: 24rpx;
+  padding: 10rpx 26rpx;
+  border-radius: 999rpx;
+  background: $gz-accent-soft;
+  font-size: $gz-fs-caption;
+  color: $gz-accent;
+}
+
+/* 作答质量提示（低质量不判废，只提示 + 建议 30 天后重测） */
+.done__qual {
+  align-self: stretch;
+  margin-top: 24rpx;
+  padding: 22rpx 26rpx;
+  border: 1rpx solid $gz-line;
+  border-radius: $gz-radius-md;
+  background: var(--gz-line-soft);
+}
+
+.done__qual-text {
+  font-size: $gz-fs-caption;
+  line-height: 1.8;
+  color: $gz-ink-2;
+}
+
+.done__date {
+  margin-top: 18rpx;
+  font-size: $gz-fs-caption;
+  color: $gz-ink-3;
+}
+
+.done__cooldown {
+  margin-top: 18rpx;
+  padding: 12rpx 28rpx;
+  border-radius: 999rpx;
+  background: var(--gz-line-soft);
+  font-size: $gz-fs-caption;
+  color: $gz-ink-3;
+}
+
+.done__cooldown.is-ok {
+  background: $gz-accent-soft;
+  color: $gz-accent;
+}
+
+.cta {
+  width: 100%;
+  margin-top: 44rpx;
+  /* button 的 padding/border-radius 被 App.vue 全局重置过，这里必须显式补回（对齐 mode-select 的 .cta） */
+  padding: 28rpx 0;
+  border-radius: $gz-radius-md;
+  background: $gz-cta-bg;
+  color: $gz-on-cta;
+  font-size: $gz-fs-body;
+  font-weight: 600;
+  letter-spacing: 0.14em;
+  line-height: 1.4;
+}
+
+.retake {
+  margin-top: 26rpx;
+  padding: 14rpx 40rpx;
+  border: 1rpx solid $gz-line;
+  border-radius: $gz-radius-md;
+  font-size: $gz-fs-small;
+  color: $gz-ink-3;
+}
+
+/*
+ * 题干下方的时间锚。
+ * 弱化为说明小字，但必须看得见 —— 它决定了用户是「去数最近 7 天有几天」
+ * 还是「凭印象给自己打个分」，两者的准确性差得远。
+ */
+.qcard__win {
+  display: block;
+  margin-top: 14rpx;
+  font-size: $gz-fs-caption;
+  letter-spacing: 0.08em;
+  color: $gz-ink-3;
+}
+
+/* 结果可信度：只这一份结论能当真几分 */
+.conf {
+  align-self: stretch;
+  margin-top: 26rpx;
+  padding: 24rpx 28rpx;
+  border: 1rpx solid $gz-line;
+  border-left: 8rpx solid $gz-accent;
+  border-radius: $gz-radius-md;
+  background: $gz-surface;
+}
+
+.conf__head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+}
+
+.conf__label {
+  font-size: $gz-fs-caption;
+  letter-spacing: 0.14em;
+  color: $gz-ink-3;
+}
+
+.conf__tag {
+  font-size: $gz-fs-body;
+  font-weight: 800;
+  color: $gz-accent;
+}
+
+.conf__note {
+  display: block;
+  margin-top: 12rpx;
+  font-size: $gz-fs-caption;
+  line-height: 1.8;
+  color: $gz-ink-2;
+}
+
+/*
+ * 低可信度必须**看起来就不那么漂亮**：换成中性灰 + 灰底。
+ * 若它和高可信度一样醒目配色，用户只会记住那个分数，看不见这句提醒。
+ */
+.conf.is-low {
+  border-left-color: $gz-ink-3;
+  background: var(--gz-line-soft);
+}
+
+.conf.is-low .conf__tag,
+.conf.is-low .conf__label {
+  color: $gz-ink-3;
+}
+
+/* 下一步：全页唯一一条行动建议 */
+.step {
+  align-self: stretch;
+  margin-top: 26rpx;
+  padding: 28rpx;
+  border-radius: $gz-radius-md;
+  background: $gz-accent-soft;
+}
+
+.step__title {
+  display: block;
+  font-size: $gz-fs-caption;
+  letter-spacing: 0.14em;
+  color: $gz-accent;
+}
+
+.step__dim {
+  display: block;
+  margin-top: 10rpx;
+  font-size: 34rpx;
+  font-weight: 800;
+  color: $gz-accent;
+}
+
+.step__text {
+  display: block;
+  margin-top: 12rpx;
+  font-size: $gz-fs-small;
+  line-height: 1.9;
+  color: $gz-ink-2;
+}

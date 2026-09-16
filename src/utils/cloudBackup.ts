@@ -9,12 +9,21 @@
  */
 import { applyBackup, collectBackup } from './localBackup'
 import type { BackupPayload } from './localBackup'
+import { STORE_PREFIX } from '@/stores/index'
 import { useAccountStore } from '@/stores/account'
 import { deleteCloudBackup, downloadSnapshot, fetchSyncMeta, uploadBackup } from '@/api/modules/sync'
 import type { SyncMeta } from '@/api/modules/sync'
 
 /** 自动备份的最小间隔：24 小时 */
 const AUTO_INTERVAL_MS = 24 * 60 * 60 * 1000
+
+/**
+ * 只留在本机、不随云备份上传的 store。**步数（body）** 是这里目前唯一的成员：
+ * 它属于健康类敏感数据，能不上传就不上传 —— 隐私保护指引里也是这么写的，
+ * 少声明一条「我们云端有你的健康数据」，也少一份泄露面。
+ * 代价：换机恢复时本地备份**文件**（导出/恢复那条路）才带得走步数，云端不带。
+ */
+const LOCAL_ONLY_STORES: string[] = ['body']
 
 export interface BackupOutcome {
   saved: boolean
@@ -27,12 +36,16 @@ export interface BackupOutcome {
 export async function backupNow(): Promise<BackupOutcome> {
   const account = useAccountStore()
   const payload = collectBackup()
-  const stores = Object.keys(payload.data).length
+  // 剔除「只在本机」的 store（见 LOCAL_ONLY_STORES）
+  const data = { ...payload.data }
+  for (const key of LOCAL_ONLY_STORES) delete data[STORE_PREFIX + key]
+
+  const stores = Object.keys(data).length
   if (!stores) {
     return { saved: false, skipped: true, reason: '本机还没有可备份的数据' }
   }
 
-  const res = await account.withAuth((t) => uploadBackup(t, payload.data, 'manual', payload.schema))
+  const res = await account.withAuth((t) => uploadBackup(t, data, 'manual', payload.schema))
   if (res.saved) account.markBackedUp(stores)
   return {
     saved: !!res.saved,

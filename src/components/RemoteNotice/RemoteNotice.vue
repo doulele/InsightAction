@@ -3,6 +3,7 @@
   <GzDialog
     :show="!!remote.activeNotice"
     :skin="modeStore.id"
+    :art="modeStore.art"
     :title="remote.activeNotice?.title || ''"
     :content="remote.activeNotice?.body || ''"
     :confirm-text="remote.activeNotice?.level === 'warn' ? '知道了' : '好'"
@@ -15,6 +16,7 @@
   <GzDialog
     :show="!!remote.activeUpdate"
     :skin="modeStore.id"
+    :art="modeStore.art"
     title="发现新版本"
     :content="updateContent"
     :note="remote.activeUpdate?.note || ''"

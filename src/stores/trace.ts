@@ -195,6 +195,15 @@ export const useTraceStore = defineStore(
       return list.value.filter((t) => t.kind === kind).length
     }
 
+    /**
+     * 某日某类事件的条数（每日入账上限判定用）。
+     * 注意统计的是**全部条数**（含触顶后 value=0 的那些），
+     * 否则触顶后计数不再增长，下一次又会给分，上限形同虚设。
+     */
+    function countKindOn(day: string, kind: TraceKind): number {
+      return list.value.filter((t) => t.day === day && t.kind === kind).length
+    }
+
     /** 某日某环的修为（雷达用：以 value 累加，而非按行为次数） */
     function valueOn(day: string, hall: HallId): number {
       return ofDay(day)
@@ -212,7 +221,7 @@ export const useTraceStore = defineStore(
       return list.value.filter((t) => t.ref === ref)
     }
 
-    return { traces, list, push, prune, clearAll, ofDay, between, ofHall, countKind, valueOn, recent, ofRef }
+    return { traces, list, push, prune, clearAll, ofDay, between, ofHall, countKind, countKindOn, valueOn, recent, ofRef }
   },
   {
     persist: { key: 'trace', paths: ['traces'] },

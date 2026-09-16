@@ -12,9 +12,12 @@
  *     否则界面仍显示旧数据（pinia 的水合只在 store 首次创建时发生）。
  */
 import { SCHEMA_VERSION } from '@/config/schema'
-import { STORE_PREFIX } from '@/stores/index'
+import { STORE_PREFIX, normalizePersisted } from '@/stores/index'
+import { useAccountStore } from '@/stores/account'
 import { useAppStore } from '@/stores/app'
 import { useAssessmentStore } from '@/stores/assessment'
+import { useImageStore } from '@/stores/images'
+import { useBodyStore } from '@/stores/body'
 import { useBoxStore } from '@/stores/box'
 import { useComposeDraftStore } from '@/stores/composeDraft'
 import { useDailyStore } from '@/stores/daily'
@@ -24,7 +27,10 @@ import { useInterruptStore } from '@/stores/interrupt'
 import { useKnowledgeStore } from '@/stores/knowledge'
 import { useModeStore } from '@/stores/mode'
 import { useObserveStore } from '@/stores/observe'
+import { usePlanStore } from '@/stores/plan'
 import { useQualityStore } from '@/stores/quality'
+import { useProbeStore } from '@/stores/probe'
+import { useIdentityStore } from '@/stores/identity'
 import { useQuestionStore } from '@/stores/question'
 import { useProverbStore } from '@/stores/proverb'
 import { useReadLaterStore } from '@/stores/readLater'
@@ -33,7 +39,8 @@ import { useReminderStore } from '@/stores/reminder'
 import { useSeedStore } from '@/stores/seed'
 import { useSettingsStore } from '@/stores/settings'
 import { useTraceStore } from '@/stores/trace'
-import { useWaitlistStore } from '@/stores/waitlist'
+import { useUrgeStore } from '@/stores/urge'
+import { useVowStore } from '@/stores/vow'
 import { useWishStore } from '@/stores/wish'
 import { useXpStore } from '@/stores/xp'
 
@@ -82,8 +89,16 @@ type Patchable = { $patch: (state: any) => void }
 
 /** 需要「写回内存」的 store 清单（与各 store 的 persist.key 一一对应） */
 const HYDRATORS: Array<{ key: string; use: () => Patchable }> = [
+  /*
+   * account / images 也在内：collectBackup 会把所有 insight:store:* 都收走，
+   * 恢复时若不回写内存，换机后云备份开关、登录凭据与横幅图缓存会停留在旧值
+   * —— 而 $subscribe 会在下一次变更时把旧值写回 storage，等于白恢复。
+   */
+  { key: 'account', use: () => useAccountStore() },
+  { key: 'images', use: () => useImageStore() },
   { key: 'app', use: () => useAppStore() },
   { key: 'assessment', use: () => useAssessmentStore() },
+  { key: 'body', use: () => useBodyStore() },
   { key: 'box', use: () => useBoxStore() },
   { key: 'composeDraft', use: () => useComposeDraftStore() },
   { key: 'daily', use: () => useDailyStore() },
@@ -93,6 +108,9 @@ const HYDRATORS: Array<{ key: string; use: () => Patchable }> = [
   { key: 'knowledge', use: () => useKnowledgeStore() },
   { key: 'mode', use: () => useModeStore() },
   { key: 'observe', use: () => useObserveStore() },
+  { key: 'plan', use: () => usePlanStore() },
+  { key: 'probe', use: () => useProbeStore() },
+  { key: 'identity', use: () => useIdentityStore() },
   { key: 'quality', use: () => useQualityStore() },
   { key: 'proverb', use: () => useProverbStore() },
   { key: 'question', use: () => useQuestionStore() },
@@ -102,7 +120,8 @@ const HYDRATORS: Array<{ key: string; use: () => Patchable }> = [
   { key: 'seed', use: () => useSeedStore() },
   { key: 'settings', use: () => useSettingsStore() },
   { key: 'trace', use: () => useTraceStore() },
-  { key: 'waitlist', use: () => useWaitlistStore() },
+  { key: 'urge', use: () => useUrgeStore() },
+  { key: 'vow', use: () => useVowStore() },
   { key: 'wish', use: () => useWishStore() },
   { key: 'xp', use: () => useXpStore() },
 ]
@@ -136,22 +155,30 @@ export function formatBackupTime(iso: string): string {
   return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())}`
 }
 
-/** 把备份写成小程序私有目录里的 JSON 文件 */
-export function writeBackupFile(payload: BackupPayload): { filePath: string; fileName: string } {
+/** 导出文件名的时间戳后缀：20260915-1430（备份与修行档案共用） */
+export function fileStamp(d = new Date()): string {
+  const pad = (n: number) => String(n).padStart(2, '0')
+  return `${d.getFullYear()}${pad(d.getMonth() + 1)}${pad(d.getDate())}-${pad(d.getHours())}${pad(d.getMinutes())}`
+}
+
+/** 把一段文本写成小程序私有目录里的文件（备份 JSON / 修行档案共用） */
+export function writeTextFile(text: string, fileName: string): { filePath: string; fileName: string } {
   const fs = mp.getFileSystemManager?.()
   const dir = mp.env?.USER_DATA_PATH
   if (!fs || !dir) throw new Error('当前环境不支持导出文件（请用微信小程序打开）')
 
-  const d = new Date()
-  const pad = (n: number) => String(n).padStart(2, '0')
-  const fileName = `guanzhi-backup-${d.getFullYear()}${pad(d.getMonth() + 1)}${pad(d.getDate())}-${pad(d.getHours())}${pad(d.getMinutes())}.json`
   const filePath = `${dir}/${fileName}`
-  fs.writeFileSync(filePath, JSON.stringify(payload), 'utf8')
+  fs.writeFileSync(filePath, text, 'utf8')
   return { filePath, fileName }
 }
 
-/** 转发备份文件到聊天（用户可发给「文件传输助手」长期保存） */
-export function shareBackupFile(filePath: string, fileName: string): Promise<void> {
+/** 把备份写成小程序私有目录里的 JSON 文件 */
+export function writeBackupFile(payload: BackupPayload): { filePath: string; fileName: string } {
+  return writeTextFile(JSON.stringify(payload), `guanzhi-backup-${fileStamp()}.json`)
+}
+
+/** 转发文件到聊天（用户可发给「文件传输助手」长期保存） */
+export function shareFile(filePath: string, fileName: string): Promise<void> {
   return new Promise((resolve, reject) => {
     if (typeof mp.shareFileMessage !== 'function') {
       reject(new Error('当前微信基础库不支持文件转发（需 2.16.1 及以上）'))
@@ -240,11 +267,22 @@ export function applyBackup(payload: BackupPayload): { restoredKeys: number; res
     const raw = payload.data[STORE_PREFIX + hydrator.key]
     if (typeof raw !== 'string') continue
     try {
-      hydrator.use().$patch(JSON.parse(raw))
+      // 剥壳后回写：老备份里同样是 ref 壳，直接 $patch 会被 pinia 静默忽略（见 stores/index.ts）
+      const patch = normalizePersisted(JSON.parse(raw))
+      if (!patch) throw new Error('快照不是对象')
+      hydrator.use().$patch(patch)
       restoredStores += 1
     } catch (e) {
       console.warn(`[backup] 恢复 ${hydrator.key} 失败：`, e)
     }
   }
+
+  /*
+   * 换机恢复后，备份里的头像路径多半指向一个**不存在**的文件（那份备份不是在这台手机上存的）。
+   * 自检就放在这里而不是 App.onLaunch —— 恢复发生在 App 启动之后（页面 reLaunch 不会重跑 onLaunch）。
+   * 失效则清掉路径，界面回落成「名字章」，不留一个永远裂着的头像。
+   */
+  useIdentityStore().verify()
+
   return { restoredKeys: keys.length, restoredStores }
 }

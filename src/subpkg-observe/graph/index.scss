@@ -1,0 +1,301 @@
+/**
+ * index.vue 的样式（超过 100 行，按项目约定外置到同目录 index.scss）。
+ * 由 index.vue 通过 @import 引入；以后改样式改本文件。
+ */
+.page {
+  min-height: 100vh;
+  padding: calc(var(--status-bar-height) + 16rpx) $gz-page-pad 60rpx;
+  box-sizing: border-box;
+}
+
+.nav {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8rpx 0 10rpx;
+}
+
+.nav__side {
+  width: 76rpx;
+  height: 76rpx;
+}
+
+.nav__back {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 76rpx;
+  height: 76rpx;
+  border: 1rpx solid $gz-line;
+  border-radius: 50%;
+  background: $gz-surface;
+  color: $gz-ink-2;
+  font-size: 52rpx;
+  line-height: 1;
+  padding-bottom: 8rpx;
+}
+
+.nav__title {
+  font-size: 34rpx;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  color: $gz-ink;
+}
+
+.intro {
+  margin-top: 12rpx;
+  padding: 22rpx 24rpx;
+  border-left: 4rpx solid $gz-accent;
+  background: $gz-accent-soft;
+  border-radius: 0 $gz-radius-sm $gz-radius-sm 0;
+}
+
+.intro__text {
+  font-size: $gz-fs-small;
+  line-height: 1.85;
+  color: $gz-ink-2;
+}
+
+/* ---- 总览四格 ---- */
+.sum {
+  display: flex;
+  margin-top: 20rpx;
+  padding: 22rpx 10rpx;
+  border: 1rpx solid $gz-line;
+  border-radius: $gz-radius-md;
+  background: $gz-surface;
+}
+
+.sum__cell {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4rpx;
+}
+
+.sum__n {
+  font-size: 40rpx;
+  font-weight: 700;
+  line-height: 1.2;
+  color: $gz-ink;
+}
+
+.sum__k {
+  font-size: 20rpx;
+  color: $gz-ink-3;
+}
+
+/* ---- 区块 ---- */
+.section {
+  margin-top: 34rpx;
+}
+
+.section__title {
+  display: block;
+  margin: 0 4rpx 6rpx;
+  font-size: $gz-fs-caption;
+  color: $gz-ink-3;
+}
+
+.section__empty {
+  margin-top: 12rpx;
+  padding: 26rpx 24rpx;
+  border: 1rpx dashed $gz-line;
+  border-radius: $gz-radius-md;
+  font-size: $gz-fs-small;
+  line-height: 1.8;
+  color: $gz-ink-3;
+  text-align: center;
+}
+
+.section__note {
+  display: block;
+  margin-top: 12rpx;
+  font-size: $gz-fs-caption;
+  color: $gz-ink-3;
+}
+
+.section__note + .section__note {
+  margin-top: 6rpx;
+}
+
+/* ---- 领域分布（横条，只比长短） ---- */
+.fields {
+  margin-top: 10rpx;
+  padding: 20rpx 24rpx;
+  border: 1rpx solid $gz-line;
+  border-radius: $gz-radius-md;
+  background: $gz-surface;
+}
+
+.fields__row {
+  display: flex;
+  align-items: center;
+  gap: 16rpx;
+}
+
+.fields__row + .fields__row {
+  margin-top: 14rpx;
+}
+
+.fields__name {
+  flex: none;
+  width: 64rpx;
+  font-size: $gz-fs-caption;
+  color: $gz-ink-2;
+}
+
+.fields__bar {
+  flex: 1;
+  height: 12rpx;
+  border-radius: 999rpx;
+  background: $gz-input-bg;
+  overflow: hidden;
+}
+
+.fields__fill {
+  height: 100%;
+  border-radius: 999rpx;
+  background: rgba($gz-accent, 0.55);
+}
+
+.fields__n {
+  flex: none;
+  width: 44rpx;
+  font-size: $gz-fs-caption;
+  color: $gz-ink-3;
+  text-align: right;
+}
+
+/* ---- 空态 ---- */
+.empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 90rpx 40rpx 0;
+}
+
+.empty__seal {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 108rpx;
+  height: 108rpx;
+  border: 2rpx solid $gz-accent;
+  border-radius: 50%;
+  font-size: 48rpx;
+  font-weight: 700;
+  color: $gz-accent;
+}
+
+.empty__title {
+  margin-top: 28rpx;
+  font-size: $gz-fs-title;
+  font-weight: 700;
+  color: $gz-ink;
+}
+
+.empty__desc {
+  margin-top: 14rpx;
+  font-size: $gz-fs-small;
+  line-height: 1.9;
+  text-align: center;
+  color: $gz-ink-3;
+}
+
+.empty__btn {
+  margin-top: 26rpx;
+  padding: 14rpx 52rpx;
+  border: 1rpx solid $gz-accent;
+  border-radius: 999rpx;
+  font-size: $gz-fs-small;
+  font-weight: 600;
+  color: $gz-accent;
+}
+
+/* ---- 节点（母题）与叶子（挂靠的理） ---- */
+.node {
+  margin-top: 14rpx;
+  padding: 20rpx 24rpx 10rpx;
+  border: 1rpx solid $gz-line;
+  border-radius: $gz-radius-md;
+  background: $gz-surface;
+}
+
+.node__top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12rpx;
+}
+
+.node__name {
+  flex: 1;
+  min-width: 0;
+  font-size: $gz-fs-body;
+  font-weight: 700;
+  color: $gz-ink;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.node__n {
+  flex: none;
+  font-size: $gz-fs-caption;
+  color: $gz-accent;
+}
+
+.leaf {
+  display: flex;
+  align-items: center;
+  gap: 14rpx;
+  margin-top: 12rpx;
+  padding: 12rpx 0 12rpx 4rpx;
+}
+
+.leaf__kind {
+  flex: none;
+  padding: 2rpx 12rpx;
+  border-radius: 999rpx;
+  background: $gz-input-bg;
+  font-size: 20rpx;
+  color: $gz-ink-3;
+}
+
+.leaf__text {
+  flex: 1;
+  min-width: 0;
+  font-size: $gz-fs-small;
+  line-height: 1.6;
+  color: $gz-ink-2;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.leaf__go {
+  flex: none;
+  font-size: $gz-fs-caption;
+  color: $gz-ink-3;
+}
+
+.leaf__attach {
+  flex: none;
+  font-size: $gz-fs-caption;
+  font-weight: 600;
+  color: $gz-accent;
+}
+
+.foot {
+  margin-top: 44rpx;
+  display: flex;
+  justify-content: center;
+}
+
+.foot__text {
+  font-size: $gz-fs-caption;
+  letter-spacing: 0.08em;
+  color: $gz-ink-3;
+}

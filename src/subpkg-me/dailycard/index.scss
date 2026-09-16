@@ -1,0 +1,326 @@
+/**
+ * index.vue 的样式（超过 100 行，按项目约定外置到同目录 index.scss）。
+ * 由 index.vue 通过 @import 引入；以后改样式改本文件。
+ */
+.page {
+  min-height: 100vh;
+  padding: calc(var(--status-bar-height) + 16rpx) $gz-page-pad 60rpx;
+  box-sizing: border-box;
+}
+
+/* 顶栏 */
+.nav {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8rpx 0 10rpx;
+}
+.nav__side {
+  width: 76rpx;
+  height: 76rpx;
+}
+.nav__back {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 76rpx;
+  height: 76rpx;
+  border: 1rpx solid $gz-line;
+  border-radius: 50%;
+  background: $gz-surface;
+  color: $gz-ink-2;
+  font-size: 52rpx;
+  line-height: 1;
+  padding-bottom: 8rpx;
+}
+.nav__title {
+  font-size: 34rpx;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  color: $gz-ink;
+}
+
+/* 卡片主体 */
+.card {
+  position: relative;
+  overflow: hidden;
+  margin-top: 10rpx;
+  padding: 30rpx 30rpx 26rpx;
+  background: $gz-surface;
+  border: 1rpx solid $gz-line;
+  border-radius: $gz-radius-lg;
+
+  /* 模式顶缘色带（与等级卡同一语言） */
+  &::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 8rpx;
+    background: linear-gradient(90deg, $gz-accent, $gz-grad-to);
+  }
+}
+
+.card__head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+}
+.card__id {
+  display: flex;
+  flex-direction: column;
+}
+.card__brand {
+  font-size: $gz-fs-body;
+  font-weight: 800;
+  letter-spacing: 0.1em;
+  color: $gz-ink;
+}
+.card__date {
+  margin-top: 4rpx;
+  font-size: $gz-fs-caption;
+  letter-spacing: 0.08em;
+  color: $gz-ink-3;
+}
+.card__seal {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 72rpx;
+  height: 72rpx;
+  border: 3rpx solid $gz-accent;
+  border-radius: 18rpx;
+  color: $gz-accent;
+  font-size: 40rpx;
+  font-weight: 800;
+  background: $gz-accent-soft;
+}
+
+/* 等级行 */
+.lv {
+  margin-top: 24rpx;
+  padding: 22rpx 24rpx;
+  border-radius: $gz-radius-md;
+  background: $gz-surface-2;
+}
+.lv__row {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+}
+.lv__title {
+  font-size: 34rpx;
+  font-weight: 800;
+  color: $gz-ink;
+}
+.lv__num {
+  margin-left: 10rpx;
+  font-size: $gz-fs-caption;
+  font-weight: 600;
+  color: $gz-accent;
+}
+.lv__xp {
+  font-size: $gz-fs-caption;
+  color: $gz-ink-3;
+}
+.bar {
+  margin-top: 16rpx;
+  height: 12rpx;
+  border-radius: 999rpx;
+  background: $gz-line-soft;
+  overflow: hidden;
+}
+.bar__fill {
+  height: 100%;
+  border-radius: 999rpx;
+  background: linear-gradient(90deg, $gz-accent, $gz-grad-to);
+  transition: width 0.4s ease;
+}
+.lv__next {
+  display: block;
+  margin-top: 10rpx;
+  font-size: $gz-fs-caption;
+  color: $gz-ink-3;
+}
+
+/* 四维 */
+.sec {
+  margin-top: 26rpx;
+}
+.sec__head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  margin-bottom: 14rpx;
+}
+.sec__title {
+  font-size: $gz-fs-title;
+  font-weight: 800;
+  color: $gz-ink;
+}
+.sec__hint {
+  font-size: $gz-fs-caption;
+  letter-spacing: 0.06em;
+  color: $gz-ink-3;
+}
+.dims {
+  display: flex;
+  flex-direction: column;
+  gap: 12rpx;
+}
+.dim {
+  padding: 16rpx 20rpx;
+  border-radius: $gz-radius-md;
+  border: 1rpx solid $gz-line-soft;
+  background: transparent;
+  transition: border-color 0.2s ease, background 0.2s ease;
+}
+.dim.is-top {
+  border-color: $gz-accent;
+  background: $gz-accent-soft;
+}
+.dim__row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+.dim__name {
+  display: flex;
+  align-items: center;
+  gap: 12rpx;
+}
+.dim__label {
+  font-size: $gz-fs-body;
+  font-weight: 600;
+  color: $gz-ink;
+}
+.dim__star {
+  padding: 2rpx 12rpx;
+  border-radius: 999rpx;
+  background: $gz-accent;
+  color: $gz-on-cta;
+  font-size: 20rpx;
+  letter-spacing: 0.06em;
+}
+.dim__value {
+  font-size: $gz-fs-body;
+  font-weight: 800;
+  color: $gz-ink-2;
+  font-variant-numeric: tabular-nums;
+}
+.dim.is-top .dim__value {
+  color: $gz-accent;
+}
+
+/* 评语 */
+.say {
+  margin-top: 26rpx;
+  padding: 22rpx 24rpx;
+  border-left: 6rpx solid $gz-accent;
+  background: $gz-surface-2;
+  border-radius: 0 $gz-radius-md $gz-radius-md 0;
+}
+.say__quote {
+  display: block;
+  font-size: $gz-fs-body;
+  line-height: 1.9;
+  color: $gz-ink-2;
+}
+.say__from {
+  display: block;
+  margin-top: 10rpx;
+  font-size: $gz-fs-caption;
+  letter-spacing: 0.06em;
+  color: $gz-ink-3;
+  text-align: right;
+}
+
+/* 今日箴言：把"你记住的那句"带上日课卡（没有就不出现，不硬凑） */
+.prov {
+  margin-top: 26rpx;
+  padding: 22rpx 24rpx;
+  border-radius: $gz-radius-md;
+  background: $gz-accent-soft;
+}
+.prov__label {
+  display: block;
+  font-size: 20rpx;
+  letter-spacing: 0.08em;
+  color: $gz-accent;
+}
+.prov__text {
+  display: block;
+  margin-top: 10rpx;
+  font-size: $gz-fs-body;
+  line-height: 1.9;
+  color: $gz-ink;
+}
+.prov__from {
+  display: block;
+  margin-top: 8rpx;
+  font-size: $gz-fs-caption;
+  color: $gz-ink-3;
+  text-align: right;
+}
+
+.card__foot {
+  margin-top: 26rpx;
+  padding-top: 18rpx;
+  border-top: 1rpx dashed $gz-line;
+  text-align: center;
+}
+.card__foot-text {
+  font-size: $gz-fs-caption;
+  letter-spacing: 0.06em;
+  color: $gz-ink-3;
+}
+
+/* 操作 */
+.acts {
+  margin-top: 30rpx;
+  display: flex;
+  gap: 16rpx;
+}
+.share,
+.copy {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 88rpx;
+  border-radius: $gz-radius-md;
+  font-size: $gz-fs-body;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+}
+.share {
+  background: $gz-accent;
+  color: $gz-on-cta;
+  border: none;
+  &::after {
+    border: none;
+  }
+}
+.copy {
+  border: 1rpx solid $gz-line;
+  background: $gz-surface;
+  color: $gz-ink-2;
+}
+.acts__hint {
+  margin-top: 14rpx;
+  text-align: center;
+  font-size: $gz-fs-caption;
+  color: $gz-ink-3;
+}
+
+.foot {
+  margin-top: 36rpx;
+  display: flex;
+  justify-content: center;
+}
+.foot__text {
+  font-size: $gz-fs-caption;
+  letter-spacing: 0.04em;
+  color: $gz-ink-3;
+}

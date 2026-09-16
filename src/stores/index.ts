@@ -37,6 +37,34 @@ export function setupPinia() {
   return pinia
 }
 
+/**
+ * 剥掉旧快照里的「ref 壳」。
+ *
+ * 背景：写盘实现曾经误用 `toRaw(state)`（见下方 persistPlugin 注释），把 setup store 的
+ * ref 原样序列化成了 `{ __v_isRef: true, _value: …, _rawValue: … }`。这种壳有两个恶果：
+ *  1. 值是壳对象 → 业务读到的类型全错（`mode.id` 是对象、`results` 里查不到档）；
+ *  2. 更长的一段时间里它甚至写不进去（循环引用抛错）。
+ * 更隐蔽的是 `$patch` 对壳的处理：`isPlainObject(壳)` 为真，pinia 会把壳**并进 ref 实例内部**
+ * 而不是给 ref 赋值，于是 `onboarded` 这类字段表面"补了"，实际仍是旧值 false ——
+ * 表现就是「选了主题、做完测评，刷新后又要从头来一遍」。
+ *
+ * 所以水合前必须把壳剥成真正的值。只处理顶层（快照的顶层字段才是 ref），
+ * 遇到普通值原样返回，对新格式完全无副作用。
+ */
+export function normalizePersisted(raw: unknown): StateTree | null {
+  if (!raw || typeof raw !== 'object' || Array.isArray(raw)) return null
+  const out: StateTree = {}
+  for (const [key, value] of Object.entries(raw as Record<string, unknown>)) {
+    out[key] =
+      value && typeof value === 'object' && !Array.isArray(value) &&
+      (value as { __v_isRef?: unknown }).__v_isRef === true &&
+      '_value' in (value as object)
+        ? (value as { _value: unknown })._value
+        : value
+  }
+  return out
+}
+
 function persistPlugin({ store, options }: PiniaPluginContext) {
   const cfg = options.persist
   if (!cfg) return
@@ -44,12 +72,13 @@ function persistPlugin({ store, options }: PiniaPluginContext) {
   const strategy: PersistStrategy = cfg === true ? {} : cfg
   const storageKey = STORE_PREFIX + (strategy.key ?? store.$id)
 
-  // 一、水合：启动时把上次持久化的 state 放回去
+  // 一、水合：启动时把上次持久化的 state 放回去（先剥掉旧快照的 ref 壳，见 normalizePersisted）
   try {
     const saved = uni.getStorageSync(storageKey)
     if (saved) {
       const parsed = typeof saved === 'string' ? JSON.parse(saved) : saved
-      store.$patch(parsed)
+      const patch = normalizePersisted(parsed)
+      if (patch) store.$patch(patch)
     }
   } catch (e) {
     console.warn(`[pinia-persist] hydrate "${storageKey}" failed:`, e)

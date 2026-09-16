@@ -9,14 +9,30 @@
  *  2. 按事件的 value 入账修为（显式 value 优先，缺省查 config/trace.ts 的分值表）。
  *
  * 这样"加一个新行为值多少分"只改 config/trace.ts 一张表，不会散落在十几个页面里。
+ *
+ * 每日上限（规格 §12.2）：高频动作触顶后**仍写 trace，只是 value 归零**——
+ * 痕迹记录了"你确实做了这件事"，只是不再付钱。见 config/trace.ts 的 DAY_CAP。
  */
 import { useTraceStore } from '@/stores/trace'
 import type { Trace, TraceInput } from '@/stores/trace'
 import { useXpStore } from '@/stores/xp'
+import { dayCapOf, valueOf } from '@/config/trace'
+import type { TraceKind } from '@/config/trace'
+import { todayKey } from '@/stores/daily'
+
+/** 当日该类事件是否已触顶（0 = 不限） */
+function overCap(kind: TraceKind, at: number): boolean {
+  const cap = dayCapOf(kind)
+  if (cap <= 0) return false
+  return useTraceStore().countKindOn(todayKey(new Date(at)), kind) >= cap
+}
 
 export function logTrace(input: TraceInput): Trace {
-  const trace = useTraceStore().push(input)
-  if (trace.value > 0) useXpStore().gain(trace.value)
+  const at = input.at ?? Date.now()
+  const value = typeof input.value === 'number' ? input.value : valueOf(input.kind)
+  const capped = value > 0 && overCap(input.kind, at)
+  const trace = useTraceStore().push(capped ? { ...input, value: 0 } : input)
+  if (!capped && trace.value > 0) useXpStore().gain(trace.value)
   return trace
 }
 

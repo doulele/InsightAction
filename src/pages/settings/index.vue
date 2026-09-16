@@ -43,7 +43,7 @@
     <view class="section">
       <view class="section__head">
         <text class="section__title">提醒</text>
-        <text class="section__hint">到点激励触发 · 需打开 App</text>
+        <text class="section__hint">到点激励 · 需打开小程序才触发（非微信推送）</text>
       </view>
       <view class="cards">
         <view class="row">
@@ -70,6 +70,27 @@
             @change="onRemind('streakRemind', $event)"
           />
         </view>
+
+        <!--
+          订阅消息（2026-09-16 查证官方文档后的准确口径，别再改回"关掉小程序也能收到"）：
+           · 「长期订阅」—— 一次授权可长期多次下发，但**只向政务民生 / 医疗 / 交通 /
+             金融 / 教育等线下公共服务类目开放**，本小程序（工具类）没有资格；
+           · 「新版一次性订阅（Beta）」—— 靠微信支付订单号或 open-type="liveActivity"
+             取 code，模板全是购物 / 物流 / 保险 / 打车 / 餐饮等业态卡片，同样不适用；
+           · 唯一能用的是「一次性订阅消息」：用户点一次弹窗授权 = 换**一条**消息，
+             想要第二条就得再授权一次 —— 所以「每日固定推送晨钟暮鼓」做不到。
+          这一行如实说明，既不装作能用，也不给出做不到的承诺。
+        -->
+        <view class="row is-off">
+          <view class="row__body">
+            <text class="row__title">订阅消息 · 微信推送</text>
+            <text class="row__sub">
+              微信的「长期订阅」只对政务 / 医疗 / 教育等公共服务类目开放；本小程序只能用「一次性订阅」
+              —— 你点一次授权，换一条提醒，做不到每天固定推送。当前未开放。
+            </text>
+          </view>
+          <text class="row__badge">未开放</text>
+        </view>
       </view>
     </view>
 
@@ -91,6 +112,13 @@
           <view class="row__body">
             <text class="row__title">导出全部数据</text>
             <text class="row__sub">{{ $p('settings.exportAll.sub') }}</text>
+          </view>
+          <text class="row__arrow">→</text>
+        </view>
+        <view class="row" hover-class="gz-hover" @click="exportArchive">
+          <view class="row__body">
+            <text class="row__title">导出修行档案</text>
+            <text class="row__sub">{{ $p('settings.exportArchive.sub') }}</text>
           </view>
           <text class="row__arrow">→</text>
         </view>
@@ -167,6 +195,28 @@
             <text class="row__sub">误覆盖时的救援入口 · 服务器只保留一份上一版</text>
           </view>
           <text class="row__arrow">→</text>
+        </view>
+      </view>
+    </view>
+
+    <!-- 5 · AI 授权：默认关闭。撤回后 AI 一律走基础规则，内容不再离开手机 -->
+    <view class="section">
+      <view class="section__head">
+        <text class="section__title">AI 授权</text>
+        <text class="section__hint">默认关闭 · 可随时撤回</text>
+      </view>
+      <view class="cards">
+        <view class="row">
+          <view class="row__body">
+            <text class="row__title">允许把内容发给 AI</text>
+            <text class="row__sub">{{ aiSub }}</text>
+          </view>
+          <switch
+            class="row__switch"
+            :checked="account.aiConsent"
+            :color="modeMeta.accent"
+            @change="onAiConsentToggle"
+          />
         </view>
       </view>
     </view>
@@ -255,6 +305,9 @@
       @cancel="cancelRestore"
       @confirm="applyRestore"
     />
+
+    <!-- 隐私授权拦截弹窗：复制 / 选备份文件这类接口在用户同意前会被微信拦下 -->
+    <PrivacyGate />
   </view>
 </template>
 
@@ -290,11 +343,12 @@ import {
   collectBackup,
   formatBackupTime,
   pickBackupFile,
-  shareBackupFile,
+  shareFile,
   summarize,
   writeBackupFile,
 } from '@/utils/localBackup'
 import type { BackupPayload } from '@/utils/localBackup'
+import { buildArchive, writeArchiveFile } from '@/utils/archive'
 import { backupNow, disableCloudBackup, fetchCloudSnapshot } from '@/utils/cloudBackup'
 
 const modeStore = useModeStore()
@@ -410,11 +464,63 @@ async function exportAll(): Promise<void> {
     const payload = collectBackup()
     const sum = summarize(payload)
     const { filePath, fileName } = writeBackupFile(payload)
-    await shareBackupFile(filePath, fileName)
+    await shareFile(filePath, fileName)
     uni.showToast({ title: `已导出 ${sum.storeCount} 项 · 请把文件留存在聊天里`, icon: 'none' })
   } catch (e) {
     uni.showModal({ title: '导出失败', content: e instanceof Error ? e.message : '未知错误', showCancel: false })
   }
+}
+
+/**
+ * 导出修行档案（可读版，规格 §16.3）。
+ *
+ * 与「导出全部数据」的分工：备份是**给机器读的**（用来恢复），档案是**给人读的**（用来回看）。
+ * 生成后交给用户选去向：转发成 .md 文件，或直接复制全文 —— 后者在不支持文件转发的机型上也能用。
+ */
+async function exportArchive(): Promise<void> {
+  let text = ''
+  let traceShown = 0
+  try {
+    const built = buildArchive()
+    text = built.text
+    traceShown = built.traceShown
+  } catch (e) {
+    uni.showModal({
+      title: '生成档案失败',
+      content: e instanceof Error ? e.message : '未知错误',
+      showCancel: false,
+    })
+    return
+  }
+
+  uni.showActionSheet({
+    itemList: ['转发到聊天（.md 文件）', '复制全文到剪贴板'],
+    success: async (r) => {
+      if (r.tapIndex === 0) {
+        try {
+          const { filePath, fileName } = writeArchiveFile(text)
+          await shareFile(filePath, fileName)
+          uni.showToast({ title: '已生成档案 · 请把文件留存在聊天里', icon: 'none' })
+        } catch (err) {
+          uni.showModal({
+            title: '转发失败',
+            content: err instanceof Error ? err.message : '未知错误',
+            showCancel: false,
+          })
+        }
+        return
+      }
+      uni.setClipboardData({
+        data: text,
+        success: () =>
+          uni.showToast({
+            title: `已复制全部档案 · 含 ${traceShown} 条痕迹`,
+            icon: 'none',
+          }),
+      })
+    },
+    fail: () => {},
+  })
 }
 
 /** 从备份文件恢复：选文件 → 解析校验 → 二次确认 → 覆盖本机 */
@@ -462,6 +568,23 @@ const cloudSub = computed(() =>
       : '已开启 · 尚未备份过，点「立即备份」上传一次'
     : '关闭时数据只在本机 · 开启后仅用微信标识（匿名）区分你自己的备份',
 )
+
+/**
+ * AI 授权：与云备份是两码事 —— 云备份传的是修行数据到我们自己的服务器，
+ * AI 传的是**你写的正文**给第三方服务商，所以单独授权、单独可撤回。
+ * 撤回后所有 AI 功能改用基础规则，功能照常，只是不出手机。
+ */
+const aiSub = computed(() =>
+  account.aiConsent
+    ? '已授权 · 用 AI 功能时，你写的内容会发给服务商（DeepSeek）'
+    : '未授权 · AI 功能改用基础规则，内容不出手机',
+)
+
+function onAiConsentToggle(e: Event & { detail?: { value?: boolean } }): void {
+  const on = !!e.detail?.value
+  account.aiConsent = on
+  uni.showToast({ title: on ? '已授权' : '已撤回 · 只用基础规则', icon: 'none' })
+}
 
 /** 开关：开 → 先看说明；关 → 先确认删除云端数据 */
 function onCloudToggle(e: Event & { detail?: { value?: boolean } }): void {
@@ -544,340 +667,5 @@ function exportToday(): void {
 </script>
 
 <style lang="scss" scoped>
-.page {
-  min-height: 100vh;
-  padding: calc(var(--status-bar-height) + 16rpx) $gz-page-pad 60rpx;
-  box-sizing: border-box;
-}
-
-/* 顶栏 */
-.nav {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 8rpx 0 10rpx;
-}
-
-.nav__side {
-  width: 76rpx;
-  height: 76rpx;
-}
-
-.nav__back {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 76rpx;
-  height: 76rpx;
-  border: 1rpx solid $gz-line;
-  border-radius: 50%;
-  background: $gz-surface;
-  color: $gz-ink-2;
-  font-size: 52rpx;
-  line-height: 1;
-  padding-bottom: 8rpx; /* 视觉居中 ‹ */
-}
-
-.nav__title {
-  font-size: 34rpx;
-  font-weight: 700;
-  letter-spacing: 0.08em;
-  color: $gz-ink;
-}
-
-/* 分组 */
-.section {
-  margin-top: 36rpx;
-}
-
-.section__head {
-  display: flex;
-  align-items: baseline;
-  justify-content: space-between;
-  margin-bottom: 20rpx;
-}
-
-.section__title {
-  font-size: 32rpx;
-  font-weight: 700;
-  color: $gz-ink;
-}
-
-.section__hint {
-  font-size: $gz-fs-caption;
-  color: $gz-ink-3;
-}
-
-.cards {
-  display: flex;
-  flex-direction: column;
-  gap: 18rpx;
-}
-
-/* 修行语言卡 */
-.lang {
-  display: flex;
-  align-items: center;
-  gap: 22rpx;
-  padding: 26rpx 28rpx;
-  background: $gz-surface;
-  border: 1rpx solid $gz-line;
-  border-radius: $gz-radius-md;
-  transition: border-color 0.2s ease, box-shadow 0.2s ease;
-}
-
-.lang.is-on {
-  border-color: $gz-accent;
-  box-shadow: 0 0 0 1rpx $gz-accent, 0 10rpx 30rpx $gz-accent-soft;
-}
-
-.lang__dot {
-  flex: none;
-  width: 16rpx;
-  height: 16rpx;
-  border-radius: 50%;
-}
-
-.lang__body {
-  flex: 1;
-  min-width: 0;
-}
-
-.lang__head {
-  display: flex;
-  align-items: baseline;
-  gap: 14rpx;
-}
-
-.lang__name {
-  font-size: $gz-fs-title;
-  font-weight: 700;
-  color: $gz-ink;
-}
-
-.lang__en {
-  font-size: $gz-fs-caption;
-  color: $gz-ink-3;
-}
-
-.lang__desc {
-  display: block;
-  margin-top: 6rpx;
-  font-size: $gz-fs-caption;
-  line-height: 1.6;
-  color: $gz-ink-2;
-}
-
-.radio {
-  flex: none;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 36rpx;
-  height: 36rpx;
-  border: 2rpx solid $gz-ink-3;
-  border-radius: 50%;
-  transition: border-color 0.2s ease;
-}
-
-.radio.is-on {
-  border-color: $gz-accent;
-}
-
-.radio__dot {
-  width: 18rpx;
-  height: 18rpx;
-  border-radius: 50%;
-  background: $gz-accent;
-}
-
-/* 通用行 */
-.row {
-  display: flex;
-  align-items: center;
-  gap: 22rpx;
-  padding: 26rpx 28rpx;
-  background: $gz-surface;
-  border: 1rpx solid $gz-line;
-  border-radius: $gz-radius-md;
-}
-
-.row__body {
-  flex: 1;
-  min-width: 0;
-}
-
-.row__title {
-  display: block;
-  font-size: $gz-fs-body;
-  font-weight: 600;
-  color: $gz-ink;
-}
-
-/* 危险动作：固定语义红（区别于任意模式主色） */
-.row__title.is-danger {
-  color: #b5482c;
-}
-
-.row__sub {
-  display: block;
-  margin-top: 4rpx;
-  font-size: $gz-fs-caption;
-  line-height: 1.6;
-  color: $gz-ink-3;
-}
-
-.row__arrow {
-  flex: none;
-  color: $gz-ink-3;
-  font-size: 32rpx;
-}
-
-.row__switch {
-  flex: none;
-  transform: scale(0.85);
-  transform-origin: right center;
-}
-
-/* 关于 */
-.about {
-  padding: 30rpx;
-  background: $gz-surface;
-  border: 1rpx solid $gz-line;
-  border-radius: $gz-radius-md;
-}
-
-.about__head {
-  display: flex;
-  align-items: baseline;
-  gap: 16rpx;
-}
-
-.about__name {
-  font-size: $gz-fs-title;
-  font-weight: 700;
-  letter-spacing: 0.06em;
-  color: $gz-ink;
-}
-
-.about__ver {
-  font-size: $gz-fs-caption;
-  color: $gz-ink-3;
-}
-
-.about__desc {
-  display: block;
-  margin-top: 12rpx;
-  font-size: $gz-fs-small;
-  line-height: 1.8;
-  color: $gz-ink-2;
-}
-
-.foot {
-  margin-top: 44rpx;
-  display: flex;
-  justify-content: center;
-}
-
-.foot__text {
-  font-size: $gz-fs-caption;
-  letter-spacing: 0.08em;
-  color: $gz-ink-3;
-}
-
-/* 换肤确认框：面板自身挂 gz-skin--<目标>，整套变量来自目标皮肤 */
-.mask {
-  position: fixed;
-  inset: 0;
-  z-index: 50;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  padding: 0 56rpx;
-  background: rgba(0, 0, 0, 0.48);
-}
-
-.dialog {
-  width: 100%;
-  overflow: hidden;
-  background: $gz-surface;
-  border: 1rpx solid $gz-line;
-  border-radius: $gz-radius-lg;
-  box-shadow: 0 24rpx 80rpx rgba(0, 0, 0, 0.28);
-}
-
-.dialog__art {
-  display: block;
-  width: 100%;
-  height: 240rpx;
-}
-
-.dialog__body {
-  padding: 28rpx 30rpx 4rpx;
-}
-
-.dialog__head {
-  display: flex;
-  flex-direction: column;
-  gap: 8rpx;
-}
-
-.dialog__name {
-  font-size: 40rpx;
-  font-weight: 800;
-  letter-spacing: 0.06em;
-  color: $gz-ink;
-}
-
-.dialog__en {
-  font-size: $gz-fs-caption;
-  color: $gz-ink-3;
-}
-
-.dialog__tag {
-  display: block;
-  margin-top: 14rpx;
-  font-size: $gz-fs-small;
-  line-height: 1.7;
-  color: $gz-ink-2;
-}
-
-.dialog__note {
-  margin-top: 22rpx;
-  padding: 20rpx 22rpx;
-  border-radius: $gz-radius-sm;
-  background: $gz-accent-soft;
-  font-size: $gz-fs-caption;
-  line-height: 1.7;
-  color: $gz-ink-2;
-}
-
-.dialog__acts {
-  display: flex;
-  gap: 18rpx;
-  padding: 26rpx 30rpx 32rpx;
-}
-
-.dbtn {
-  flex: 1;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  height: 84rpx;
-  border-radius: $gz-radius-md;
-  font-size: $gz-fs-body;
-  font-weight: 600;
-  letter-spacing: 0.04em;
-}
-
-.dbtn--ghost {
-  background: transparent;
-  border: 1rpx solid $gz-line;
-  color: $gz-ink-2;
-}
-
-.dbtn--main {
-  background: $gz-accent;
-  color: $gz-on-cta;
-}
+@import './index.scss';
 </style>

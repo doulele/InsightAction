@@ -42,8 +42,6 @@ export const PHRASE_KEYS = [
   'empty.growth.desc',
   'empty.stats.title',
   'empty.stats.desc',
-  'empty.seedbed.title',
-  'empty.seedbed.desc',
   'empty.readlater.title',
   'empty.readlater.desc',
   'empty.timeline.title',
@@ -55,6 +53,7 @@ export const PHRASE_KEYS = [
   /* 设置页 · 数据区行说明（行标题保持功能清晰，不做主题化） */
   'settings.exportToday.sub',
   'settings.exportAll.sub',
+  'settings.exportArchive.sub',
   'settings.importFile.sub',
   'settings.resetToday.sub',
   'settings.resetAll.sub',
@@ -221,18 +220,6 @@ const LOCAL_PHRASES: PhraseTable = {
     dao: '走完一段沙漏，此处自生一柱。',
   },
 
-  /* ---------- 空状态：收成 ---------- */
-  'empty.seedbed.title': {
-    normal: '还没有收成',
-    tech: '暂无产出',
-    dao: '尚无收成',
-  },
-  'empty.seedbed.desc': {
-    normal: '第一颗种子满七天后，来这写下它长出了什么。',
-    tech: '首个种子满 7 天后，在此登记它的结果。',
-    dao: '第一粒种子满七日，再来写下它结了什么果。',
-  },
-
   /* ---------- 空状态：收纳（稍后读） ---------- */
   'empty.readlater.title': {
     normal: '此刻空空如也',
@@ -292,6 +279,11 @@ const LOCAL_PHRASES: PhraseTable = {
     normal: '生成备份文件并转发到聊天保存 · 全程在本机，不上传服务器',
     tech: '导出完整数据文件并转发到聊天 · 全部在本机完成，不经服务器',
     dao: '结成一份备份文卷转发保存 · 全程不出本机，不假外求',
+  },
+  'settings.exportArchive.sub': {
+    normal: '把四环沉淀压成一份能读的文字（Markdown），可转发或复制 · 全程在本机',
+    tech: '导出可读版修行档案（Markdown）· 全部在本机完成，不经服务器',
+    dao: '将四环所修誊作一卷可读之文，可传可抄 · 全程不出本机',
   },
   'settings.importFile.sub': {
     normal: '从聊天记录选择备份文件 · 会覆盖本机现有数据，需二次确认',
@@ -461,7 +453,7 @@ const LOCAL_PHRASES: PhraseTable = {
     dao: '入门根骨',
   },
   'baseline.missing': {
-    normal: '未建立 · 建档后这里会显示你的起点与变化',
+    normal: '未建立 · 建档后展示你的起点与变化',
     tech: '未采样 · 建档后此处显示基线值与环比',
     dao: '未立 · 建档后此处显示根骨与进退',
   },

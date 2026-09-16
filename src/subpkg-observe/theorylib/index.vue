@@ -104,6 +104,28 @@
           </view>
         </view>
       </view>
+
+      <!-- 三十条预置理（§7.2 空状态原则：理库不依赖用户输入也能站住） -->
+      <view class="presets">
+        <view class="presets__head">
+          <text class="presets__title">三十条预置理</text>
+          <text class="presets__sub">已收下 {{ takenCount }}/{{ PRESET_THEORIES.length }}</text>
+        </view>
+        <view v-for="p in presetList" :key="p.id" class="pcard" :class="{ 'is-taken': isTaken(p) }">
+          <text class="pcard__topic">{{ p.topic }}</text>
+          <text class="pcard__title">{{ p.title }}</text>
+          <text class="pcard__content">{{ p.content }}</text>
+          <view class="pcard__why">
+            <text class="pcard__why-label">为什么成立</text>
+            <text class="pcard__why-text">{{ p.why }}</text>
+          </view>
+          <view v-if="!isTaken(p)" class="pcard__cta" hover-class="gz-hover" @click="adoptPreset(p)">
+            收下
+          </view>
+          <text v-else class="pcard__taken">已在你的理里</text>
+        </view>
+        <text v-if="!presetList.length" class="presets__none">这个筛选下没有预置理</text>
+      </view>
     </block>
 
     <!-- ================= 播种（概念播种并入） ================= -->
@@ -258,6 +280,9 @@
 import { computed, ref } from 'vue'
 import GzDialog from '@/components/GzDialog/GzDialog.vue'
 import { OBSERVE_TOPICS, useObserveStore, type ObsItem } from '@/stores/observe'
+import { PRESET_THEORIES, recommendOrder, type PresetTheory } from '@/config/theories'
+import { useAssessmentStore } from '@/stores/assessment'
+import { useModeStore } from '@/stores/mode'
 import { isRipe, useSeedStore, type Seed } from '@/stores/seed'
 import { useSkinClass } from '@/composables/useSkin'
 import { navigateTo, ROUTES } from '@/router/routes'
@@ -289,6 +314,60 @@ const shown = computed<ObsItem[]>(() => {
       .includes(k)
   })
 })
+
+/* ---------------- 三十条预置理（§7.2 空状态兜底 + §7.1 测评映射） ---------------- */
+const assessment = useAssessmentStore()
+const modeStore = useModeStore()
+
+/**
+ * 预置理列表：按测评最弱维度对应的领域排前（recommendOrder），
+ * 再服从本页的领域筛选与搜索 —— 推荐只决定先后，不制造看不见。
+ */
+const presetList = computed<PresetTheory[]>(() => {
+  const r = assessment.results[modeStore.id]
+  const order = recommendOrder(r?.dims, r?.tier)
+  const sorted = [...PRESET_THEORIES].sort(
+    (a, b) => order.indexOf(a.topic) - order.indexOf(b.topic),
+  )
+  const k = kw.value.trim().toLowerCase()
+  return sorted.filter((p) => {
+    if (topic.value !== '全部' && p.topic !== topic.value) return false
+    if (!k) return true
+    return `${p.title}${p.content}${p.why}`.toLowerCase().includes(k)
+  })
+})
+
+/** 已收下判定：按「标题 + 内容」与我的理匹配。不另存一份"收过"清单 —— 那会变成第二份真相 */
+function isTaken(p: PresetTheory): boolean {
+  return observe.theories.some((t) => t.title === p.title && t.content === p.content)
+}
+
+const takenCount = computed(() => PRESET_THEORIES.filter((p) => isTaken(p)).length)
+
+/**
+ * 收下一条预置理：写进我的理（自带「为什么成立」，直接入册）。
+ * 不入账修为 —— 保存本来就不入账，钱在「处理 / 用上了」时才付。
+ */
+function adoptPreset(p: PresetTheory): void {
+  const item = observe.add({
+    kind: 'theory',
+    form: 'quote',
+    title: p.title,
+    content: p.content,
+    // 一句话形态没有「你的话」摘要与金句位，置空走理的正门（why）
+    summary: '',
+    golden: [],
+    why: p.why,
+    topics: [p.topic],
+    tags: ['预置'],
+    sourceName: '预置三十条',
+  })
+  if (!item) {
+    uni.showToast({ title: '库满了 · 先清理几条', icon: 'none' })
+    return
+  }
+  uni.showToast({ title: '已收下 · 它现在是你的一条理', icon: 'none' })
+}
 
 /**
  * 挂靠母题。
@@ -445,617 +524,5 @@ function goBack(): void {
 </script>
 
 <style lang="scss" scoped>
-.page {
-  min-height: 100vh;
-  padding: calc(var(--status-bar-height) + 16rpx) $gz-page-pad 60rpx;
-  box-sizing: border-box;
-}
-
-.nav {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 8rpx 0 10rpx;
-}
-
-.nav__side {
-  width: 76rpx;
-  height: 76rpx;
-}
-
-.nav__side--right {
-  display: flex;
-  align-items: center;
-  justify-content: flex-end;
-}
-
-.nav__back,
-.nav__add {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 76rpx;
-  height: 76rpx;
-  border: 1rpx solid $gz-line;
-  border-radius: 50%;
-  background: $gz-surface;
-  color: $gz-ink-2;
-  font-size: 46rpx;
-  line-height: 1;
-}
-
-.nav__back {
-  font-size: 52rpx;
-  padding-bottom: 8rpx;
-}
-
-.nav__title {
-  font-size: 34rpx;
-  font-weight: 700;
-  letter-spacing: 0.08em;
-  color: $gz-ink;
-}
-
-/* 分区 */
-.tabs {
-  display: flex;
-  gap: 14rpx;
-  margin: 20rpx 0 18rpx;
-}
-
-.tab {
-  padding: 12rpx 34rpx;
-  border-radius: 999rpx;
-  background: $gz-surface;
-  border: 1rpx solid $gz-line;
-  font-size: $gz-fs-small;
-  color: $gz-ink-3;
-}
-
-.tab.is-on {
-  color: $gz-accent;
-  border-color: $gz-accent;
-  font-weight: 600;
-  background: $gz-accent-soft;
-}
-
-.subtabs {
-  display: flex;
-  gap: 12rpx;
-  margin: 24rpx 0 18rpx;
-}
-
-.subtab {
-  padding: 8rpx 26rpx;
-  border-radius: 999rpx;
-  background: $gz-surface;
-  border: 1rpx solid $gz-line;
-  font-size: $gz-fs-caption;
-  color: $gz-ink-3;
-}
-
-.subtab.is-on {
-  color: $gz-accent;
-  border-color: $gz-accent;
-  background: $gz-accent-soft;
-}
-
-.search {
-  padding: 20rpx 24rpx;
-  background: $gz-input-bg;
-  border: 1rpx solid $gz-line;
-  border-radius: 999rpx;
-  font-size: $gz-fs-small;
-  color: $gz-ink;
-}
-
-.search__ph {
-  color: $gz-ink-3;
-}
-
-.filters {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 12rpx;
-  margin-top: 16rpx;
-}
-
-.filter {
-  padding: 10rpx 22rpx;
-  border: 1rpx solid $gz-line;
-  border-radius: 999rpx;
-  background: $gz-surface;
-}
-
-.filter.is-on {
-  border-color: $gz-accent;
-  background: $gz-accent-soft;
-}
-
-.filter__text {
-  font-size: $gz-fs-caption;
-  color: $gz-ink-2;
-}
-
-.filter.is-on .filter__text {
-  color: $gz-accent;
-  font-weight: 600;
-}
-
-.rule {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  margin: 18rpx 4rpx 8rpx;
-}
-
-.rule__text {
-  font-size: $gz-fs-caption;
-  color: $gz-ink-3;
-}
-
-.rule__num {
-  font-size: $gz-fs-caption;
-  color: $gz-accent;
-}
-
-.list {
-  display: flex;
-  flex-direction: column;
-  gap: 18rpx;
-  margin-top: 12rpx;
-}
-
-.card {
-  padding: 26rpx 26rpx 18rpx;
-  background: $gz-surface;
-  border: 1rpx solid $gz-line;
-  border-radius: $gz-radius-md;
-}
-
-.card.is-ripe {
-  border-color: $gz-accent;
-  background: linear-gradient(180deg, $gz-accent-soft, $gz-surface 46%);
-}
-
-.card__top {
-  display: flex;
-  align-items: center;
-  gap: 12rpx;
-  margin-bottom: 12rpx;
-}
-
-.card__topic {
-  padding: 4rpx 16rpx;
-  border-radius: 999rpx;
-  background: #eaf0f8;
-  color: #4e8fd4;
-  font-size: $gz-fs-caption;
-}
-
-.card__mother {
-  margin-left: auto;
-  font-size: $gz-fs-caption;
-  color: $gz-accent;
-}
-
-.card__mother--none {
-  color: $gz-ink-3;
-}
-
-.card__title {
-  display: block;
-  font-size: $gz-fs-body;
-  font-weight: 700;
-  line-height: 1.6;
-  color: $gz-ink;
-}
-
-.card__content {
-  display: block;
-  margin-top: 8rpx;
-  font-size: $gz-fs-small;
-  line-height: 1.85;
-  color: $gz-ink-2;
-  word-break: break-all;
-}
-
-.why {
-  margin-top: 14rpx;
-  padding: 14rpx 18rpx;
-  border-left: 4rpx solid $gz-accent;
-  background: $gz-accent-soft;
-  border-radius: 0 $gz-radius-sm $gz-radius-sm 0;
-}
-
-.why__label {
-  display: block;
-  font-size: $gz-fs-caption;
-  color: $gz-ink-3;
-}
-
-.why__text {
-  display: block;
-  margin-top: 4rpx;
-  font-size: $gz-fs-small;
-  line-height: 1.8;
-  color: $gz-ink-2;
-}
-
-.golden {
-  margin-top: 14rpx;
-}
-
-.golden__line {
-  display: block;
-  font-size: $gz-fs-small;
-  line-height: 1.9;
-  color: $gz-ink;
-}
-
-.tags {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 10rpx;
-  margin-top: 12rpx;
-}
-
-.tag {
-  padding: 4rpx 16rpx;
-  border-radius: 999rpx;
-  background: $gz-input-bg;
-  font-size: $gz-fs-caption;
-  color: $gz-ink-3;
-}
-
-.card__src {
-  padding: 4rpx 0;
-  font-size: $gz-fs-caption;
-  color: $gz-ink-3;
-}
-
-.ops {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  margin-top: 16rpx;
-  padding-top: 14rpx;
-  border-top: 1rpx solid $gz-line;
-}
-
-.ops__state {
-  font-size: $gz-fs-caption;
-  color: $gz-ink-3;
-}
-
-.ops__right {
-  display: flex;
-  gap: 14rpx;
-}
-
-.ops__btn {
-  padding: 8rpx 26rpx;
-  border: 1rpx solid $gz-line;
-  border-radius: 999rpx;
-  font-size: $gz-fs-caption;
-  color: $gz-ink-2;
-}
-
-.ops__btn--main {
-  border-color: $gz-accent;
-  background: $gz-accent-soft;
-  color: $gz-accent;
-  font-weight: 600;
-}
-
-/* 种植面板 */
-.plant {
-  padding: 28rpx 28rpx 26rpx;
-  background: $gz-surface;
-  border: 1rpx solid $gz-line;
-  border-radius: $gz-radius-lg;
-}
-
-.plant__label {
-  display: block;
-  font-size: $gz-fs-caption;
-  letter-spacing: 0.12em;
-  color: $gz-accent;
-}
-
-.plant__input {
-  margin-top: 18rpx;
-  padding: 18rpx 22rpx;
-  background: $gz-input-bg;
-  border: 1rpx solid $gz-line;
-  border-radius: $gz-radius-md;
-  font-size: $gz-fs-body;
-  color: $gz-ink;
-}
-
-.plant__area {
-  width: 100%;
-  margin-top: 14rpx;
-  padding: 18rpx 22rpx;
-  min-height: 96rpx;
-  background: $gz-input-bg;
-  border: 1rpx solid $gz-line;
-  border-radius: $gz-radius-md;
-  font-size: $gz-fs-small;
-  line-height: 1.8;
-  color: $gz-ink;
-  box-sizing: border-box;
-}
-
-.plant__ph {
-  color: $gz-ink-3;
-}
-
-.plant__tag-row {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 12rpx;
-  margin-top: 14rpx;
-}
-
-.chip {
-  padding: 6rpx 20rpx;
-  border-radius: 999rpx;
-  border: 1rpx solid $gz-line;
-  font-size: $gz-fs-caption;
-  color: $gz-ink-3;
-}
-
-.chip.is-on {
-  border-color: $gz-accent;
-  background: $gz-accent-soft;
-  color: $gz-accent;
-}
-
-.plant__btn {
-  margin-top: 20rpx;
-  /* button 被 App.vue 全局重置过 padding/border-radius，必须补回，否则高度塌成一行文字 */
-  padding: 26rpx 0;
-  border-radius: $gz-radius-md;
-  line-height: 1.4;
-  background: $gz-accent;
-  color: $gz-on-cta;
-  font-size: $gz-fs-body;
-  font-weight: 600;
-}
-
-.plant__btn.is-off {
-  opacity: 0.45;
-}
-
-.plant__rule {
-  display: block;
-  margin-top: 14rpx;
-  font-size: $gz-fs-caption;
-  text-align: center;
-  color: $gz-ink-3;
-}
-
-/* 种子卡 */
-.card__tag {
-  padding: 4rpx 16rpx;
-  border-radius: 999rpx;
-  font-size: $gz-fs-caption;
-  background: rgba(132, 162, 104, 0.2);
-  color: #6d8b3f;
-}
-
-.card__tag.is-ripe {
-  background: $gz-accent;
-  color: $gz-on-cta;
-}
-
-.card__tag.is-done {
-  background: var(--gz-line-soft);
-  color: $gz-ink-3;
-}
-
-.card__days {
-  margin-left: auto;
-  font-size: $gz-fs-caption;
-  color: $gz-ink-3;
-}
-
-.card__concept {
-  display: block;
-  margin-top: 18rpx;
-  font-size: 34rpx;
-  font-weight: 700;
-  line-height: 1.5;
-  color: $gz-ink;
-}
-
-.card__note {
-  display: block;
-  margin-top: 8rpx;
-  font-size: $gz-fs-small;
-  line-height: 1.8;
-  color: $gz-ink-2;
-}
-
-.card__tags {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 10rpx;
-  margin-top: 14rpx;
-}
-
-.card__tag-mini {
-  padding: 4rpx 14rpx;
-  border-radius: 999rpx;
-  font-size: 20rpx;
-  background: var(--gz-line-soft);
-  color: $gz-ink-3;
-}
-
-.card__acts {
-  margin-top: 20rpx;
-  display: flex;
-  justify-content: flex-end;
-}
-
-.act {
-  padding: 12rpx 30rpx;
-  border-radius: 999rpx;
-  font-size: $gz-fs-small;
-}
-
-.act--main {
-  background: $gz-accent;
-  color: $gz-on-cta;
-}
-
-.act--ghost {
-  border: 1rpx solid $gz-line;
-  color: $gz-ink-3;
-}
-
-.card--done {
-  opacity: 0.92;
-}
-
-.card__harvest {
-  margin-top: 20rpx;
-  padding: 18rpx 20rpx;
-  border-radius: $gz-radius-md;
-  background: var(--gz-line-soft);
-}
-
-.card__harvest-label {
-  display: block;
-  font-size: $gz-fs-caption;
-  color: $gz-ink-3;
-}
-
-.card__harvest-text {
-  display: block;
-  margin-top: 8rpx;
-  font-size: $gz-fs-small;
-  line-height: 1.8;
-  color: $gz-ink-2;
-}
-
-/* 空态 */
-.empty {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  padding: 90rpx 40rpx 0;
-}
-
-.empty__seal {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 108rpx;
-  height: 108rpx;
-  border: 2rpx solid $gz-accent;
-  border-radius: 26rpx;
-  background: $gz-accent-soft;
-  color: $gz-accent;
-  font-size: 48rpx;
-  font-weight: 700;
-}
-
-.empty__title {
-  margin-top: 28rpx;
-  font-size: $gz-fs-title;
-  font-weight: 700;
-  color: $gz-ink;
-}
-
-.empty__desc {
-  margin-top: 14rpx;
-  font-size: $gz-fs-small;
-  line-height: 1.9;
-  text-align: center;
-  color: $gz-ink-3;
-  white-space: pre-line;
-}
-
-/* 收成层 */
-.mask {
-  position: fixed;
-  inset: 0;
-  z-index: 20;
-  display: flex;
-  align-items: flex-end;
-  background: rgba(20, 16, 10, 0.5);
-}
-
-.sheet {
-  width: 100%;
-  padding: 34rpx 32rpx calc(env(safe-area-inset-bottom) + 30rpx);
-  background: $gz-surface;
-  border-radius: 32rpx 32rpx 0 0;
-  box-sizing: border-box;
-}
-
-.sheet__title {
-  display: block;
-  font-size: 32rpx;
-  font-weight: 700;
-  color: $gz-ink;
-}
-
-.sheet__sub {
-  display: block;
-  margin-top: 8rpx;
-  font-size: $gz-fs-small;
-  color: $gz-ink-3;
-}
-
-.sheet__area {
-  width: 100%;
-  margin-top: 20rpx;
-  padding: 20rpx;
-  min-height: 140rpx;
-  background: $gz-input-bg;
-  border: 1rpx solid $gz-line;
-  border-radius: $gz-radius-md;
-  font-size: $gz-fs-small;
-  line-height: 1.8;
-  color: $gz-ink;
-  box-sizing: border-box;
-}
-
-.sheet__ph {
-  color: $gz-ink-3;
-}
-
-.sheet__btn {
-  margin-top: 22rpx;
-  padding: 26rpx 0;
-  border-radius: $gz-radius-md;
-  line-height: 1.4;
-  background: $gz-accent;
-  color: $gz-on-cta;
-  font-size: $gz-fs-body;
-  font-weight: 600;
-}
-
-.sheet__cancel {
-  margin-top: 14rpx;
-  padding: 18rpx 0;
-  text-align: center;
-  font-size: $gz-fs-small;
-  color: $gz-ink-3;
-}
-
-.foot {
-  margin-top: 44rpx;
-  display: flex;
-  justify-content: center;
-}
-
-.foot__text {
-  font-size: $gz-fs-caption;
-  letter-spacing: 0.08em;
-  color: $gz-ink-3;
-}
+@import './index.scss';
 </style>

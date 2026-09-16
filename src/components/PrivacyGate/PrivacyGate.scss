@@ -1,0 +1,108 @@
+/**
+ * PrivacyGate.vue 的样式（项目约定：超过 100 行或独立组件的样式外置）。
+ *
+ * 一个必须处理的地方：微信原生 <button> 自带边框与默认背景，
+ * 这里要把 ::after 边框去掉、背景与字色改成自己的令牌，否则"同意"键会是个灰方块。
+ */
+
+/*
+ * 2026-09-16：面板"整屏高 + 遮罩被盖住"的真凶找到了 —— 不是定位、不是 flex，
+ * 是面板上挂的 `gz-skin` 类（见下面 .pg 的 ★ 注）。结构因此回到与 GzDialog 一致：
+ * 遮罩显式 100vh + flex 居中，面板自己管高度。之前改的四版（align-self /
+ * absolute 居中 / absolute 贴底）都是在跟 min-height 较劲，自然怎么改都不动。
+ */
+
+.pg-mask {
+  position: fixed;
+  left: 0;
+  top: 0;
+  width: 100%;
+  height: 100vh;
+  box-sizing: border-box;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0 60rpx;
+  z-index: 400; // 高于 GzDialog(300) 与小枢浮层，保证它一定在最上层
+  background: rgba(0, 0, 0, 0.45);
+}
+
+.pg {
+  width: 100%;
+  /**
+   * ★ 必须显式清零 min-height（同 GzDialog 的 `.gd`，同一个坑）。
+   * 面板为了随皮肤换主题挂着 `gz-skin` 类，而 App.scss 里全局的
+   * `.gz-skin { min-height: 100vh }`（给页面根节点用的）会一起作用到面板上；
+   * CSS 规定 min-height 大于 max-height 时 **min 赢**，于是下面的 78vh 上限
+   * 会被静默抵消 —— 面板永远至少一屏高，表现为"整屏白块 + 遮罩看不见"。
+   * 本选择器带 data-v，优先级高于全局的 `.gz-skin`，所以这里清零一定生效。
+   */
+  min-height: 0;
+  max-height: 78vh;
+  overflow-y: auto;
+  padding: 44rpx 40rpx 36rpx;
+  background: $gz-surface;
+  border: 1rpx solid $gz-line;
+  border-radius: $gz-radius-lg;
+  box-shadow: 0 24rpx 80rpx rgba(0, 0, 0, 0.28);
+}
+
+.pg__title {
+  display: block;
+  font-size: 34rpx;
+  font-weight: 800;
+  color: $gz-ink;
+}
+
+.pg__body {
+  display: block;
+  margin-top: 18rpx;
+  font-size: $gz-fs-body;
+  line-height: 1.7;
+  color: $gz-ink-2;
+}
+
+.pg__acts {
+  display: flex;
+  align-items: center;
+  gap: 20rpx;
+  margin-top: 34rpx;
+}
+
+.pg__ghost {
+  flex: none;
+  padding: 22rpx 30rpx;
+  font-size: $gz-fs-body;
+  color: $gz-ink-2;
+  background: transparent;
+  border: 1rpx solid $gz-line;
+  border-radius: $gz-radius-md;
+  text-align: center;
+}
+
+.pg__agree {
+  flex: 1;
+  padding: 22rpx 0;
+  margin: 0;
+  font-size: $gz-fs-body;
+  font-weight: 600;
+  color: $gz-on-cta;
+  background: $gz-cta-bg;
+  border: none;
+  border-radius: $gz-radius-md;
+  text-align: center;
+  line-height: 1.4;
+
+  /* 去掉微信原生 button 的灰边框与按压层 */
+  &::after {
+    border: none;
+  }
+}
+
+.pg__link {
+  display: block;
+  margin-top: 26rpx;
+  font-size: $gz-fs-small;
+  color: $gz-accent;
+  text-align: center;
+}

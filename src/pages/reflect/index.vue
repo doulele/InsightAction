@@ -1,19 +1,14 @@
 <template>
-  <view class="page" :class="skinClass">
-    <!-- 大厅头 -->
-    <view class="hall-head">
-      <view class="hall-head__row">
-        <text class="hall-head__mark">知</text>
-        <text class="hall-head__en">KNOW · 转述 → 重构 → 内化</text>
-      </view>
-      <text class="hall-head__state">{{ stateText }}</text>
-    </view>
+  <view class="page" :class="skinClass" @touchstart="armDwell">
+    <!-- 大厅头（五页共用组件：主题艺术画作背景 + 印章 + 定位 + 状态） -->
+    <HallHead mark="知" en="KNOW · 转述 → 重构 → 内化" :line="headLine" :stats="headStats" />
 
-    <!-- 模式专属标志物：纸卡 / 终端窗口 / 问心签（图缺失时整块隐身） -->
-    <ModuleMark mark="reflect.card" size="md" />
+    <!-- 第一周解锁引导：今天的主角在这里才挂出 -->
+    <WeekGuide for="reflect" />
 
     <!-- 每日灵魂拷问 -->
-    <view class="question">
+    <!-- id="question"：第一周引导「第一次省察」的滚动落点（WeekGuide 的 #question），改名要同步改 config/unlock.ts -->
+    <view id="question" class="question">
       <view class="question__head">
         <text class="question__label">每日灵魂拷问</text>
         <text v-if="answered" class="question__tag">已答</text>
@@ -71,7 +66,49 @@
       </view>
     </view>
 
+    <!--
+      自我画像（规格 §9.4）：系统从脊椎里算出来的形状。
+      口径是**只摆形状，不下结论** —— 每条只报样本数与分布，样本不够就如实说还差多少。
+      不写「你是一个……的人」，也不给建议：判语指不回任何一条记录，用久了会把人钉住（§7 反目标）。
+    -->
+    <view class="section">
+      <view class="section__head">
+        <view>
+          <text class="section__title">自我画像</text>
+          <text class="section__hint">从你留下的痕迹里算出来的，不是你自己填的</text>
+        </view>
+        <text class="section__badge">{{ profile.readyCount }}/{{ profile.items.length }} 成形</text>
+      </view>
+      <view class="pf">
+        <view v-for="it in profile.items" :key="it.key" class="pf__row">
+          <view class="pf__side">
+            <text class="pf__label">{{ it.label }}</text>
+            <text class="pf__n" :class="{ 'is-on': it.samples >= it.need }">
+              {{ it.samples >= it.need ? `${it.samples} 次` : `${it.samples}/${it.need}` }}
+            </text>
+          </view>
+          <text class="pf__text" :class="{ 'is-pend': it.samples < it.need }">
+            {{ it.samples >= it.need ? it.text : it.pend }}
+          </text>
+        </view>
+      </view>
+      <text v-if="profile.summary" class="pf__summary">{{ profile.summary }}</text>
+      <text class="pf__note">只摆形状，不下结论 —— 攒够样本才出现，不够就如实说还差多少。</text>
+    </view>
+
     <!-- 工具入口 -->
+    <!--
+      止念机制（规格 §4.1「止念」）：知这一环最容易停在纸上。
+      写完却一条都没用过时，这里不再鼓励多写，而是主动建议「停笔，去实践」。
+    -->
+    <view v-if="stopPen" class="stoppen" hover-class="gz-hover" @click="goAction">
+      <view class="stoppen__body">
+        <text class="stoppen__title">停笔，去实践</text>
+        <text class="stoppen__text">{{ stopPen }}</text>
+      </view>
+      <text class="stoppen__go">去行厅 ›</text>
+    </view>
+
     <view class="section">
       <view class="section__head">
         <text class="section__title">把输入变成思想</text>
@@ -85,6 +122,7 @@
           :mark="item.mark"
           :badge="item.badge"
           :url="item.url"
+          :params="item.params"
           :disabled="item.disabled"
         />
       </view>
@@ -105,6 +143,15 @@
           <text v-for="t in active.tags" :key="t" class="card__tag-mini">{{ t }}</text>
         </view>
 
+        <!--
+          「我用上了」= 知 → 行的唯一出口（规格 §9.4：知必须有迁移，否则只停在纸上）。
+          点它 = 承认这条已经不在纸上：记一笔 reflect.apply(15) 并把这张卡推到 Lv.3 内化。
+        -->
+        <view v-if="active.depth < 3" class="sheet__apply" hover-class="gz-hover" @click="applyCard">
+          我用上了 · 记一笔内化
+        </view>
+        <view v-else class="sheet__applied">已内化 · 这条已经在现实里用过了</view>
+
         <view v-if="canDeepen" class="sheet__deepen" hover-class="gz-hover" @click="deepen">
           再加工一层 → {{ nextLabel }}
         </view>
@@ -117,6 +164,9 @@
 
     <!-- 批次 D · 小枢全局浮层 -->
     <BuddyFloat />
+
+    <!-- 远端提示层：公告 + 版本更新（强制更新 / 新包已下载、重启生效） -->
+    <RemoteNotice />
   </view>
 </template>
 
@@ -128,30 +178,80 @@
  * - 知识库 / 成长曲线为真实子页；费曼速记（AI 语音转写）需后端，保持规划态。
  */
 import { computed, ref } from 'vue'
-import { onShow } from '@dcloudio/uni-app'
+import HallHead from '@/components/HallHead/HallHead.vue'
+import { hallLine } from '@/config/lexicon'
+import WeekGuide from '@/components/WeekGuide/WeekGuide.vue'
+import { onHide, onShow } from '@dcloudio/uni-app'
 import { useModeStore } from '@/stores/mode'
 import { useQuestionStore, rolloverRemainMin } from '@/stores/question'
 import { useKnowledgeStore, DEPTH_LABEL, depthColor, type CardDepth, type KnowledgeCard } from '@/stores/knowledge'
-import { poke } from '@/composables/useBuddy'
+import { useTraceStore } from '@/stores/trace'
+import { DWELL_MS, dwellTip, poke } from '@/composables/useBuddy'
 import { logTrace } from '@/utils/traceLog'
 import { useSkinClass } from '@/composables/useSkin'
 import { syncTabBar } from '@/utils/skin'
-import { ROUTES } from '@/router/routes'
-import type { RoutePath } from '@/router/routes'
+import { dayStats } from '@/utils/growth'
+import { buildProfile } from '@/utils/profile'
+import { refOfCard } from '@/utils/refSource'
+import { todayKey } from '@/stores/daily'
+import { navigateTo, ROUTES } from '@/router/routes'
+import type { RouteParams, RoutePath } from '@/router/routes'
 import type { EntryBadge } from '@/components/EntryItem/EntryItem.vue'
 
 const modeStore = useModeStore()
 const skinClass = useSkinClass()
 const question = useQuestionStore()
 const knowledge = useKnowledgeStore()
+const trace = useTraceStore()
 
 onShow(() => {
   /* 批次 D · 小枢：评估到点激励 / 入定到点提醒 */
   poke()
   syncTabBar(modeStore.id)
+  armDwell()
   question.ensureToday()
   draft.value = question.today()?.answer ?? ''
 })
+
+onHide(() => {
+  clearDwell()
+})
+
+/* 止念：停留过久且无操作 → 小枢把人赶去「行」（同一天只提醒一次） */
+let dwellTimer: ReturnType<typeof setTimeout> | null = null
+
+function clearDwell(): void {
+  if (dwellTimer) {
+    clearTimeout(dwellTimer)
+    dwellTimer = null
+  }
+}
+
+function armDwell(): void {
+  clearDwell()
+  dwellTimer = setTimeout(() => dwellTip('reflect'), DWELL_MS)
+}
+
+/**
+ * 止念触发条件：今天产出过东西（卡片 / 拷问作答）但一次「我用上了」都还没有。
+ * 刻意不在产出为 0 时出现 —— 那会让「知」还没开始就被劝退。
+ */
+/* 自我画像：派生数据，不入库、不持久化 —— 每次进场按当前脊椎重算一遍 */
+const profile = computed(() => buildProfile())
+
+const stopPen = computed(() => {
+  const k = todayKey()
+  const st = dayStats(k)
+  const produced = st.cards + (st.answered ? 1 : 0)
+  if (produced <= 0) return ''
+  const used = trace.ofDay(k).some((t) => t.kind === 'reflect.apply')
+  if (used) return ''
+  return `今天写了 ${produced} 条，一条都还没用上 —— 用过的才算你的。`
+})
+
+function goAction(): void {
+  navigateTo(ROUTES.tabAction)
+}
 
 /* —— 每日灵魂拷问 —— */
 const draft = ref('')
@@ -246,10 +346,17 @@ const cards = computed<ViewCard[]>(() => {
   return list.slice(0, 20)
 })
 
-const stateText = computed(
-  () =>
-    `已沉淀 ${cards.value.length} 条 · 连续复盘 ${question.consecutiveDays()} 天`,
-)
+/**
+ * 大厅头部的「一句」+ 两个关键数字（2026-09-16 定的形态）。
+ * 一句走 lexicon.hallLine 的三模式措辞；数字给"知识卡总数"与"连续省察天数"，
+ * 与下面「每日灵魂拷问」卡（问题 + 输入）不是同一维度，不重复。
+ */
+const headLine = computed(() => hallLine('reflect', modeStore.id))
+
+const headStats = computed(() => [
+  { value: `${cards.value.length}`, label: '知识卡 · 张' },
+  { value: `${question.consecutiveDays()}`, label: '连续省察 · 天' },
+])
 
 /* —— 详情层 —— */
 const detailOpen = ref(false)
@@ -283,6 +390,33 @@ function deepen(): void {
   }
 }
 
+/**
+ * 我用上了：知 → 行的唯一出口。
+ * 记 reflect.apply(15，同一张卡只给一次分) 并把卡片推到 Lv.3 内化。
+ */
+function applyCard(): void {
+  const raw = active.value?.raw
+  if (!raw) return
+  // ref 必须是 card-<createdAt>：与三件事挂出处、周报「一条路」同一个口径（见 utils/refSource）
+  const ref = refOfCard(raw.createdAt)
+  const already = trace.list.some(
+    (t) => t.kind === 'reflect.apply' && (t.ref === ref || t.ref === String(raw.createdAt)),
+  )
+  logTrace({ kind: 'reflect.apply', text: raw.title, ref, level: 3, value: already ? 0 : undefined })
+
+  // 一次到位推到 Lv.3：既然已经用上了，就没必要让人再点两次「加深」
+  let guard = 0
+  while ((knowledge.byId(raw.createdAt)?.depth ?? 3) < 3 && guard < 3) {
+    knowledge.deepen(raw.createdAt)
+    guard += 1
+  }
+  closeSheet()
+  uni.showToast({
+    title: already ? '已内化 · 这张卡之前记过' : '已内化 · 收下这 15 点修为',
+    icon: 'none',
+  })
+}
+
 function dropCard(): void {
   if (!active.value?.raw) return
   uni.showModal({
@@ -306,21 +440,31 @@ interface MoreEntry {
   subtitle: string
   badge: EntryBadge
   url?: RoutePath
+  /** 跳转参数（如费曼速记要带 ?add=1 直接展开转述面板） */
+  params?: RouteParams
   disabled?: boolean
 }
 
 const moreEntries = computed<MoreEntry[]>(() => [
+  /*
+   * 费曼速记（2026-09-16 转为真实入口）：
+   * 语音转文字走微信同声传译插件 —— 识别在微信侧完成、**音频不出微信**，
+   * 我们只拿文本，所以不需要登录、不花 AI 的钱、也不涉及上传（见 utils/voice.ts）。
+   * 带 ?add=1 进知识库并直接展开转述面板：这个入口要的是"立刻说一段"，
+   * 不该让人先过一屏卡片列表。
+   */
   {
     mark: '说',
     title: '费曼速记',
-    subtitle: '60 秒语音转文字 → 生成知识卡片（AI，需登录，后端期开放）',
-    badge: { text: 'AI · 后端期', tone: 'muted' },
-    disabled: true,
+    subtitle: '按住说 60 秒 → 转成文字 → 检验讲没讲明白（识别在微信侧完成，音频不出微信）',
+    badge: { text: '语音', tone: 'accent' },
+    url: ROUTES.reflectLibrary,
+    params: { add: '1' },
   },
   {
     mark: '存',
     title: '知识库 · 标签检索',
-    subtitle: '全部卡片按关键词 / 标签 / 深度检索，手动打标签（AI 打标后端期）',
+    subtitle: '全部卡片按关键词 / 标签 / 深度检索 · 可手动打标，也可让 AI 给建议',
     badge: { text: `${knowledge.cards.length} 张`, tone: knowledge.cards.length ? 'accent' : 'muted' },
     url: ROUTES.reflectLibrary,
   },
@@ -331,363 +475,30 @@ const moreEntries = computed<MoreEntry[]>(() => [
     badge: { text: '近 8 周', tone: 'muted' },
     url: ROUTES.reflectGrowth,
   },
+  /*
+   * 碎片回收站 · 截图分析（2026-09-16 复核标注）。
+   *
+   * 原来标「后端期」不准确 —— 查证后：微信官方的「通用印刷体识别」（`/cv/ocr/comm`）
+   * **明确对小程序开放，且免费 100 次/天**，只是必须走服务端（文档写明"不可在前端直接调用"），
+   * 而后端我们本来就有。所以它缺的不是后端。
+   *
+   * 真正让它押后的是两件事：
+   *  1. **截图要离开手机**（上传到我们服务器再转给微信）—— 截图里可能有什么，无法保证；
+   *  2. 用户得**手动截「屏幕使用时间」再上传**，而 iOS/安卓的数字健康数据本来就在系统里，
+   *     直接打开系统看更快更准。它替代不了那一下，只是多一条上传路径。
+   *
+   * 结论：技术上随时可做，但先想清楚「它到底替用户省了什么」。未排期。
+   */
+  {
+    mark: '碎',
+    title: '碎片回收站 · 截图分析',
+    subtitle: '导入截图识别文字 —— 技术上可行，但截图要离开手机，且不比系统自带的数字健康更准',
+    badge: { text: '未排期', tone: 'muted' },
+    disabled: true,
+  },
 ])
 </script>
 
 <style lang="scss" scoped>
-.page {
-  min-height: 100vh;
-  padding: 24rpx $gz-page-pad 60rpx;
-}
-
-.hall-head {
-  padding: 16rpx 0 30rpx;
-}
-
-.hall-head__row {
-  display: flex;
-  align-items: center;
-  gap: 20rpx;
-}
-
-.hall-head__mark {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  flex: none;
-  width: 84rpx;
-  height: 84rpx;
-  font-size: 44rpx;
-  font-weight: 800;
-  color: $gz-accent;
-  background: $gz-accent-soft;
-  border: 2rpx solid $gz-accent;
-  border-radius: 22rpx;
-}
-
-.hall-head__en {
-  font-size: $gz-fs-caption;
-  letter-spacing: $gz-ls-wide;
-  color: $gz-ink-3;
-}
-
-.hall-head__state {
-  display: block;
-  margin-top: 12rpx;
-  font-size: $gz-fs-small;
-  color: $gz-accent;
-}
-
-.question {
-  position: relative;
-  overflow: hidden;
-  padding: 34rpx 30rpx 30rpx;
-  background: $gz-surface;
-  border: 1rpx solid $gz-line;
-  border-radius: $gz-radius-lg;
-
-  &::before {
-    content: '';
-    position: absolute;
-    top: 0;
-    left: 0;
-    right: 0;
-    height: 6rpx;
-    background: linear-gradient(90deg, $gz-accent, $gz-grad-to);
-  }
-}
-
-.question__head {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-}
-
-.question__label {
-  font-size: $gz-fs-caption;
-  letter-spacing: 0.12em;
-  color: $gz-accent;
-}
-
-.question__tag {
-  padding: 4rpx 16rpx;
-  border-radius: 999rpx;
-  background: $gz-accent-soft;
-  color: $gz-accent;
-  font-size: $gz-fs-caption;
-}
-
-.question__text {
-  display: block;
-  margin-top: 16rpx;
-  font-size: 34rpx;
-  font-weight: 700;
-  line-height: 1.6;
-  color: $gz-ink;
-}
-
-.question__input {
-  width: 100%;
-  margin-top: 24rpx;
-  padding: 22rpx;
-  min-height: 120rpx;
-  background: $gz-input-bg;
-  border: 1rpx solid $gz-line;
-  border-radius: $gz-radius-md;
-  font-size: $gz-fs-small;
-  line-height: 1.8;
-  color: $gz-ink;
-  box-sizing: border-box;
-}
-
-.question__ph {
-  color: $gz-ink-3;
-}
-
-.question__btn {
-  margin-top: 20rpx;
-  padding: 22rpx 0;
-  background: $gz-cta-bg;
-  color: $gz-on-cta;
-  font-size: $gz-fs-small;
-  letter-spacing: 0.14em;
-  border-radius: $gz-radius-md;
-}
-
-.question__note {
-  display: block;
-  margin-top: 16rpx;
-  font-size: $gz-fs-caption;
-  color: $gz-ink-3;
-}
-
-.section {
-  margin-top: 36rpx;
-}
-
-.section__head {
-  display: flex;
-  align-items: baseline;
-  justify-content: space-between;
-  margin-bottom: 20rpx;
-  gap: 12rpx;
-}
-
-.section__title {
-  font-size: 32rpx;
-  font-weight: 700;
-  color: $gz-ink;
-}
-
-.section__hint {
-  display: block;
-  font-size: $gz-fs-caption;
-  color: $gz-ink-3;
-}
-
-.section__badge {
-  flex: none;
-  font-size: $gz-fs-caption;
-  color: $gz-ink-3;
-}
-
-.list {
-  display: flex;
-  flex-direction: column;
-  gap: 18rpx;
-}
-
-.card {
-  padding: 26rpx 28rpx;
-  background: $gz-surface;
-  border: 1rpx solid $gz-line;
-  border-radius: $gz-radius-md;
-}
-
-.card__top {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-}
-
-.card__tag {
-  padding: 4rpx 14rpx;
-  border-radius: 999rpx;
-  font-size: $gz-fs-caption;
-}
-
-.card__src {
-  font-size: $gz-fs-caption;
-  color: $gz-ink-3;
-}
-
-.card__title {
-  display: block;
-  margin-top: 14rpx;
-  font-size: $gz-fs-body;
-  font-weight: 700;
-  line-height: 1.5;
-  color: $gz-ink;
-}
-
-.card__digest {
-  display: -webkit-box;
-  -webkit-box-orient: vertical;
-  -webkit-line-clamp: 2;
-  overflow: hidden;
-  margin-top: 10rpx;
-  font-size: $gz-fs-small;
-  line-height: 1.8;
-  color: $gz-ink-2;
-}
-
-.card__tags {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 10rpx;
-  margin-top: 14rpx;
-}
-
-.card__tag-mini {
-  padding: 4rpx 14rpx;
-  border-radius: 999rpx;
-  font-size: 20rpx;
-  background: var(--gz-line-soft);
-  color: $gz-ink-3;
-}
-
-/* 空态 */
-.empty {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  padding: 60rpx 30rpx;
-  background: $gz-surface;
-  border: 1rpx dashed $gz-line;
-  border-radius: $gz-radius-md;
-}
-
-.empty__seal {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 96rpx;
-  height: 96rpx;
-  border: 2rpx solid $gz-accent;
-  border-radius: 22rpx;
-  background: $gz-accent-soft;
-  color: $gz-accent;
-  font-size: 42rpx;
-  font-weight: 700;
-}
-
-.empty__title {
-  margin-top: 24rpx;
-  font-size: $gz-fs-body;
-  font-weight: 600;
-  color: $gz-ink-2;
-}
-
-.empty__desc {
-  margin-top: 12rpx;
-  font-size: $gz-fs-caption;
-  line-height: 1.9;
-  text-align: center;
-  color: $gz-ink-3;
-  white-space: pre-line;
-}
-
-.entries {
-  display: flex;
-  flex-direction: column;
-  gap: 18rpx;
-}
-
-/* 详情层 */
-.mask {
-  position: fixed;
-  inset: 0;
-  z-index: 20;
-  display: flex;
-  align-items: flex-end;
-  background: rgba(20, 16, 10, 0.5);
-}
-
-.sheet {
-  width: 100%;
-  padding: 32rpx 32rpx calc(env(safe-area-inset-bottom) + 30rpx);
-  background: $gz-surface;
-  border-radius: 32rpx 32rpx 0 0;
-  box-sizing: border-box;
-}
-
-.sheet__head {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-}
-
-.sheet__tag {
-  padding: 4rpx 16rpx;
-  border-radius: 999rpx;
-  font-size: $gz-fs-caption;
-}
-
-.sheet__src {
-  font-size: $gz-fs-caption;
-  color: $gz-ink-3;
-}
-
-.sheet__title {
-  display: block;
-  margin-top: 18rpx;
-  font-size: 34rpx;
-  font-weight: 700;
-  line-height: 1.5;
-  color: $gz-ink;
-}
-
-.sheet__content {
-  display: block;
-  margin-top: 14rpx;
-  font-size: $gz-fs-small;
-  line-height: 1.9;
-  color: $gz-ink-2;
-}
-
-.sheet__tags {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 10rpx;
-  margin-top: 18rpx;
-}
-
-.sheet__deepen {
-  margin-top: 24rpx;
-  padding: 20rpx 0;
-  text-align: center;
-  background: $gz-accent-soft;
-  color: $gz-accent;
-  border-radius: $gz-radius-md;
-  font-size: $gz-fs-body;
-  font-weight: 600;
-}
-
-.sheet__btn {
-  margin-top: 16rpx;
-  padding: 16rpx 0;
-  background: transparent;
-  border: 1rpx solid rgba(196, 96, 46, 0.5);
-  color: #b25a2c;
-  font-size: $gz-fs-small;
-  border-radius: $gz-radius-md;
-}
-
-.sheet__close {
-  margin-top: 18rpx;
-  padding: 12rpx 0;
-  text-align: center;
-  font-size: $gz-fs-small;
-  color: $gz-ink-3;
-}
+@import './index.scss';
 </style>

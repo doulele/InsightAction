@@ -1,0 +1,89 @@
+/**
+ * SceneProbe —— 情境化省察就地一问（样式外置，由 SceneProbe.vue @import 引入）。
+ */
+
+.probe {
+  margin-top: 24rpx;
+  padding: 28rpx 28rpx 24rpx;
+  background: $gz-surface;
+  border: 1rpx solid $gz-line;
+  border-radius: $gz-radius-lg;
+}
+
+.probe.is-done {
+  background: transparent;
+  border-style: dashed;
+}
+
+.probe__tag {
+  display: block;
+  font-size: 22rpx;
+  letter-spacing: 0.14em;
+  color: $gz-ink-3;
+}
+
+.probe__q {
+  display: block;
+  margin-top: 10rpx;
+  font-size: 30rpx;
+  font-weight: 700;
+  line-height: 1.55;
+  color: $gz-ink;
+}
+
+.probe__a {
+  display: block;
+  margin-top: 12rpx;
+  font-size: 27rpx;
+  line-height: 1.7;
+  color: $gz-ink-2;
+}
+
+.probe__ta {
+  width: 100%;
+  box-sizing: border-box;
+  margin-top: 18rpx;
+  padding: 18rpx 20rpx;
+  min-height: 100rpx;
+  background: $gz-input-bg;
+  border: 1rpx solid $gz-line;
+  border-radius: $gz-radius-md;
+  font-size: 27rpx;
+  line-height: 1.7;
+  color: $gz-ink;
+}
+
+.probe__ph {
+  color: $gz-ink-3;
+  font-size: 26rpx;
+}
+
+.probe__row {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  margin-top: 18rpx;
+}
+
+.probe__skip {
+  padding: 12rpx 8rpx;
+  font-size: 25rpx;
+  color: $gz-ink-3;
+}
+
+.probe__go {
+  margin-left: 18rpx;
+  padding: 14rpx 38rpx;
+  background: $gz-cta-bg;
+  border-radius: 999rpx;
+  font-size: 26rpx;
+  color: $gz-on-cta;
+}
+
+.probe__note {
+  display: block;
+  margin-top: 16rpx;
+  font-size: 22rpx;
+  line-height: 1.6;
+  color: $gz-ink-3;
+}

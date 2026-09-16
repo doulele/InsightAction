@@ -28,8 +28,6 @@ export const ROUTES = {
   observeReadLater: '/subpkg-observe/readlater/index',
   /** 批次 B · 观：信息源质量榜（分包 subpkg-observe） */
   observeQualityBoard: '/subpkg-observe/qualityboard/index',
-  /** 批次 B · 观：概念播种（分包 subpkg-observe） */
-  observeSeedbed: '/subpkg-observe/seedbed/index',
   /** 批次 E · 观：记一笔 · 统一录入（分包 subpkg-observe，可带 ?kind=thing|theory|mother&form=article|quote|video） */
   observeCompose: '/subpkg-observe/compose/index',
   /** 批次 E · 观：收件匣（事/理/道的统一落点，分包 subpkg-observe） */
@@ -40,6 +38,8 @@ export const ROUTES = {
   observeTheoryLib: '/subpkg-observe/theorylib/index',
   /** 批次 E · 观：母题库（预置 12 母题 + 我的母题，分包 subpkg-observe） */
   observeMotherLib: '/subpkg-observe/motherlib/index',
+  /** 观：理道图谱 —— 理与母题引用关系的总览（§15.4 MVP 列表版，分包 subpkg-observe） */
+  observeGraph: '/subpkg-observe/graph/index',
   /** 批次 B · 止：禅定沙漏专注计时（分包 subpkg-pause） */
   pauseSandglass: '/subpkg-pause/sandglass/index',
   /** 批次 B · 止：专注统计（分包 subpkg-pause） */
@@ -72,10 +72,23 @@ export const ROUTES = {
   meBond: '/subpkg-me/bond/index',
   /** 我：我的箴言 —— 收藏句子的统一落点（开屏/小枢/日课，分包 subpkg-me） */
   meProverbs: '/subpkg-me/proverbs/index',
+  meReview: '/subpkg-me/review/index',
+  /** 我：修行看板 —— 四维雷达 / 认知深度分布 / 知→行转化率 / 成长图谱（分包 subpkg-me） */
+  meBoard: '/subpkg-me/board/index',
   /** m7 · 止：触发干预卡片（1-3 分钟呼吸暂停，分包 subpkg-pause） */
   pauseInterrupt: '/subpkg-pause/interrupt/index',
+  /** 止 · 立约（当日档：触发条件 + 承诺 + 替代动作，分包 subpkg-pause） */
+  pauseVow: '/subpkg-pause/vow/index',
+  /** 止 · 冲动记录 + 触发点地图 + 冷却期（分包 subpkg-pause，可带 ?tab=map） */
+  pauseUrge: '/subpkg-pause/urge/index',
   /** m7 · 行：愿望清单（修为兑换现实奖励，分包 subpkg-action） */
   actionWishes: '/subpkg-action/wishes/index',
+  /** 行 · 计划列表：今天 / 长期两个视图（分包 subpkg-action） */
+  actionPlans: '/subpkg-action/plans/index',
+  /** 行 · 计划详情：节点增删改勾选 · 收束回望（分包 subpkg-action，需带 ?id=） */
+  actionPlanDetail: '/subpkg-action/plans/detail',
+  /** 行 · 身体电量：微信运动步数（只在本机留存，分包 subpkg-action） */
+  actionBody: '/subpkg-action/body/index',
 } as const
 
 export type RoutePath = (typeof ROUTES)[keyof typeof ROUTES]
@@ -122,4 +135,36 @@ export function navigateTo(route: RoutePath, params?: RouteParams): void {
 /** 跨流程重置（启动引导 → 主界面；模式切换 → 重置到大厅） */
 export function reLaunchTo(route: RoutePath): void {
   uni.reLaunch({ url: buildUrl(route) })
+}
+
+/**
+ * 给「切 tab」加一层兜底（`App.vue` onLaunch 里调一次即可）。
+ *
+ * 背景（2026-09-16）：工具/基础库上报过 `switchTab:fail timeout`，而这个项目里 tab 跳转有
+ * 二十多处（五个大厅页的 `goBack()` 兜底、这里的主路径、启动页分流），绝大多数是裸调用、
+ * **没写 fail 回调** —— 于是失败被当成"未捕获错误"整屏上报，看着像崩溃，而那次跳转是真的没发生。
+ *
+ * 为什么用"包一层"而不是逐个改调用点：二十多处必漏，而且以后新写的 `uni.switchTab`
+ * 又会裸奔；包一层是全覆盖的（`navigateTo()` 走的也是 `uni.switchTab`，自动被保护）。
+ *
+ * 兜底动作是 `reLaunch`：它同样能打开 tab 页（只是重建页面栈），用户视角就是
+ * "点一下照样过去了"，不会卡在原地干等。调用方自己的 `fail` 仍会先执行，语义不变。
+ */
+export function installRouterGuard(): void {
+  type SwitchTabFn = typeof uni.switchTab
+  const raw = uni.switchTab as SwitchTabFn & { __gzGuarded?: boolean }
+  if (typeof raw !== 'function' || raw.__gzGuarded) return
+
+  const guarded = ((opts: Parameters<SwitchTabFn>[0]) => {
+    raw({
+      ...opts,
+      fail: (err) => {
+        opts.fail?.(err)
+        if (opts.url) uni.reLaunch({ url: opts.url })
+      },
+    })
+  }) as SwitchTabFn & { __gzGuarded?: boolean }
+
+  guarded.__gzGuarded = true
+  ;(uni as unknown as { switchTab: SwitchTabFn }).switchTab = guarded
 }

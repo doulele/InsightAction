@@ -1,0 +1,473 @@
+/**
+ * index.vue 的样式（超过 100 行，按项目约定外置到同目录 index.scss）。
+ * 由 index.vue 通过 @import 引入；以后改样式改本文件。
+ */
+.page {
+  min-height: 100vh;
+  padding: 24rpx $gz-page-pad 60rpx;
+}
+
+/*
+ * 等级卡：卡面/文字/进度全部走模式色板变量（--gz-rank-*），
+ * 三套皮肤各自定义：普通=暖白纸卡+橄榄、科技=终端深卡+电光、修仙=宣纸+朱砂。
+ * 切换模式即时换肤，无需模板差异。
+ */
+.rank {
+  position: relative;
+  overflow: hidden;
+  padding: 34rpx 30rpx 30rpx;
+  background: var(--gz-rank-bg);
+  border: 1rpx solid var(--gz-rank-border);
+  border-radius: $gz-radius-lg;
+  box-shadow: var(--gz-rank-shadow);
+  color: var(--gz-rank-ink);
+
+  /* 顶缘一条模式色渐变带：一瞥即知当前皮肤 */
+  &::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 6rpx;
+    background: linear-gradient(90deg, var(--gz-accent), var(--gz-grad-to));
+  }
+}
+
+.rank__row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.rank__mode {
+  display: block;
+  font-size: $gz-fs-caption;
+  letter-spacing: 0.14em;
+  color: var(--gz-rank-sub);
+}
+
+.rank__title {
+  display: block;
+  margin-top: 10rpx;
+  font-size: 44rpx;
+  font-weight: 800;
+  color: var(--gz-rank-ink);
+}
+
+.rank__lv {
+  font-size: 26rpx;
+  font-weight: 600;
+  color: var(--gz-rank-sub);
+}
+
+.rank__seal {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex: none;
+  width: 88rpx;
+  height: 88rpx;
+  background: var(--gz-accent-soft);
+  border: 2rpx solid var(--gz-accent);
+  border-radius: 20rpx;
+  font-size: 40rpx;
+  font-weight: 800;
+  color: var(--gz-accent);
+}
+
+.rank .bar {
+  margin-top: 28rpx;
+  background: var(--gz-rank-track);
+}
+
+.rank .bar__fill {
+  background: linear-gradient(90deg, var(--gz-accent), var(--gz-grad-to));
+}
+
+.rank__next {
+  display: block;
+  margin-top: 16rpx;
+  font-size: $gz-fs-caption;
+  color: var(--gz-rank-sub);
+}
+
+/* 起点基线：建档结果（称号 · 得分率 · 建档日期）；未建档时这一行本身就是入口 */
+.rank__base {
+  display: flex;
+  align-items: center;
+  gap: 14rpx;
+  margin-top: 18rpx;
+  padding-top: 18rpx;
+  border-top: 1rpx solid var(--gz-rank-border);
+}
+
+.rank__base-label {
+  flex: none;
+  font-size: $gz-fs-caption;
+  letter-spacing: 0.06em;
+  color: var(--gz-rank-sub);
+}
+
+.rank__base-text {
+  flex: 1;
+  font-size: $gz-fs-caption;
+  color: var(--gz-rank-ink);
+
+  &.is-missing {
+    color: var(--gz-rank-sub);
+  }
+}
+
+.rank__base-cta {
+  flex: none;
+  padding: 4rpx 16rpx;
+  border-radius: 999rpx;
+  border: 1rpx solid var(--gz-rank-border);
+  font-size: $gz-fs-caption;
+  color: var(--gz-accent);
+}
+
+/* 数据备份行 */
+.backup {
+  display: flex;
+  align-items: center;
+  gap: 18rpx;
+  margin-top: 18rpx;
+  padding: 22rpx 26rpx;
+  border: 1rpx dashed $gz-line;
+  border-radius: $gz-radius-md;
+  background: $gz-surface;
+}
+
+.backup__body {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 4rpx;
+}
+
+.backup__title {
+  font-size: $gz-fs-small;
+  font-weight: 600;
+  color: $gz-ink;
+}
+
+.backup__sub {
+  font-size: $gz-fs-caption;
+  color: $gz-ink-3;
+}
+
+.backup__go {
+  flex: none;
+  font-size: $gz-fs-caption;
+  color: $gz-accent;
+  font-weight: 600;
+}
+
+/* 修行语言切换行 */
+.lang {
+  display: flex;
+  align-items: center;
+  gap: 26rpx;
+  margin-top: 22rpx;
+  padding: 26rpx 28rpx;
+  background: $gz-surface;
+  border: 1rpx solid $gz-line;
+  border-radius: $gz-radius-md;
+}
+
+.lang__mark {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex: none;
+  width: 76rpx;
+  height: 76rpx;
+  border: 1rpx solid $gz-line;
+  border-radius: 18rpx;
+  background: $gz-paper;
+  color: $gz-accent;
+  font-size: 34rpx;
+  font-weight: 600;
+}
+
+.lang__body {
+  flex: 1;
+  min-width: 0;
+}
+
+.lang__title {
+  display: block;
+  font-size: $gz-fs-title;
+  font-weight: 600;
+  color: $gz-ink;
+}
+
+.lang__sub {
+  display: block;
+  margin-top: 6rpx;
+  font-size: $gz-fs-small;
+  line-height: 1.6;
+  color: $gz-ink-3;
+}
+
+/* 三种修行语言缩略色点：当前模式放大 + 主色光圈，点/不点都可整行点击切换 */
+.lang__dots {
+  flex: none;
+  display: flex;
+  align-items: center;
+  gap: 14rpx;
+  padding-left: 12rpx;
+}
+
+.lang__dot {
+  width: 16rpx;
+  height: 16rpx;
+  border-radius: 50%;
+  opacity: 0.35;
+  transition: all 0.25s ease;
+}
+
+.lang__dot.is-on {
+  width: 30rpx;
+  height: 30rpx;
+  opacity: 1;
+  box-shadow: 0 0 0 6rpx $gz-accent-soft;
+}
+
+.section {
+  margin-top: 36rpx;
+}
+
+.section__head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  margin-bottom: 20rpx;
+}
+
+.section__title {
+  font-size: 32rpx;
+  font-weight: 700;
+  color: $gz-ink;
+}
+
+.section__badge {
+  font-size: $gz-fs-caption;
+  color: $gz-ink-3;
+}
+
+/*
+ * 今日四维：一行四个环形进度（2026-09-16 定稿 —— 横条 → 竖柱 → 环形）。
+ * 环形的两个好处：宽高比 1:1，不额外占高；"环走到哪儿"比柱更直观。
+ * 环是 CSS conic-gradient 两层套出来的（外环画进度与槽，内孔盖回纸底色），
+ * **不用 canvas**：它的小程序实现是原生组件、层级最高，会盖住小枢悬浮球，
+ * 且本页是滚动页，原生组件滚动时容易闪。进度色由页面内联传（每维一色），
+ * 槽色走皮肤变量，取不到时回落半透明黑。
+ */
+.dims {
+  display: flex;
+  gap: 14rpx;
+  padding: 18rpx 24rpx 20rpx;
+  background: $gz-surface;
+  border: 1rpx solid $gz-line;
+  border-radius: $gz-radius-lg;
+}
+
+.dimr {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10rpx;
+}
+
+.dimr__ring {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 128rpx;
+  height: 128rpx;
+  border-radius: 50%;
+}
+
+/* 孔：环内数字的容器，也是两个绝对定位数字的基准 */
+.dimr__hole {
+  position: relative;
+  width: 102rpx;
+  height: 102rpx;
+  border-radius: 50%;
+  background: $gz-surface;
+}
+
+/*
+ * 百分比：**落在圆心**（绝对居中）。
+ * 若与数量一起当两行块居中，它会整体偏上、看着不在中心；绝对定位顺带把 text 变块级，
+ * text-align 才生效。
+ */
+.dimr__pct {
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 50%;
+  transform: translateY(-50%);
+  text-align: center;
+  font-size: 22rpx;
+  font-weight: 700;
+  line-height: 1.1;
+}
+
+/* 数量：贴孔内下缘、比百分比小一级 —— 让圆心的主数字先被看见 */
+.dimr__frac {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 14rpx;
+  text-align: center;
+  font-size: 18rpx;
+  line-height: 1.1;
+  color: $gz-ink-3;
+}
+
+.dimr__label {
+  font-size: $gz-fs-caption;
+  color: $gz-ink-3;
+  white-space: nowrap;
+}
+
+.bar {
+  height: 12rpx;
+  border-radius: 999rpx;
+  background: var(--gz-line-soft);
+  overflow: hidden;
+}
+
+.bar__fill {
+  height: 100%;
+  border-radius: 999rpx;
+  background: linear-gradient(90deg, $gz-accent, $gz-grad-to);
+  transition: width 0.6s ease;
+}
+
+
+.entries {
+  display: flex;
+  flex-direction: column;
+  gap: 18rpx;
+}
+
+/* 今日日课卡入口（批次 D） */
+.foot {
+  margin-top: 56rpx;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8rpx;
+  padding-bottom: 20rpx;
+}
+
+.foot__text {
+  font-size: $gz-fs-caption;
+  letter-spacing: 0.1em;
+  color: $gz-ink-2;
+}
+
+.foot__text.is-dim {
+  color: $gz-ink-3;
+}
+
+/*
+ * 名号编辑面板（只在编辑态出现）：
+ * 展示态（头像 + 名字 + 一句话）已并入大厅头组件 HallHead —— 首屏不再同时出现两个「我」。
+ * 编辑仍留在这里、不跳子页：只有两个字段，独立成页反而要付一次跳转与返回的代价。
+ */
+.profile {
+  margin-bottom: 28rpx;
+  padding: 26rpx 28rpx;
+  background: $gz-surface;
+  border: 1rpx solid $gz-line;
+  border-radius: $gz-radius-lg;
+}
+
+.profile__img {
+  width: 100%;
+  height: 100%;
+}
+
+/* 没有头像时用昵称首字做「名字章」 */
+.profile__letter {
+  font-size: 40rpx;
+  font-weight: 800;
+  color: $gz-accent;
+  line-height: 1;
+}
+
+/* 编辑态：头像在上、输入框在下，操作键右对齐 */
+.profile__edit {
+  position: relative;
+}
+
+/* 微信原生 button 自带边框与默认灰底，这里彻底让位给自己的样式 */
+.profile__avatar-btn {
+  display: block;
+  padding: 0;
+  margin: 0 auto;
+  width: 128rpx;
+  height: 128rpx;
+  line-height: normal;
+  background: transparent;
+
+  &::after {
+    border: none;
+  }
+}
+
+.profile__fields {
+  margin-top: 24rpx;
+}
+
+.profile__input {
+  height: 80rpx;
+  padding: 0 24rpx;
+  font-size: $gz-fs-body;
+  color: $gz-ink;
+  background: $gz-input-bg;
+  border: 1rpx solid $gz-line;
+  border-radius: $gz-radius-md;
+}
+
+.profile__ph {
+  color: $gz-ink-3;
+}
+
+.profile__tip {
+  display: block;
+  margin-top: 12rpx;
+  font-size: $gz-fs-caption;
+  color: $gz-ink-3;
+}
+
+.profile__ops {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 28rpx;
+  margin-top: 26rpx;
+}
+
+.profile__op {
+  padding: 14rpx 12rpx;
+  font-size: $gz-fs-body;
+  color: $gz-ink-2;
+}
+
+.profile__op.is-main {
+  padding: 14rpx 36rpx;
+  font-weight: 600;
+  color: $gz-on-cta;
+  background: $gz-cta-bg;
+  border-radius: $gz-radius-md;
+}

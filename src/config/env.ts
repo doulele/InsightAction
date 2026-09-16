@@ -18,8 +18,18 @@
 /** 开发态接口地址：本机后端（InsightActionBacend，npm run dev 监听 3002） */
 const DEV_API_BASE_FALLBACK = 'http://127.0.0.1:3002/guanzhi'
 
-/** 开发态强制走 mock 的源码开关（true 时 dev 下所有接口返回假数据） */
-const DEV_FORCE_MOCK = false
+/**
+ * 开发态是否跳过 AI、直接走基础兜底（utils/localAi）。
+ *
+ * 默认 **true**，理由是本项目的实际开发状态：
+ *  · 本地调试时后端（InsightActionBacend）经常没起，或没配 DEEPSEEK_API_KEY；
+ *  · AI 每次调用都真实花钱，调一次几厘钱不多，但调试时连点几十次没意义；
+ *  · 关掉它之后，AI 相关功能**仍然可用**（走基础规则），只是结果朴素些 ——
+ *    这正是"所有用 AI 的地方都要有兜底"要达到的效果，本地调试反而能顺便验证兜底路径。
+ *
+ * 想真调 AI 时把这里改成 false 即可（生产构建不受它影响，恒为可用）。
+ */
+const DEV_AI_OFF = true
 
 /** 生产构建标记：prod 构建内联为 true；dev 下为 undefined → 视为非生产 */
 const IS_PROD = import.meta.env.PROD === true
@@ -41,15 +51,12 @@ export const ENV = {
   apiBaseUrl: INJECTED_API_BASE || (IS_PROD ? '' : DEV_API_BASE_FALLBACK),
 
   /**
-   * 是否启用本地 mock：
-   * 1. 生产构建恒为 false —— 线上绝不允许返回假数据；
-   * 2. 开发态由源码开关 DEV_FORCE_MOCK 控制（dev 下 VITE_USE_MOCK 不可用，原因见文件头）。
+   * 是否允许调用 AI 接口。
+   *  · 生产恒为 true —— 但还要再过两道关：服务端 openid 白名单、远端开关 feature('ai')；
+   *  · 开发由 DEV_AI_OFF 决定，关掉就一律走基础兜底（utils/localAi），不花钱、不依赖后端。
    */
-  useMock: !IS_PROD && DEV_FORCE_MOCK,
+  aiEnabled: IS_PROD ? true : !DEV_AI_OFF,
 } as const
-
-/** 运行平台判定（运行时） */
-export const isMockEnabled = (): boolean => ENV.useMock
 
 /**
  * 生产包自检（最后一道兜底）。
@@ -65,8 +72,5 @@ if (IS_PROD && !/^https:\/\//i.test(ENV.apiBaseUrl)) {
 
 /** 开发态启动时打印一次，便于确认「这次到底连的哪个后端」 */
 if (!IS_PROD) {
-  console.log(
-    `[env] 开发模式 → ${ENV.apiBaseUrl || '(接口地址为空)'}` +
-      `${ENV.useMock ? '  [mock 已开启，接口返回假数据]' : ''}`,
-  )
+  console.log(`[env] 开发模式 → ${ENV.apiBaseUrl || '(接口地址为空)'}`)
 }

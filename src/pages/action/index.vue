@@ -1,34 +1,43 @@
 <template>
   <view class="page" :class="skinClass">
-    <!-- 大厅头 -->
-    <view class="hall-head">
-      <view class="hall-head__row">
-        <text class="hall-head__mark">行</text>
-        <text class="hall-head__en">ACT · 验证 → 创造 → 痕迹</text>
-      </view>
-      <text class="hall-head__state">{{ stateText }}</text>
-    </view>
+    <!-- 大厅头（五页共用组件：主题艺术画作背景 + 印章 + 定位 + 状态） -->
+    <HallHead mark="行" en="ACT · 验证 → 创造 → 痕迹" :line="headLine" :stats="headStats" />
+
+    <!-- 第一周解锁引导：今天的主角在这里才挂出 -->
+    <WeekGuide for="action" />
 
     <!-- 今日三件事 -->
-    <view class="today">
+    <!-- id="today"：第一周引导「立一件事」的滚动落点（WeekGuide 的 #today），改名要同步改 config/unlock.ts -->
+    <view id="today" class="today">
       <view class="today__head">
         <text class="today__label">今日三件事</text>
         <text class="today__count">{{ daily.doneCount }}/{{ daily.planCount || 3 }}</text>
       </view>
 
+      <!--
+        每条三件事带一行「出处」（规格 §4.4 回应式行动）：
+        没有来源时诚实标「无出处」，挂错的理比不挂更糟 —— 它会污染脊椎的 ref。
+      -->
       <view v-for="todo in daily.todos" :key="todo.id" class="todo" :class="{ 'is-done': todo.done }">
         <view class="todo__check" :class="{ 'is-on': todo.done }" @click="onToggleTodo(todo)">
           <text v-if="todo.done" class="todo__tick">✓</text>
         </view>
-        <input
-          v-model="todo.text"
-          class="todo__input"
-          :class="{ 'is-done': todo.done }"
-          placeholder="写下一件今天要做成的事…"
-          placeholder-class="todo__ph"
-          :maxlength="40"
-          @blur="onEdited"
-        />
+        <view class="todo__body">
+          <input
+            v-model="todo.text"
+            class="todo__input"
+            :class="{ 'is-done': todo.done }"
+            placeholder="写下一件今天要做成的事…"
+            placeholder-class="todo__ph"
+            :maxlength="40"
+            @blur="onEdited"
+          />
+          <view class="todo__src" hover-class="gz-hover" @click="openSource(todo)">
+            <text class="todo__src-tag" :class="{ 'is-none': !todo.ref }">{{ srcTag(todo) }}</text>
+            <text class="todo__src-text">{{ srcText(todo) }}</text>
+            <text v-if="todo.ref" class="todo__src-x" @click.stop="onClearRef(todo)">解</text>
+          </view>
+        </view>
       </view>
 
       <view v-if="daily.allDone" class="today__done">
@@ -36,6 +45,62 @@
         <text class="today__done-sub" hover-class="gz-hover" @click="openBox">
           已完成已回写【知】 · 去开一只微行动盲盒 →
         </text>
+      </view>
+    </view>
+
+    <!--
+      今天要走的步子（2026-09-15 计划模块）：
+      三件事是「今天最重要的三件」，这里是「三件之外还要往前挪的步子」——
+      派到今天的节点 + 只活今天的一件事。未完成的会过期待办池，不催办、不扣分。
+    -->
+    <view class="steps">
+      <view class="steps__head">
+        <text class="steps__label">{{ planW.today }}</text>
+        <text class="steps__n">{{ stepDone }}/{{ todaySteps.length }}</text>
+      </view>
+
+      <view v-if="todaySteps.length" class="steps__list">
+        <PlanStep v-for="s in todaySteps" :key="s.key" :item="s" @toggle="onToggleStep" />
+      </view>
+      <text v-else class="steps__empty">今天还没有额外的步子 —— 有想推进的，写一条。</text>
+
+      <view class="steps__quick">
+        <input
+          v-model="newStep"
+          class="steps__input"
+          :placeholder="planW.newToday"
+          placeholder-class="steps__ph"
+          :maxlength="30"
+          confirm-type="done"
+          @confirm="addStep"
+        />
+        <view class="steps__btn" hover-class="gz-hover" @click="addStep">加</view>
+      </view>
+
+      <text v-if="todaySteps.length > TODAY_STEP_COMFORT" class="steps__warn">
+        今天排了 {{ todaySteps.length }} 条 —— 比平时多，走得完吗？
+      </text>
+      <text v-if="poolHint" class="steps__pool" hover-class="gz-hover" @click="goPlans">{{ poolHint }}</text>
+    </view>
+
+    <!-- 在走的长路 -->
+    <view v-if="longTop.length" class="section">
+      <view class="section__head">
+        <text class="section__title">在走的{{ planW.plan }}</text>
+        <text class="section__more" hover-class="gz-hover" @click="goPlans">全部 ›</text>
+      </view>
+      <view v-for="p in longTop" :key="p.id" class="plan" hover-class="gz-hover" @click="openPlan(p)">
+        <view class="plan__row">
+          <text class="plan__title">{{ p.title }}</text>
+          <text v-if="p.challenge" class="plan__tag">{{ challengeText(p) }}</text>
+        </view>
+        <view class="bar bar--plan">
+          <view class="bar__fill" :style="{ width: `${planStore.progressOf(p).pct}%` }" />
+        </view>
+        <view class="plan__meta">
+          <text class="plan__progress">{{ planW.progress(planStore.progressOf(p).done, planStore.progressOf(p).total) }}</text>
+          <text class="plan__next">{{ nextHint(p) }}</text>
+        </view>
       </view>
     </view>
 
@@ -60,6 +125,20 @@
 
     <!-- 批次 D · 小枢全局浮层 -->
     <BuddyFloat />
+
+    <!-- 远端提示层：公告 + 版本更新（强制更新 / 新包已下载、重启生效） -->
+    <RemoteNotice />
+
+    <!-- 计划收束时的回望（可跳过） -->
+    <PlanReflect
+      :show="!!reflectOn"
+      :plan="reflectOn"
+      @confirm="onReflectConfirm"
+      @skip="onReflectSkip"
+    />
+
+    <!-- 三件事的关联来源（§4.4 回应式行动） -->
+    <TodoSource :show="!!sourceOn" :current="sourceOn?.ref ?? ''" @pick="onPickSource" @close="sourceOn = null" />
   </view>
 </template>
 
@@ -69,7 +148,9 @@
  * 三件事勾选完成即回写【知】知识卡片（Lv.2 行动回写）并留下痕迹；
  * 习惯打卡 / 微行动盲盒 / 行动周报均为真实子页。
  */
-import { computed } from 'vue'
+import { computed, ref } from 'vue'
+import HallHead from '@/components/HallHead/HallHead.vue'
+import WeekGuide from '@/components/WeekGuide/WeekGuide.vue'
 import { onShow } from '@dcloudio/uni-app'
 import { useModeStore } from '@/stores/mode'
 import { useRemoteStore } from '@/stores/remote'
@@ -77,15 +158,18 @@ import { useSkinClass } from '@/composables/useSkin'
 import { useDailyStore, todayKey, type DailyTodo } from '@/stores/daily'
 import { useKnowledgeStore } from '@/stores/knowledge'
 import { useHabitStore } from '@/stores/habit'
+import { usePlanStore, TODAY_STEP_COMFORT, type Plan, type StepItem } from '@/stores/plan'
+import { useBodyStore } from '@/stores/body'
 import { logTrace } from '@/utils/traceLog'
 import { poke } from '@/composables/useBuddy'
 import { useXpStore } from '@/stores/xp'
 import { useWishStore } from '@/stores/wish'
 import { syncTabBar } from '@/utils/skin'
-import { hallStatus } from '@/config/lexicon'
+import { CHALLENGE_LABEL, hallLine, planWords } from '@/config/lexicon'
 import { navigateTo, ROUTES } from '@/router/routes'
 import type { RoutePath } from '@/router/routes'
 import type { EntryBadge } from '@/components/EntryItem/EntryItem.vue'
+import { REF_KIND_LABEL, type RefOption } from '@/utils/refSource'
 
 const modeStore = useModeStore()
 /** 远端功能开关（features.box / teahouse …）：入口整块可控隐藏，页面代码无需改动 */
@@ -96,34 +180,123 @@ const knowledge = useKnowledgeStore()
 const habit = useHabitStore()
 const wishStore = useWishStore()
 const xpTotal = useXpStore()
+/** 计划（2026-09-15）：长期目标 + 节点 + 今天的步子 */
+const planStore = usePlanStore()
+/** 身体电量（2026-09-15）：微信运动步数，只在本机留存 */
+const body = useBodyStore()
+const planW = computed(() => planWords(modeStore.id))
 
 onShow(() => {
   daily.ensureToday()
+  /* 搁置满 3 天的「今天做的一件事」自动收走（静默，不打扰） */
+  planStore.sweep()
   /* 批次 D · 小枢：评估到点激励 / 入定到点提醒 */
   poke()
   /* tabBar 原生样式/图标只能在本类大厅页上同步 */
   syncTabBar(modeStore.id)
 })
 
-const stateText = computed(() =>
-  hallStatus('action', modeStore.id, { done: daily.doneCount, plan: daily.planCount }),
-)
+/* ---------------- 今天要走的步子 ---------------- */
+const todaySteps = computed<StepItem[]>(() => planStore.stepsOf())
+const stepDone = computed(() => todaySteps.value.filter((s) => s.done).length)
+
+/** 待办池提示：有搁置的才出现，平时不占位（不催办，只是让它可被找到） */
+const poolHint = computed(() => {
+  const n = planStore.poolStepsOf().length
+  return n > 0 ? `${planW.value.pool}里还搁着 ${n} 条 · 去看看 ›` : ''
+})
+
+const newStep = ref('')
+
+function addStep(): void {
+  const title = newStep.value.trim()
+  if (!title) return
+  if (planStore.addPlan({ title, kind: 'today' })) {
+    newStep.value = ''
+    uni.showToast({ title: '已记下 · 今天多做一件', icon: 'none' })
+  }
+}
+
+/** 勾选一步：收束时按计划类型决定是否弹回望（today 型没有回望） */
+function onToggleStep(s: StepItem): void {
+  const res = planStore.toggleStep(s.planId, s.nodeId)
+  if (!res.closed) return
+  const target = planStore.byId(s.planId)
+  if (target && target.kind === 'long') {
+    reflectOn.value = target
+  } else {
+    uni.showToast({ title: '今日事已了', icon: 'none' })
+  }
+}
+
+/* ---------------- 在走的长路 ---------------- */
+const longTop = computed(() => planStore.activeLong.slice(0, 2))
+
+function challengeText(p: Plan): string {
+  return p.challenge ? CHALLENGE_LABEL[p.challenge] : ''
+}
+
+function nextHint(p: Plan): string {
+  const node = planStore.nextNodeOf(p)
+  if (node) return `${planW.value.next} · ${node.title}`
+  const remain = planStore.remainDaysOf(p)
+  if (remain !== null && remain > 0) return `还剩 ${remain} 天`
+  return '步子都走完了'
+}
+
+function openPlan(p: Plan): void {
+  navigateTo(ROUTES.actionPlanDetail, { id: p.id })
+}
+
+function goPlans(): void {
+  navigateTo(ROUTES.actionPlans)
+}
+
+/* ---------------- 收束回望 ---------------- */
+const reflectOn = ref<Plan | null>(null)
+
+function onReflectConfirm(text: string): void {
+  const p = reflectOn.value
+  reflectOn.value = null
+  if (!p) return
+  if (planStore.writeReflection(p.id, text)) {
+    uni.showToast({ title: '收束 · 这句已存进【知】', icon: 'none' })
+  }
+}
+
+function onReflectSkip(): void {
+  reflectOn.value = null
+  uni.showToast({ title: '已收束 · 收下这 20 点修为', icon: 'none' })
+}
+
+/**
+ * 大厅头部的「一句」+ 两个关键数字（2026-09-16 定的形态）。
+ * 一句走 lexicon.hallLine 的三模式措辞；数字给"今日三件事"与"累计修为" ——
+ * 「做了事 → 涨修为」这条因果在行大厅最贴切，也让下面那份待办列表不必再报总数。
+ */
+const headLine = computed(() => hallLine('action', modeStore.id))
+
+const headStats = computed(() => [
+  { value: `${daily.doneCount}/${daily.planCount || 3}`, label: '今日三件事' },
+  { value: `${xpTotal.total}`, label: '累计修为 · 点' },
+])
 
 function onEdited(): void {
   // v-model 已实时同步 store，无需额外动作；跨天在 onShow ensureToday 处理
 }
 
-/** 勾选/取消完成：完成时行→知回写 + 痕迹入账 */
+/** 勾选/取消完成：完成时行→知回写 + 痕迹入账（带上出处，周报的「一条路」靠它串） */
 function onToggleTodo(todo: DailyTodo): void {
   const text = todo.text.trim()
   const willDone = !todo.done
+  const from = todo.ref
   daily.toggle(todo.id)
   if (willDone && text) {
-    writeBack(text)
+    writeBack(text, from)
   }
 }
 
-function writeBack(text: string): void {
+function writeBack(text: string, from?: string): void {
   const k = todayKey()
   const dup = knowledge.cards.some((c) => {
     if (c.kind !== 'action') return false
@@ -134,10 +307,43 @@ function writeBack(text: string): void {
   if (!dup) {
     knowledge.add({ kind: 'action', title: text, content: text, tags: ['行动'], depth: 2, src: '行 · 行动回写' })
     // 首次回写入账修为（value 取事件表 10 分）；重复内容只留痕，不给分（防刷）
-    logTrace({ kind: 'action.todo', text })
+    logTrace({ kind: 'action.todo', text, ref: from })
   } else {
-    logTrace({ kind: 'action.todo', text, value: 0 })
+    logTrace({ kind: 'action.todo', text, value: 0, ref: from })
   }
+}
+
+/* ---------------- 三件事的出处（§4.4 回应式行动） ---------------- */
+/** 正在给哪一条找出处 */
+const sourceOn = ref<DailyTodo | null>(null)
+
+function openSource(todo: DailyTodo): void {
+  if (!todo.text.trim()) {
+    uni.showToast({ title: '先写下要做什么，再挂出处', icon: 'none' })
+    return
+  }
+  sourceOn.value = todo
+}
+
+function onPickSource(o: RefOption | null): void {
+  const t = sourceOn.value
+  sourceOn.value = null
+  if (!t) return
+  // o 为 null = 用户选了「无出处」：不猜、不硬挂
+  if (o) daily.setRef(t.id, o.ref, o.kind, o.text)
+  else daily.setRef(t.id, '', 'none', '')
+}
+
+function onClearRef(todo: DailyTodo): void {
+  daily.clearRef(todo.id)
+}
+
+function srcTag(todo: DailyTodo): string {
+  return todo.ref ? REF_KIND_LABEL[todo.refKind ?? 'none'] : '无出处'
+}
+
+function srcText(todo: DailyTodo): string {
+  return todo.ref ? todo.refText || '已关联' : '关联 ›'
 }
 
 function openBox(): void {
@@ -159,7 +365,21 @@ const moreEntries = computed<MoreEntry[]>(() => {
   const wishes = wishStore.wishes
   const wishReady = wishes.filter((w) => !w.claimedAt && xpTotal.total >= w.needXp).length
   const wishClaimed = wishes.filter((w) => w.claimedAt).length
+  const stepTodo = todaySteps.value.filter((s) => !s.done).length
+  const poolN = planStore.poolStepsOf().length
   return [
+    {
+      mark: planW.value.mark,
+      title: planW.value.plan,
+      subtitle: '跨天的目标拆成一步步走 · 今天的步子与待办池都在这里',
+      badge:
+        longTop.value.length > 0 || stepTodo > 0
+          ? { text: `进行中 ${planStore.activeLongCount} 个`, tone: 'accent' }
+          : poolN > 0
+            ? { text: `${poolN} 条搁置`, tone: 'muted' }
+            : { text: '立一条', tone: 'muted' },
+      url: ROUTES.actionPlans,
+    },
     {
       mark: '惯',
       title: '习惯打卡',
@@ -194,6 +414,16 @@ const moreEntries = computed<MoreEntry[]>(() => {
       badge: { text: '周报', tone: 'accent' },
       url: ROUTES.actionWeekly,
     },
+    /* 身体电量：微信运动步数（手动同步，本机留存），未同步时引导去读一次 */
+    {
+      mark: '电',
+      title: '身体电量 · 微信运动',
+      subtitle: '今天的步数与最近七天，给自己一个身体的读数',
+      badge: body.hasToday
+        ? { text: `今日 ${body.todayStep} 步`, tone: 'accent' }
+        : { text: '去同步', tone: 'muted' },
+      url: ROUTES.actionBody,
+    },
     {
       mark: '愿',
       title: '愿望清单',
@@ -213,180 +443,5 @@ const moreEntries = computed<MoreEntry[]>(() => {
 </script>
 
 <style lang="scss" scoped>
-.page {
-  min-height: 100vh;
-  padding: 24rpx $gz-page-pad 60rpx;
-}
-
-.hall-head {
-  padding: 16rpx 0 30rpx;
-}
-
-.hall-head__row {
-  display: flex;
-  align-items: center;
-  gap: 20rpx;
-}
-
-/* 模式印章：随皮肤走主色 —— 修仙=朱砂印、科技=电光蓝、普通=橄榄 */
-.hall-head__mark {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  flex: none;
-  width: 84rpx;
-  height: 84rpx;
-  font-size: 44rpx;
-  font-weight: 800;
-  color: $gz-accent;
-  background: $gz-accent-soft;
-  border: 2rpx solid $gz-accent;
-  border-radius: 22rpx;
-}
-
-.hall-head__en {
-  font-size: $gz-fs-caption;
-  letter-spacing: $gz-ls-wide;
-  color: $gz-ink-3;
-}
-
-.hall-head__state {
-  display: block;
-  margin-top: 12rpx;
-  font-size: $gz-fs-small;
-  color: $gz-accent;
-}
-
-.today {
-  position: relative;
-  overflow: hidden;
-  padding: 34rpx 30rpx 30rpx;
-  background: $gz-surface;
-  border: 1rpx solid $gz-line;
-  border-radius: $gz-radius-lg;
-
-  /* 模式顶缘：与「我」页等级卡同一道模式色带，一瞥即知当前皮肤 */
-  &::before {
-    content: '';
-    position: absolute;
-    top: 0;
-    left: 0;
-    right: 0;
-    height: 6rpx;
-    background: linear-gradient(90deg, $gz-accent, $gz-grad-to);
-  }
-}
-
-.today__head {
-  display: flex;
-  align-items: baseline;
-  justify-content: space-between;
-}
-
-.today__label {
-  font-size: 32rpx;
-  font-weight: 700;
-  color: $gz-ink;
-}
-
-.today__count {
-  font-size: 44rpx;
-  font-weight: 800;
-  color: $gz-accent;
-}
-
-.todo {
-  display: flex;
-  align-items: center;
-  gap: 20rpx;
-  padding: 22rpx 0;
-  border-bottom: 1rpx solid $gz-line-soft;
-}
-
-.todo:last-child {
-  border-bottom: none;
-}
-
-.todo__check {
-  flex: none;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 44rpx;
-  height: 44rpx;
-  border: 2rpx solid $gz-ink-3;
-  border-radius: 50%;
-  color: transparent;
-  transition: all 0.2s ease;
-}
-
-.todo__check.is-on {
-  background: $gz-cta-bg;
-  border-color: $gz-cta-bg;
-  color: $gz-on-cta;
-}
-
-.todo__tick {
-  font-size: 26rpx;
-  font-weight: 700;
-}
-
-.todo__input {
-  flex: 1;
-  min-width: 0;
-  font-size: $gz-fs-body;
-  color: $gz-ink;
-}
-
-.todo__input.is-done {
-  color: $gz-ink-3;
-  text-decoration: line-through;
-}
-
-.todo__ph {
-  color: $gz-ink-3;
-}
-
-.today__done {
-  margin-top: 24rpx;
-  padding: 22rpx 0 6rpx;
-  text-align: center;
-}
-
-.today__done-title {
-  display: block;
-  font-size: $gz-fs-body;
-  font-weight: 700;
-  color: $gz-accent;
-}
-
-.today__done-sub {
-  display: block;
-  margin-top: 8rpx;
-  font-size: $gz-fs-caption;
-  color: $gz-ink-3;
-}
-
-.section {
-  margin-top: 36rpx;
-}
-
-.section__head {
-  display: flex;
-  align-items: baseline;
-  justify-content: space-between;
-  margin-bottom: 20rpx;
-}
-
-.section__title {
-  font-size: 32rpx;
-  font-weight: 700;
-  color: $gz-ink;
-}
-
-.entries {
-  display: flex;
-  flex-direction: column;
-  gap: 18rpx;
-}
+@import './index.scss';
 </style>

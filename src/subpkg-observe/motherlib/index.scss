@@ -1,0 +1,399 @@
+/**
+ * index.vue 的样式（超过 100 行，按项目约定外置到同目录 index.scss）。
+ * 由 index.vue 通过 @import 引入；以后改样式改本文件。
+ */
+.page {
+  min-height: 100vh;
+  padding: calc(var(--status-bar-height) + 16rpx) $gz-page-pad 60rpx;
+  box-sizing: border-box;
+}
+
+.nav {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8rpx 0 10rpx;
+}
+
+.nav__side {
+  width: 76rpx;
+  height: 76rpx;
+}
+
+.nav__back {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 76rpx;
+  height: 76rpx;
+  border: 1rpx solid $gz-line;
+  border-radius: 50%;
+  background: $gz-surface;
+  color: $gz-ink-2;
+  font-size: 52rpx;
+  line-height: 1;
+  padding-bottom: 8rpx;
+}
+
+.nav__title {
+  font-size: 34rpx;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  color: $gz-ink;
+}
+
+.intro {
+  margin-top: 12rpx;
+  padding: 22rpx 24rpx;
+  border-left: 4rpx solid $gz-accent;
+  background: $gz-accent-soft;
+  border-radius: 0 $gz-radius-sm $gz-radius-sm 0;
+}
+
+.intro__text {
+  font-size: $gz-fs-small;
+  line-height: 1.85;
+  color: $gz-ink-2;
+}
+
+.rule {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin: 20rpx 4rpx 8rpx;
+}
+
+.rule__text {
+  font-size: $gz-fs-caption;
+  color: $gz-ink-3;
+}
+
+.rule__num {
+  font-size: $gz-fs-caption;
+  color: $gz-accent;
+}
+
+/* 理道图谱入口（§15.4）：一条轻入口，不抢母题列表的主位 */
+.graph-entry {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-top: 10rpx;
+  padding: 18rpx 24rpx;
+  border: 1rpx solid $gz-line;
+  border-radius: $gz-radius-md;
+  background: rgba($gz-accent, 0.04);
+}
+
+.graph-entry__text {
+  font-size: $gz-fs-caption;
+  color: $gz-ink-2;
+}
+
+.graph-entry__go {
+  font-size: $gz-fs-caption;
+  color: $gz-accent;
+}
+
+/* §15.2 系统提示：标签共现 */
+.hint {
+  margin-top: 12rpx;
+  padding: 22rpx 24rpx;
+  border: 1rpx solid $gz-line;
+  border-radius: $gz-radius-md;
+  background: rgba($gz-accent, 0.04);
+}
+
+.hint__row {
+  display: flex;
+  align-items: center;
+  gap: 16rpx;
+}
+
+.hint__row + .hint__row {
+  margin-top: 16rpx;
+}
+
+.hint__text {
+  flex: 1;
+  font-size: $gz-fs-caption;
+  line-height: 1.7;
+  color: $gz-ink-2;
+}
+
+.hint__go {
+  flex: none;
+  font-size: $gz-fs-caption;
+  font-weight: 600;
+  color: $gz-accent;
+}
+
+.list {
+  display: flex;
+  flex-direction: column;
+  gap: 18rpx;
+  margin-top: 12rpx;
+}
+
+.card {
+  padding: 26rpx 26rpx 18rpx;
+  background: $gz-surface;
+  border: 1rpx solid $gz-line;
+  border-radius: $gz-radius-md;
+}
+
+.card__top {
+  display: flex;
+  align-items: center;
+  gap: 12rpx;
+}
+
+.card__topic {
+  padding: 4rpx 16rpx;
+  border-radius: 999rpx;
+  background: #f2edf8;
+  color: #7a63a8;
+  font-size: $gz-fs-caption;
+}
+
+.card__count {
+  margin-left: auto;
+  font-size: $gz-fs-caption;
+  color: $gz-accent;
+  font-weight: 600;
+}
+
+.card__count.is-thin {
+  color: $gz-ink-3;
+  font-weight: 400;
+}
+
+/* §15.2：挂满 3 条 = 这个母题已经长出来了 */
+.card__grown {
+  margin-left: 10rpx;
+  padding: 2rpx 12rpx;
+  border-radius: 999rpx;
+  background: rgba($gz-accent, 0.1);
+  font-size: 20rpx;
+  color: $gz-accent;
+}
+
+.card__name {
+  display: block;
+  margin-top: 16rpx;
+  font-size: 34rpx;
+  font-weight: 700;
+  line-height: 1.5;
+  color: $gz-ink;
+}
+
+.card__line {
+  display: block;
+  margin-top: 10rpx;
+  font-size: $gz-fs-small;
+  line-height: 1.85;
+  color: $gz-ink-2;
+}
+
+.kids {
+  margin-top: 18rpx;
+  padding: 16rpx 18rpx;
+  border-radius: $gz-radius-md;
+  background: $gz-input-bg;
+}
+
+.kids__empty {
+  font-size: $gz-fs-caption;
+  line-height: 1.8;
+  color: $gz-ink-3;
+}
+
+.kid {
+  display: flex;
+  align-items: center;
+  gap: 12rpx;
+  padding: 8rpx 0;
+}
+
+.kid__kind {
+  flex: none;
+  padding: 2rpx 12rpx;
+  border-radius: 999rpx;
+  background: #eaf0f8;
+  color: #4e8fd4;
+  font-size: 20rpx;
+}
+
+.kid__text {
+  flex: 1;
+  min-width: 0;
+  font-size: $gz-fs-small;
+  color: $gz-ink;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.kid__x {
+  flex: none;
+  font-size: $gz-fs-caption;
+  color: $gz-ink-3;
+}
+
+.ops {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-top: 16rpx;
+  padding-top: 14rpx;
+  border-top: 1rpx solid $gz-line;
+}
+
+.ops__state {
+  font-size: $gz-fs-caption;
+  color: $gz-ink-3;
+}
+
+.ops__right {
+  display: flex;
+  gap: 14rpx;
+}
+
+.ops__btn {
+  padding: 8rpx 26rpx;
+  border: 1rpx solid $gz-line;
+  border-radius: 999rpx;
+  font-size: $gz-fs-caption;
+  color: $gz-ink-2;
+}
+
+.ops__btn--main {
+  border-color: $gz-accent;
+  background: $gz-accent-soft;
+  color: $gz-accent;
+  font-weight: 600;
+}
+
+.section {
+  margin-top: 40rpx;
+}
+
+.section__title {
+  display: block;
+  margin-bottom: 18rpx;
+  font-size: 30rpx;
+  font-weight: 700;
+  color: $gz-ink;
+}
+
+.presets {
+  display: flex;
+  flex-direction: column;
+  gap: 16rpx;
+}
+
+.preset {
+  padding: 24rpx 26rpx 22rpx;
+  background: $gz-surface;
+  border: 1rpx solid $gz-line;
+  border-radius: $gz-radius-md;
+}
+
+.preset.is-taken {
+  opacity: 0.62;
+}
+
+.preset__top {
+  display: flex;
+  align-items: center;
+  gap: 12rpx;
+}
+
+.preset__topic {
+  padding: 4rpx 16rpx;
+  border-radius: 999rpx;
+  background: $gz-input-bg;
+  font-size: $gz-fs-caption;
+  color: $gz-ink-3;
+}
+
+.preset__taken {
+  margin-left: auto;
+  font-size: $gz-fs-caption;
+  color: $gz-accent;
+}
+
+.preset__name {
+  display: block;
+  margin-top: 14rpx;
+  font-size: $gz-fs-body;
+  font-weight: 700;
+  line-height: 1.6;
+  color: $gz-ink;
+}
+
+.preset__line {
+  display: block;
+  margin-top: 8rpx;
+  font-size: $gz-fs-small;
+  line-height: 1.85;
+  color: $gz-ink-2;
+}
+
+.preset__cta {
+  margin-top: 16rpx;
+  padding: 12rpx 0;
+  text-align: center;
+  border: 1rpx solid $gz-accent;
+  border-radius: 999rpx;
+  font-size: $gz-fs-small;
+  color: $gz-accent;
+}
+
+.empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 80rpx 40rpx 0;
+}
+
+.empty__seal {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 108rpx;
+  height: 108rpx;
+  border: 2rpx solid $gz-accent;
+  border-radius: 26rpx;
+  background: $gz-accent-soft;
+  color: $gz-accent;
+  font-size: 48rpx;
+  font-weight: 700;
+}
+
+.empty__title {
+  margin-top: 28rpx;
+  font-size: $gz-fs-title;
+  font-weight: 700;
+  color: $gz-ink;
+}
+
+.empty__desc {
+  margin-top: 14rpx;
+  font-size: $gz-fs-small;
+  line-height: 1.9;
+  text-align: center;
+  color: $gz-ink-3;
+}
+
+.foot {
+  margin-top: 44rpx;
+  display: flex;
+  justify-content: center;
+}
+
+.foot__text {
+  font-size: $gz-fs-caption;
+  letter-spacing: 0.08em;
+  color: $gz-ink-3;
+}

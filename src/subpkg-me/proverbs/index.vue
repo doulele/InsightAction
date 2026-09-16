@@ -22,6 +22,7 @@
             : '遇到想留住的句子，点亮「记住这句」就会收进这里'
         }}
       </text>
+      <text v-if="dueCount > 0" class="sum__due">今日 {{ dueCount }} 句在回响 · 开屏会先见到它们</text>
     </view>
 
     <!-- 搜索 + 来源筛选 -->
@@ -65,6 +66,7 @@
           <text v-if="item.from" class="fav__from">—— {{ item.from }}</text>
           <view class="fav__meta">
             <text v-if="item.pinned" class="fav__pin">置顶</text>
+            <text class="fav__echo" :class="{ 'is-due': isDue(item) }">{{ reviewHint(item) }}</text>
             <text class="fav__src">{{ SOURCE_LABEL[item.source] }}</text>
             <text class="fav__time">{{ dayLabel(item.createdAt) }}</text>
           </view>
@@ -74,6 +76,10 @@
             {{ item.pinned ? '取消置顶' : '置顶' }}
           </view>
           <view class="fav__btn" hover-class="gz-hover" @click="copyLine(item)">复制</view>
+          <view v-if="!item.cardAt" class="fav__btn fav__btn--card" hover-class="gz-hover" @click="toCard(item)">
+            转知识卡
+          </view>
+          <view v-else class="fav__btn fav__btn--done">已入卡</view>
           <view class="fav__btn fav__btn--off" hover-class="gz-hover" @click="remove(item.id)">移除</view>
         </view>
       </view>
@@ -82,6 +88,9 @@
     <view class="foot">
       <text class="foot__text">收藏不是终点 · 回看才是</text>
     </view>
+
+    <!-- 隐私授权拦截弹窗（复制箴言前需征得同意） -->
+    <PrivacyGate />
   </view>
 </template>
 
@@ -92,11 +101,22 @@
  * 支持搜索、来源筛选、置顶、复制、移除；纯本地，随备份体系一起导出/恢复。
  */
 import { computed, ref } from 'vue'
-import { useProverbStore, SOURCE_LABEL, type ProverbItem, type ProverbSource } from '@/stores/proverb'
+import {
+  useProverbStore,
+  SOURCE_LABEL,
+  isDue,
+  reviewHint,
+  type ProverbItem,
+  type ProverbSource,
+} from '@/stores/proverb'
+import { useKnowledgeStore } from '@/stores/knowledge'
 import { useSkinClass } from '@/composables/useSkin'
+import { logTrace } from '@/utils/traceLog'
+import { refOfCard } from '@/utils/refSource'
 import { ROUTES } from '@/router/routes'
 
 const store = useProverbStore()
+const knowledge = useKnowledgeStore()
 const skinClass = useSkinClass()
 
 const kw = ref('')
@@ -110,6 +130,8 @@ const FILTERS: Array<{ key: ProverbSource | 'all'; label: string }> = [
 ]
 
 const bySource = computed(() => store.countBySource)
+/** 今天到点的回响条数（口径与开屏页一致） */
+const dueCount = computed(() => store.dueReviews.length)
 
 /** 置顶优先 → 收藏时间倒序 → 关键词/来源过滤 */
 const view = computed<ProverbItem[]>(() => {
@@ -143,6 +165,46 @@ function copyLine(item: ProverbItem): void {
   })
 }
 
+/**
+ * 转知识卡：转之前先问一句「为什么记住它」。
+ * 写了理由 → Lv.2 重构；只搬原句 → Lv.1 转述。
+ * 不替用户编理由 —— 没写就是没写，级别如实。
+ */
+function toCard(item: ProverbItem): void {
+  if (item.cardAt) {
+    uni.showToast({ title: '这句已经在知识库里了', icon: 'none' })
+    return
+  }
+  uni.showModal({
+    title: '转到知识库',
+    content: item.note,
+    editable: true,
+    placeholderText: '为什么记住它？（可留空，写了算 Lv.2 重构）',
+    confirmText: '转存',
+    cancelText: '算了',
+    success: (res) => {
+      if (!res.confirm) return
+      const note = ((res as { content?: string }).content ?? '').trim()
+      if (note) store.setNote(item.id, note)
+      const card = knowledge.importProverb({
+        text: item.text,
+        from: item.from,
+        note,
+        tags: item.tags,
+        src: `我的箴言 · ${SOURCE_LABEL[item.source]}`,
+      })
+      store.markCarded(item.id)
+      logTrace({
+        kind: 'reflect.note',
+        text: `「${item.text}」转入知识库`,
+        ref: refOfCard(card.createdAt),
+        level: card.depth,
+      })
+      uni.showToast({ title: note ? '已入知识库 · Lv.2 重构' : '已入知识库 · Lv.1 转述', icon: 'none' })
+    },
+  })
+}
+
 function remove(id: number): void {
   uni.showModal({
     title: '移除这句箴言？',
@@ -172,229 +234,5 @@ function goBack(): void {
 </script>
 
 <style lang="scss" scoped>
-.page {
-  min-height: 100vh;
-  padding: 24rpx $gz-page-pad 60rpx;
-}
-
-.nav {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 8rpx 0 20rpx;
-}
-
-.nav__side {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 72rpx;
-  height: 72rpx;
-}
-
-.nav__back {
-  font-size: 56rpx;
-  color: $gz-ink-2;
-  line-height: 1;
-}
-
-.nav__title {
-  font-size: $gz-fs-title;
-  font-weight: 700;
-  color: $gz-ink;
-}
-
-/* ---- 概览 ---- */
-.sum {
-  padding: 30rpx 32rpx;
-  background: var(--gz-surface);
-  border: 1rpx solid var(--gz-line);
-  border-radius: $gz-radius-lg;
-  box-shadow: 0 10rpx 30rpx rgba(0, 0, 0, 0.05);
-}
-
-.sum__main {
-  display: flex;
-  align-items: baseline;
-  gap: 8rpx;
-}
-
-.sum__num {
-  font-size: 64rpx;
-  font-weight: 800;
-  color: var(--gz-accent);
-  line-height: 1.1;
-}
-
-.sum__unit {
-  font-size: $gz-fs-small;
-  color: $gz-ink-3;
-}
-
-.sum__sub {
-  display: block;
-  margin-top: 10rpx;
-  font-size: $gz-fs-small;
-  line-height: 1.7;
-  color: $gz-ink-3;
-}
-
-/* ---- 搜索 / 筛选 ---- */
-.tools {
-  margin-top: 22rpx;
-}
-
-.tools__input {
-  width: 100%;
-  height: 80rpx;
-  padding: 0 26rpx;
-  box-sizing: border-box;
-  background: $gz-surface;
-  border: 1rpx solid $gz-line;
-  border-radius: $gz-radius-md;
-  font-size: $gz-fs-body;
-  color: $gz-ink;
-}
-
-.chips {
-  display: flex;
-  gap: 12rpx;
-  margin-top: 16rpx;
-}
-
-.chip {
-  padding: 10rpx 26rpx;
-  border-radius: 999rpx;
-  background: $gz-surface;
-  border: 1rpx solid $gz-line;
-  font-size: $gz-fs-caption;
-  color: $gz-ink-2;
-}
-
-.chip.is-on {
-  background: $gz-accent-soft;
-  border-color: $gz-accent;
-  color: $gz-accent;
-  font-weight: 700;
-}
-
-.sec {
-  margin-top: 24rpx;
-}
-
-/* ---- 箴言卡 ---- */
-.fav {
-  display: flex;
-  align-items: flex-start;
-  gap: 12rpx;
-  padding: 24rpx 26rpx;
-  margin-bottom: 16rpx;
-  background: $gz-surface;
-  border: 1rpx solid $gz-line;
-  border-radius: $gz-radius-md;
-}
-
-.fav__mark {
-  flex: none;
-  color: $gz-accent;
-  font-size: 44rpx;
-  line-height: 1;
-}
-
-.fav__body {
-  flex: 1;
-  min-width: 0;
-}
-
-.fav__text {
-  display: block;
-  font-size: $gz-fs-body;
-  line-height: 1.7;
-  color: $gz-ink;
-}
-
-.fav__from {
-  display: block;
-  margin-top: 6rpx;
-  font-size: $gz-fs-caption;
-  color: $gz-ink-3;
-}
-
-.fav__meta {
-  display: flex;
-  align-items: center;
-  gap: 14rpx;
-  margin-top: 12rpx;
-}
-
-.fav__pin {
-  padding: 2rpx 12rpx;
-  border-radius: 999rpx;
-  background: $gz-accent-soft;
-  color: $gz-accent;
-  font-size: $gz-fs-caption;
-}
-
-.fav__src,
-.fav__time {
-  font-size: $gz-fs-caption;
-  color: $gz-ink-3;
-}
-
-.fav__acts {
-  flex: none;
-  display: flex;
-  flex-direction: column;
-  gap: 10rpx;
-}
-
-.fav__btn {
-  padding: 6rpx 18rpx;
-  border-radius: 999rpx;
-  background: $gz-accent-soft;
-  color: $gz-accent;
-  font-size: $gz-fs-caption;
-  text-align: center;
-}
-
-.fav__btn--off {
-  background: transparent;
-  border: 1rpx solid $gz-line;
-  color: $gz-ink-3;
-}
-
-/* ---- 空态 ---- */
-.empty {
-  padding: 70rpx 40rpx;
-  text-align: center;
-  background: $gz-surface;
-  border: 1rpx dashed $gz-line;
-  border-radius: $gz-radius-lg;
-}
-
-.empty__title {
-  display: block;
-  font-size: $gz-fs-title;
-  font-weight: 700;
-  color: $gz-ink-2;
-}
-
-.empty__text {
-  display: block;
-  margin-top: 12rpx;
-  font-size: $gz-fs-small;
-  line-height: 1.8;
-  color: $gz-ink-3;
-}
-
-.foot {
-  padding: 40rpx 0 10rpx;
-  text-align: center;
-}
-
-.foot__text {
-  font-size: $gz-fs-caption;
-  letter-spacing: 0.1em;
-  color: $gz-ink-3;
-}
+@import './index.scss';
 </style>

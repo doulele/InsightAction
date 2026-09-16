@@ -1,7 +1,10 @@
 <template>
   <!--
     小枢 BuddyFloat · 批次 D 全局浮层
-    - 右下角常驻小枢（形态随三模式：温和助手/数据分析师/护法灵兽）；
+    - 右下角常驻小枢（本体随三模式：温和助手/数据分析师/护法灵兽）；
+    - 形阶：本体之外按**修为等级**长装饰（素/纹/光/器，见 config/buddyForms.ts），
+      规则是"只加不减"，所以老用户回头看只会看到它比昨天更完整；
+    - 职司：在哪个大厅就挂哪枚角印（鉴/漏/卷/履），不换本体也不加装饰；
     - 到点激励：早间窗 06-08 / 晚间窗 21-23 首次进入时弹一次（同窗节流防骚扰）；
     - 入定到点：预设入定时段当前生效时弹「该去翻转沙漏」，每 10 分钟至多一次；
     - 展开面板：今日四维 + 缺维建议 + 打开今日日课卡。
@@ -29,12 +32,17 @@
     <view v-if="open" class="bf__mask" @click="close" />
     <view v-if="open" class="bf__panel">
       <view class="bf__panel-head">
-        <view class="bf__orb" :class="shapeClass">
+        <view class="bf__orb" :class="[shapeClass, `tier-${buddyTier}`]">
+          <view v-if="buddyTier >= 1" class="bf__orb-ring" />
+          <view v-if="buddyTier >= 3" class="bf__orb-ring bf__orb-ring--out" />
           <text class="bf__orb-glyph">{{ buddyGlyph }}</text>
         </view>
         <view class="bf__panel-id">
-          <text class="bf__panel-name">{{ assistantName }}</text>
-          <text class="bf__panel-mode">{{ modeLabel }}模式 · 今日已点亮 {{ litCount }}/4 维</text>
+          <view class="bf__panel-namerow">
+            <text class="bf__panel-name">{{ assistantName }}</text>
+            <text class="bf__panel-stage">{{ buddyStageName }}</text>
+          </view>
+          <text class="bf__panel-mode">{{ modeLabel }}模式{{ dutySuffix }} · 今日已点亮 {{ litCount }}/4 维</text>
         </view>
         <view class="bf__close" hover-class="gz-hover" @click="close">×</view>
       </view>
@@ -57,6 +65,13 @@
         <text class="bf__suggest-text">{{ suggestion }}</text>
       </view>
 
+      <!-- 你记住的那句：点了去看全部（没有收藏就不出现） -->
+      <view v-if="remembered" class="bf__prov" hover-class="gz-hover" @click="goProverbs">
+        <text class="bf__prov-label">{{ rememberedLabel }}</text>
+        <text class="bf__prov-text">「{{ remembered.text }}」</text>
+        <text v-if="remembered.from" class="bf__prov-from">—— {{ remembered.from }}</text>
+      </view>
+
       <view class="bf__acts">
         <view class="bf__btn bf__btn--ghost" hover-class="gz-hover" @click="goMissing">
           {{ missingLabel || '四处逛逛' }}
@@ -71,13 +86,64 @@
     <view
       v-if="!open"
       class="bf__fob"
-      :class="[shapeClass, { 'has-tip': tip && tip.kind === 'reminder' }]"
+      :class="[shapeClass, `tier-${buddyTier}`, { 'has-tip': tip && tip.kind === 'reminder' }]"
       hover-class="gz-hover"
       @click="open = true"
     >
       <view class="bf__fob-halo" />
+      <!-- 形阶：三阶起加三点浮光，四阶起加外圈光带（只在上一阶基础上加，不替换） -->
+      <view v-if="buddyTier >= 2" class="bf__fob-sparks">
+        <view v-for="n in 3" :key="n" class="bf__fob-spark" :class="`is-${n}`" />
+      </view>
+      <view v-if="buddyTier >= 3" class="bf__fob-band" />
       <text class="bf__fob-glyph">{{ buddyGlyph }}</text>
+      <!-- 职司印：在观持鉴 / 在止掌漏 / 在知展卷 / 在行着履 -->
+      <view v-if="buddyDuty" class="bf__fob-duty">{{ buddyDuty.glyph }}</view>
       <view v-if="reminderDue" class="bf__fob-dot" />
+    </view>
+
+    <!--
+      每日结算：23:00 后首次打开时全屏出现一次（一天一次，见 useBuddy.maybeSettle）。
+      刻意不做成「第 N 天连续」那类压迫式总结 —— 只把今天真实入账的四维摊开。
+    -->
+    <view v-if="settleOpen" class="stl" @touchmove.stop.prevent>
+      <view class="stl__card" @click.stop>
+        <text class="stl__eyebrow">{{ modeLabel }}模式 · 一日收束</text>
+        <text class="stl__title">{{ settleData.title }}</text>
+
+        <view class="stl__dims">
+          <view v-for="d in settleData.dims" :key="d.key" class="stl__dim">
+            <view class="stl__dim-head">
+              <view class="stl__dim-dot" :class="{ 'is-on': d.on }" :style="d.on ? { background: d.color } : {}" />
+              <text class="stl__dim-label">{{ d.label }}</text>
+              <text class="stl__dim-value" :class="{ 'is-dim': !d.on }">{{ d.value }}</text>
+            </view>
+            <view class="stl__dim-bar">
+              <view class="stl__dim-fill" :style="{ width: d.on ? '100%' : '0%', background: d.color }" />
+            </view>
+          </view>
+        </view>
+
+        <view class="stl__rows">
+          <view class="stl__row">
+            <text class="stl__k">今日最高</text>
+            <text class="stl__v">{{ settleData.top }}</text>
+          </view>
+          <view class="stl__row">
+            <text class="stl__k">当前境界</text>
+            <text class="stl__v">{{ settleData.level }} · {{ settleData.gap }}</text>
+          </view>
+        </view>
+
+        <text class="stl__comment">{{ settleData.comment }}</text>
+
+        <view class="stl__acts">
+          <view class="stl__btn stl__btn--ghost" hover-class="gz-hover" @click="settleToCard">
+            看今日日课卡
+          </view>
+          <view class="stl__btn" hover-class="gz-hover" @click="closeSettle">收下今天</view>
+        </view>
+      </view>
     </view>
   </view>
 </template>
@@ -107,6 +173,9 @@ const {
   buddyGlyph,
   assistantName,
   modeLabel,
+  buddyStageName,
+  buddyTier,
+  buddyDuty,
   litCount,
   greeting,
   dims,
@@ -118,386 +187,24 @@ const {
   goMissing,
   openDailyCard,
   favGreeting,
+  remembered,
+  rememberedLabel,
+  goProverbs,
+  settleOpen,
+  settleData,
+  closeSettle,
 } = useBuddy()
+
+/** 面板副行的职司后缀：不在四个大厅里（我页 / 子页）就整段不出现，不写"闲置"这类废话 */
+const dutySuffix = computed(() => (buddyDuty.value ? ` · ${buddyDuty.value.label}` : ''))
+
+/** 结算里「看今日日课卡」：先关结算层，再跳（否则返回时会看到结算层还在） */
+function settleToCard(): void {
+  closeSettle()
+  openDailyCard()
+}
 </script>
 
 <style lang="scss" scoped>
-.bf {
-  /* 本组件不占布局空间 */
-}
-
-/* ---- 到点激励横幅 ---- */
-.bf__tip {
-  position: fixed;
-  right: 28rpx;
-  bottom: 168rpx;
-  left: 28rpx;
-  z-index: 90;
-  display: flex;
-  align-items: center;
-  gap: 18rpx;
-  padding: 20rpx 22rpx;
-  border-radius: $gz-radius-lg;
-  background: var(--gz-surface);
-  border: 1rpx solid var(--gz-line);
-  box-shadow: 0 18rpx 56rpx rgba(0, 0, 0, 0.16);
-  animation: bf-rise 0.28s ease;
-}
-
-.bf__tip.is-reminder {
-  border-color: var(--gz-accent);
-}
-
-@keyframes bf-rise {
-  from {
-    transform: translateY(24rpx);
-    opacity: 0;
-  }
-  to {
-    transform: translateY(0);
-    opacity: 1;
-  }
-}
-
-.bf__tip-mark {
-  flex: none;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 64rpx;
-  height: 64rpx;
-  border-radius: 50%;
-  background: var(--gz-accent-soft);
-  color: var(--gz-accent);
-  font-size: 32rpx;
-  font-weight: 800;
-}
-
-.bf__tip-body {
-  flex: 1;
-  min-width: 0;
-  display: flex;
-  flex-direction: column;
-}
-
-.bf__tip-title {
-  font-size: $gz-fs-body;
-  font-weight: 700;
-  color: var(--gz-ink);
-}
-
-.bf__tip-text {
-  margin-top: 4rpx;
-  font-size: $gz-fs-caption;
-  line-height: 1.6;
-  color: var(--gz-ink-2);
-}
-
-.bf__tip-act {
-  flex: none;
-  padding: 12rpx 24rpx;
-  border-radius: 999rpx;
-  background: var(--gz-accent);
-  color: var(--gz-on-cta);
-  font-size: $gz-fs-small;
-  font-weight: 600;
-}
-
-.bf__tip-x {
-  flex: none;
-  width: 44rpx;
-  height: 44rpx;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  color: var(--gz-ink-3);
-  font-size: 32rpx;
-}
-
-/* ---- 悬浮球 ---- */
-.bf__fob {
-  position: fixed;
-  right: 28rpx;
-  bottom: 40rpx;
-  z-index: 80;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 108rpx;
-  height: 108rpx;
-  border-radius: 50%;
-  background: radial-gradient(circle at 30% 24%, var(--gz-grad-to), var(--gz-accent) 68%);
-  box-shadow: 0 16rpx 40rpx rgba(0, 0, 0, 0.22), 0 0 0 1rpx rgba(255, 255, 255, 0.14);
-}
-
-.bf__fob-halo {
-  position: absolute;
-  inset: -8rpx;
-  border-radius: 50%;
-  border: 1rpx solid var(--gz-accent-soft);
-  animation: bf-breathe 3.2s ease-in-out infinite;
-}
-
-@keyframes bf-breathe {
-  0%,
-  100% {
-    transform: scale(1);
-    opacity: 0.5;
-  }
-  50% {
-    transform: scale(1.14);
-    opacity: 0.9;
-  }
-}
-
-.bf__fob-glyph {
-  position: relative;
-  color: #fff;
-  font-size: 44rpx;
-  font-weight: 800;
-  letter-spacing: 0.04em;
-}
-
-.bf__fob-dot {
-  position: absolute;
-  top: 6rpx;
-  right: 6rpx;
-  width: 22rpx;
-  height: 22rpx;
-  border-radius: 50%;
-  background: #e04f3f;
-  border: 3rpx solid var(--gz-surface);
-}
-
-/* ---- 小枢的三套外形 ----
- * 颜色本来就随 --gz-accent 变，缺的是"形"；这里只改形状、描边与光环动效，
- * 位置、尺寸、点击行为一律不动（所以不会影响任何页面的布局与可用性）。
- *   普通 · 圆润纸印：圆形 + 柔和外晕（即默认样式，无需覆盖）
- *   科技 · 切角面板：方形切角 + 硬描边 + 光环上下扫描（仪表指示灯）
- *   修仙 · 双环道印：圆形 + 墨线双环 + 更慢的呼吸（道场灯）
- */
-.bf__fob.is-tech,
-.bf__orb.is-tech {
-  border-radius: 16rpx;
-  box-shadow: 0 0 0 1rpx rgba(63, 169, 255, 0.5), 0 10rpx 26rpx rgba(0, 0, 0, 0.45);
-}
-
-.bf__fob.is-tech .bf__fob-halo {
-  border-radius: 16rpx;
-  border-color: rgba(63, 169, 255, 0.35);
-  animation: bf-scan-y 3.6s ease-in-out infinite;
-}
-
-.bf__fob.is-dao,
-.bf__orb.is-dao {
-  box-shadow: 0 0 0 1rpx rgba(42, 37, 30, 0.28), 0 0 0 8rpx var(--gz-accent-soft),
-    0 12rpx 28rpx rgba(42, 37, 30, 0.18);
-}
-
-.bf__fob.is-dao .bf__fob-halo {
-  inset: -12rpx;
-  border-width: 2rpx;
-  border-color: rgba(164, 71, 31, 0.32);
-  animation-duration: 5.4s;
-}
-
-@keyframes bf-scan-y {
-  0%,
-  100% {
-    transform: translateY(-6rpx);
-    opacity: 0.35;
-  }
-  50% {
-    transform: translateY(6rpx);
-    opacity: 0.9;
-  }
-}
-
-/* ---- 展开面板 ---- */
-.bf__mask {
-  position: fixed;
-  inset: 0;
-  z-index: 95;
-  background: rgba(0, 0, 0, 0.3);
-}
-
-.bf__panel {
-  position: fixed;
-  right: 20rpx;
-  bottom: 170rpx;
-  left: 20rpx;
-  z-index: 96;
-  padding: 30rpx 28rpx 28rpx;
-  border-radius: $gz-radius-lg;
-  background: var(--gz-surface);
-  border: 1rpx solid var(--gz-line);
-  box-shadow: 0 24rpx 80rpx rgba(0, 0, 0, 0.24);
-  animation: bf-rise 0.24s ease;
-}
-
-.bf__panel-head {
-  display: flex;
-  align-items: center;
-  gap: 18rpx;
-}
-
-.bf__orb {
-  flex: none;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 76rpx;
-  height: 76rpx;
-  border-radius: 50%;
-  background: linear-gradient(145deg, var(--gz-grad-to) 0%, var(--gz-accent) 70%);
-}
-
-.bf__orb-glyph {
-  color: #fff;
-  font-size: 34rpx;
-  font-weight: 800;
-}
-
-.bf__panel-id {
-  flex: 1;
-  min-width: 0;
-  display: flex;
-  flex-direction: column;
-}
-
-.bf__panel-name {
-  font-size: 36rpx;
-  font-weight: 800;
-  letter-spacing: 0.04em;
-  color: var(--gz-ink);
-}
-
-.bf__panel-mode {
-  margin-top: 2rpx;
-  font-size: $gz-fs-caption;
-  color: var(--gz-ink-3);
-}
-
-.bf__close {
-  flex: none;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 52rpx;
-  height: 52rpx;
-  border-radius: 50%;
-  border: 1rpx solid var(--gz-line);
-  color: var(--gz-ink-2);
-  font-size: 36rpx;
-  line-height: 1;
-}
-
-.bf__panel-greet {
-  display: block;
-  margin-top: 20rpx;
-  font-size: $gz-fs-body;
-  line-height: 1.7;
-  color: var(--gz-ink-2);
-}
-
-.bf__greet-fav {
-  display: inline-flex;
-  margin-top: 8rpx;
-  padding: 4rpx 2rpx;
-  font-size: $gz-fs-caption;
-  color: var(--gz-accent);
-}
-
-.bf__dims {
-  margin-top: 22rpx;
-  display: flex;
-  flex-direction: column;
-  gap: 16rpx;
-}
-
-.bf__dim-line {
-  display: flex;
-  align-items: center;
-  gap: 16rpx;
-}
-
-.bf__dim-dot {
-  flex: none;
-  width: 16rpx;
-  height: 16rpx;
-  border-radius: 50%;
-  background: var(--gz-line);
-}
-
-.bf__dim-dot.is-on {
-  box-shadow: 0 0 0 6rpx var(--gz-accent-soft);
-}
-
-.bf__dim-label {
-  flex: none;
-  width: 160rpx;
-  font-size: $gz-fs-body;
-  color: var(--gz-ink);
-}
-
-.bf__dim-value {
-  font-size: $gz-fs-body;
-  font-weight: 700;
-  color: var(--gz-accent);
-  font-variant-numeric: tabular-nums;
-}
-
-.bf__dim-value.is-dim {
-  color: var(--gz-ink-3);
-  font-weight: 400;
-}
-
-.bf__suggest {
-  margin-top: 22rpx;
-  padding: 18rpx 20rpx;
-  border-radius: $gz-radius-md;
-  background: var(--gz-accent-soft);
-}
-
-.bf__suggest-label {
-  display: block;
-  font-size: $gz-fs-caption;
-  letter-spacing: 0.1em;
-  color: var(--gz-accent);
-}
-
-.bf__suggest-text {
-  display: block;
-  margin-top: 4rpx;
-  font-size: $gz-fs-small;
-  line-height: 1.7;
-  color: var(--gz-ink-2);
-}
-
-.bf__acts {
-  margin-top: 24rpx;
-  display: flex;
-  gap: 16rpx;
-}
-
-.bf__btn {
-  flex: 1;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  height: 84rpx;
-  border-radius: $gz-radius-md;
-  font-size: $gz-fs-body;
-  font-weight: 600;
-}
-
-.bf__btn--ghost {
-  border: 1rpx solid var(--gz-line);
-  color: var(--gz-ink-2);
-}
-
-.bf__btn--main {
-  background: var(--gz-accent);
-  color: var(--gz-on-cta);
-}
+@import './BuddyFloat.scss';
 </style>

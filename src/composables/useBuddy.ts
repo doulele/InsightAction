@@ -10,7 +10,7 @@
  *  1. 到点激励：早间窗 06-08 / 晚间窗 21-23，同一自然日的同一窗口只问候一次（本地节流）；
  *  2. 入定到点：reminder store 中「开启且覆盖当前时间」的时段 → 弹「该去翻转沙漏」，10 分钟节流；
  *  3. 展开面板：今日四维 + 缺维建议 + 打开今日日课卡。
- * 纯本地、无后端依赖；AI 对话等留待后端期。
+ * 纯本地、无后端依赖。AI 对话未做（不是缺后端，是产品上没定，见 docs/观止知行-未做事项.md）。
  */
 import { computed, ref } from 'vue'
 import { useModeStore } from '@/stores/mode'
@@ -18,7 +18,26 @@ import { useReminderStore } from '@/stores/reminder'
 import { useDailyStore, todayKey } from '@/stores/daily'
 import { useSettingsStore } from '@/stores/settings'
 import { useQuestionStore } from '@/stores/question'
-import { useProverbStore, parseQuote, type ProverbSource } from '@/stores/proverb'
+import {
+  useProverbStore,
+  parseQuote,
+  REVIEW_DAYS,
+  type ProverbItem,
+  type ProverbSource,
+} from '@/stores/proverb'
+import { useTraceStore } from '@/stores/trace'
+import { useXpStore } from '@/stores/xp'
+import { LEVEL_NAMES, LEVEL_THRESHOLDS, levelIndexFromXp } from '@/config/levels'
+import {
+  BODY_NAMES,
+  FORM_STAGES,
+  HALL_DUTY,
+  nextStage,
+  stageFromLevel,
+  stageName,
+  type FormStage,
+} from '@/config/buddyForms'
+import type { HallId } from '@/config/lexicon'
 import { dayStats } from '@/utils/growth'
 import { getItem, setItem } from '@/utils/storage'
 import { navigateTo, ROUTES } from '@/router/routes'
@@ -29,6 +48,9 @@ const reminderStore = useReminderStore()
 const settings = useSettingsStore()
 const question = useQuestionStore()
 const daily = useDailyStore()
+/** 结算与四维最高项读真实痕迹流；境界进度读修为 store */
+const traceStore = useTraceStore()
+const xp = useXpStore()
 
 /** 四维标签（与各大厅同一套取词：符号固定，职能词随模式） */
 const dl = useDimLabel()
@@ -43,7 +65,8 @@ export interface BuddyDim {
   color: string
 }
 
-type TipKind = 'window' | 'reminder'
+/** window=到点激励；reminder=入定时段；guard=守护理由（断连守护 / 心魔预警 / 止念） */
+type TipKind = 'window' | 'reminder' | 'guard'
 interface Tip {
   kind: TipKind
   title: string
@@ -54,6 +77,83 @@ interface Tip {
 export const buddyGlyph = computed(() => (modeStore.id === 'tech' ? '枢' : modeStore.id === 'dao' ? '灵' : '伴'))
 export const assistantName = computed(() => modeStore.meta.assistantName)
 export const modeLabel = computed(() => modeStore.meta.label)
+
+/* ---------------- 形阶（★成长体系：小枢随修为一起长） ----------------
+ * 形阶由**修为等级**（9 级）折成 4 阶，各模式的阶名不同（普通=光团/光晕/花影/树影…）。
+ * 这一维只决定「长什么样」——每阶比上一阶**多**一层装饰（素/纹/光/器），
+ * 具体样式在 BuddyFloat.scss 的 .tier-N，这里只给出"现在是第几阶、叫什么、还差多少"。
+ */
+const levelIdx = computed(() => levelIndexFromXp(xp.levelXp))
+
+export const buddyStage = computed<FormStage>(() => stageFromLevel(levelIdx.value))
+export const buddyStageName = computed(() => stageName(buddyStage.value, modeStore.id))
+/** 装饰层数，模板据此决定渲染几层（0 素 / 1 纹 / 2 光 / 3 器） */
+export const buddyTier = computed(() => buddyStage.value.tier)
+/** 本体名（纸印 / 面板 / 道印），与形阶正交 */
+export const buddyBodyName = computed(() => BODY_NAMES[modeStore.id] ?? BODY_NAMES.normal)
+export const buddyStageNote = computed(() => buddyStage.value.note)
+export const buddyNextStageName = computed(() => {
+  const next = nextStage(buddyStage.value)
+  return next ? stageName(next, modeStore.id) : ''
+})
+/** 距下一形阶还差多少修为（已至四阶返回 0），与「我」页的境界进度同一口径 */
+export const buddyStageGap = computed(() => {
+  const next = nextStage(buddyStage.value)
+  if (!next) return 0
+  const need = LEVEL_THRESHOLDS[next.from] ?? 0
+  return Math.max(0, need - xp.levelXp)
+})
+
+/** 形态谱（羁绊页展示用）：四阶 + 是否已到 + 各自的解锁门槛 */
+export interface StageView {
+  idx: number
+  ordinal: string
+  name: string
+  /** 该阶起始的境界名（如「抽枝」）；第一阶为初始，展示层自己转成"初始" */
+  from: string
+  /** 已到达 */
+  on: boolean
+  /** 当前所处 */
+  cur: boolean
+}
+
+export const buddyStages = computed<StageView[]>(() => {
+  const names = LEVEL_NAMES[modeStore.id] ?? LEVEL_NAMES.normal
+  const now = buddyStage.value.idx
+  return FORM_STAGES.map((s) => ({
+    idx: s.idx,
+    ordinal: s.ordinal,
+    name: stageName(s, modeStore.id),
+    from: names[s.from] ?? '',
+    on: s.idx <= now,
+    cur: s.idx === now,
+  }))
+})
+
+/* ---------------- 职司（★分模块：在哪个大厅，小枢手里拿着什么） ----------------
+ * 大厅判据取自**当前页面路由**（getCurrentPages 末位），不要求各页传参：
+ * 五个 tab 大厅的 onShow 都已经在调 poke()，在 poke 里顺手刷一次即可，
+ * 不用改任何一个页面 —— 少一处改动就少一处忘改。
+ */
+const HALL_BY_ROUTE: Record<string, HallId> = {
+  'pages/observe/index': 'observe',
+  'pages/pause/index': 'pause',
+  'pages/reflect/index': 'reflect',
+  'pages/action/index': 'action',
+}
+
+/** 当前所在大厅（不在四个大厅里则为 null：如「我」页、各子页、开屏） */
+const hall = ref<HallId | null>(null)
+
+function refreshHall(): void {
+  const pages = getCurrentPages()
+  const cur = pages[pages.length - 1]
+  const route = cur ? cur.route : ''
+  hall.value = (route && HALL_BY_ROUTE[route]) || null
+}
+
+/** 职司印（无职司时为 null，模板据此不渲染角印） */
+export const buddyDuty = computed(() => (hall.value ? HALL_DUTY[hall.value] : null))
 
 /* ---------------- 今日四维 ---------------- */
 const st = computed(() => dayStats(todayKey()))
@@ -331,6 +431,23 @@ export function openDailyCard(): void {
   navigateTo(ROUTES.meDailyCard)
 }
 
+/* ---------------- 箴言引用：小枢提一句你记住的话 ---------------- */
+/**
+ * 面板里带一句你记住的句子：优先今天到期回响的那句（它今天本就该再见一次）。
+ * 一句都没记住就不出现 —— 不硬凑一句来显得贴心。
+ */
+export const remembered = computed<ProverbItem | null>(() => proverbs.dueReviews[0] ?? proverbs.items[0] ?? null)
+export const rememberedLabel = computed(() => {
+  const due = proverbs.dueReviews[0]
+  if (!remembered.value) return ''
+  return due ? `今天该见它 · 第 ${Math.min(due.reviewCount + 1, REVIEW_DAYS.length)} 次` : '你记住的'
+})
+
+export function goProverbs(): void {
+  open.value = false
+  navigateTo(ROUTES.meProverbs)
+}
+
 export function goMissing(): void {
   const m = missing.value
   const target = m
@@ -345,11 +462,124 @@ export function goMissing(): void {
   navigateTo(target)
 }
 
+/* ---------------- 心魔预警 / 止念：停留过久且无互动 ---------------- */
+
+/** 停留阈值：5 分钟（规格 §3 小枢能力 2「在【观】停留 >5 分钟无互动」） */
+export const DWELL_MS = 5 * 60 * 1000
+
+const DWELL_KEEP_KEY = 'buddy-dwell'
+
+/**
+ * 在某个大厅停留过久 → 小枢气泡把人拉走。
+ * 同一天同一大厅只提醒一次（本地节流），且只在用户真的「停在那儿不动」时由页面计时器触发。
+ */
+export function dwellTip(hall: 'observe' | 'reflect'): void {
+  const key = `${todayKey()}-${hall}`
+  const last = getItem<string>(DWELL_KEEP_KEY, '') ?? ''
+  if (last === key) return
+  setItem(DWELL_KEEP_KEY, key)
+
+  const texts: Record<'observe' | 'reflect', { title: string; text: string }> = {
+    observe: {
+      title: '心魔预警',
+      text: '在「观」里停了五分钟没动 —— 别让它变成刷。去「止」坐一会儿，把注意力收回来。',
+    },
+    reflect: {
+      title: '止念',
+      text: '写得够多了。停笔，去「行」里用一次 —— 用过的才算你的。',
+    },
+  }
+  const t = texts[hall]
+  tip.value = { kind: 'guard', title: t.title, text: t.text }
+  recordLine('guard', `${t.title}｜${t.text}`)
+}
+
+/* ---------------- 每日结算（23:00 后首次打开，全屏一次） ---------------- */
+
+/**
+ * 结算浮层开关。为什么放在 23:00 之后：
+ * 21-23 点已经有「晚间问候」气泡（见 maybeGreetWindow），再弹一个全屏会变成两次打扰；
+ * 23 点后晚窗结束，正好把这一天收个尾。
+ */
+export const settleOpen = ref(false)
+
+const SETTLE_KEY = 'buddy-settle'
+
+function maybeSettle(): void {
+  if (settleOpen.value) return
+  if (new Date().getHours() < 23) return
+  const key = todayKey()
+  if ((getItem<string>(SETTLE_KEY, '') ?? '') === key) return
+  setItem(SETTLE_KEY, key)
+  settleOpen.value = true
+}
+
+export function closeSettle(): void {
+  settleOpen.value = false
+}
+
+export interface SettleData {
+  title: string
+  dims: BuddyDim[]
+  litCount: number
+  /** 今日最高修为项 */
+  top: string
+  comment: string
+  level: string
+  gap: string
+}
+
+/**
+ * 结算内容：四维 + 今日最高项 + 一句评语 + 境界进度。
+ * 「最高项」用 trace 的 value 累加取最大 —— 与四维雷达同一口径，不另立算法。
+ */
+export const settleData = computed<SettleData>(() => {
+  const k = todayKey()
+  const rows = (['observe', 'pause', 'reflect', 'action'] as const).map((h) => ({
+    key: h,
+    label: dl(h),
+    value: traceStore.valueOn(k, h),
+  }))
+  const top = [...rows].sort((a, b) => b.value - a.value)[0]
+  const lit = litCount.value
+  const missing = dims.value.find((d) => !d.on)
+
+  const title = modeStore.id === 'dao' ? '今日收功' : modeStore.id === 'tech' ? '当日汇总' : '今日结算'
+  const comment =
+    lit === 4
+      ? modeStore.id === 'dao'
+        ? '四维皆亮，道心无亏。明日再进一阶。'
+        : modeStore.id === 'tech'
+          ? '四维数据完整，今日曲线闭合。'
+          : '四维全亮 —— 今天没有偏科。'
+      : lit === 0
+        ? '今天什么都没入账。没关系，明天从最小的一件开始。'
+        : `今天点亮了 ${lit} 维，还空着的是「${missing?.label ?? ''}」。明天先补它，别贪多。`
+
+  const idx = levelIndexFromXp(xp.levelXp)
+  const names = LEVEL_NAMES[modeStore.id] ?? LEVEL_NAMES.normal
+  const next = names[idx + 1]
+  const need = LEVEL_THRESHOLDS[idx + 1]
+
+  return {
+    title,
+    dims: dims.value,
+    litCount: lit,
+    top: top && top.value > 0 ? `${top.label} +${top.value}` : '今天还没有入账',
+    comment,
+    level: names[idx] ?? '圆满',
+    gap: next === undefined || need === undefined ? '已达当前境界之巅' : `距「${next}」还差 ${need - xp.levelXp} 点`,
+  }
+})
+
 /* ---------------- 供页面 onShow 调用的总入口 ---------------- */
 export function poke(): void {
+  /* 先认当前在哪个大厅，小枢的职司印才跟得上页面切换（见「职司」段） */
+  refreshHall()
   maybeGreetWindow()
   refreshDue()
   maybePingReminder()
+  maybeSettle()
 }
 
 /** 早/晚窗口问候：同窗只弹一次；晚窗话术按设置个性化 */
@@ -417,6 +647,15 @@ export function useBuddy() {
     buddyGlyph,
     assistantName,
     modeLabel,
+    buddyStage,
+    buddyStageName,
+    buddyTier,
+    buddyBodyName,
+    buddyStageNote,
+    buddyNextStageName,
+    buddyStageGap,
+    buddyStages,
+    buddyDuty,
     greeting,
     dims,
     litCount,
@@ -432,12 +671,19 @@ export function useBuddy() {
     isFav,
     toggleFav,
     favGreeting,
+    settleOpen,
+    settleData,
+    closeSettle,
     poke,
     openPanel,
     closePanel,
     dismissTip,
+    dwellTip,
     goSandglass,
     goMissing,
     openDailyCard,
+    remembered,
+    rememberedLabel,
+    goProverbs,
   }
 }

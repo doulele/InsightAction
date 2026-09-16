@@ -1,0 +1,423 @@
+/**
+ * index.vue 的样式（超过 100 行，按项目约定外置到同目录 index.scss）。
+ * 由 index.vue 通过 @import 引入；以后改样式改本文件。
+ */
+.page {
+  min-height: 100vh;
+  padding: calc(var(--status-bar-height) + 16rpx) $gz-page-pad 60rpx;
+  box-sizing: border-box;
+}
+
+.nav {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8rpx 0 10rpx;
+}
+
+.nav__side {
+  width: 76rpx;
+  height: 76rpx;
+}
+
+.nav__back {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 76rpx;
+  height: 76rpx;
+  border: 1rpx solid $gz-line;
+  border-radius: 50%;
+  background: $gz-surface;
+  color: $gz-ink-2;
+  font-size: 52rpx;
+  line-height: 1;
+  padding-bottom: 8rpx;
+}
+
+.nav__title {
+  font-size: 34rpx;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  color: $gz-ink;
+}
+
+/* 总况 */
+.head {
+  margin-top: 16rpx;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 30rpx 32rpx;
+  background: $gz-surface;
+  border: 1rpx solid $gz-line;
+  border-radius: $gz-radius-lg;
+}
+
+.head__num {
+  display: block;
+  font-size: 72rpx;
+  font-weight: 800;
+  line-height: 1;
+  color: $gz-accent;
+  font-variant-numeric: tabular-nums;
+}
+
+.head__total {
+  font-size: 30rpx;
+  color: $gz-ink-3;
+}
+
+.head__cap {
+  display: block;
+  margin-top: 12rpx;
+  font-size: $gz-fs-caption;
+  color: $gz-ink-3;
+}
+
+.head__seal {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex: none;
+  width: 104rpx;
+  height: 104rpx;
+  border: 2rpx solid $gz-accent;
+  border-radius: 24rpx;
+  background: $gz-accent-soft;
+  color: $gz-accent;
+  font-size: 48rpx;
+  font-weight: 800;
+}
+
+.head__seal.is-empty {
+  opacity: 0.4;
+}
+
+/* 下一枚 */
+.next {
+  margin-top: 22rpx;
+  padding: 24rpx 30rpx;
+  background: $gz-accent-soft;
+  border: 1rpx solid $gz-accent;
+  border-radius: $gz-radius-md;
+}
+
+.next.is-full {
+  background: $gz-surface;
+  border-color: $gz-line;
+}
+
+.next__cap {
+  display: block;
+  font-size: $gz-fs-caption;
+  letter-spacing: 0.1em;
+  color: $gz-accent;
+}
+
+.next__title {
+  display: block;
+  margin-top: 8rpx;
+  font-size: $gz-fs-body;
+  font-weight: 700;
+  color: $gz-ink;
+}
+
+.next__desc {
+  display: block;
+  margin-top: 6rpx;
+  font-size: $gz-fs-caption;
+  line-height: 1.6;
+  color: $gz-ink-3;
+}
+
+/* 墙 */
+.wall {
+  margin-top: 26rpx;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 16rpx;
+}
+
+.tile {
+  width: calc((100% - 32rpx) / 3);
+  box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 26rpx 8rpx 22rpx;
+  background: $gz-surface;
+  border: 1rpx solid $gz-line;
+  border-radius: $gz-radius-md;
+  transition: opacity 0.2s ease;
+}
+
+.tile.is-locked {
+  opacity: 0.45;
+}
+
+.tile__mark {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 84rpx;
+  height: 84rpx;
+  border-radius: 22rpx;
+  border: 2rpx solid $gz-accent;
+  background: $gz-accent-soft;
+  color: $gz-accent;
+  font-size: 38rpx;
+  font-weight: 800;
+}
+
+.tile__mark.is-locked {
+  border-style: dashed;
+  filter: grayscale(1);
+}
+
+.tile__name {
+  display: block;
+  margin-top: 14rpx;
+  font-size: 24rpx;
+  font-weight: 600;
+  color: $gz-ink;
+  text-align: center;
+}
+
+.tile__state {
+  display: block;
+  margin-top: 6rpx;
+  font-size: 18rpx;
+  color: $gz-ink-3;
+}
+
+.foot {
+  margin-top: 44rpx;
+  display: flex;
+  justify-content: center;
+}
+
+.foot__text {
+  font-size: $gz-fs-caption;
+  letter-spacing: 0.06em;
+  color: $gz-ink-3;
+}
+
+/* 详情层 */
+.mask {
+  position: fixed;
+  inset: 0;
+  z-index: 20;
+  display: flex;
+  align-items: flex-end;
+  background: rgba(20, 16, 10, 0.5);
+}
+
+.sheet {
+  width: 100%;
+  padding: 44rpx 40rpx calc(env(safe-area-inset-bottom) + 40rpx);
+  background: $gz-surface;
+  border-radius: 32rpx 32rpx 0 0;
+  box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.sheet__mark {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 120rpx;
+  height: 120rpx;
+  border: 2rpx solid $gz-accent;
+  border-radius: 28rpx;
+  background: $gz-accent-soft;
+  color: $gz-accent;
+  font-size: 56rpx;
+  font-weight: 800;
+}
+
+.sheet__mark.is-locked {
+  border-style: dashed;
+  opacity: 0.5;
+}
+
+.sheet__title {
+  margin-top: 24rpx;
+  font-size: 40rpx;
+  font-weight: 800;
+  color: $gz-ink;
+}
+
+.sheet__cap {
+  margin-top: 10rpx;
+  font-size: $gz-fs-caption;
+  letter-spacing: 0.1em;
+  color: $gz-accent;
+}
+
+.sheet__desc {
+  margin-top: 18rpx;
+  font-size: $gz-fs-body;
+  line-height: 1.8;
+  text-align: center;
+  color: $gz-ink-2;
+}
+
+.sheet__close {
+  margin-top: 34rpx;
+  width: 100%;
+  padding: 22rpx 0;
+  text-align: center;
+  background: $gz-accent-soft;
+  color: $gz-accent;
+  font-size: $gz-fs-body;
+  font-weight: 600;
+  border-radius: $gz-radius-md;
+}
+
+/* ==========================================================================
+ * 彩蛋（规格 §12.5 单人 6 个）
+ * 与徽章墙分开：徽章是里程碑（格子矩阵），彩蛋是惊喜（长条列表 + 触发条件）。
+ * ========================================================================== */
+
+.section {
+  margin-top: 40rpx;
+}
+
+.section__head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  margin-bottom: 16rpx;
+}
+
+.section__title {
+  font-size: 32rpx;
+  font-weight: 700;
+  color: $gz-ink;
+}
+
+.section__n {
+  font-size: $gz-fs-caption;
+  color: $gz-accent;
+  font-variant-numeric: tabular-nums;
+}
+
+.eggs {
+  display: flex;
+  flex-direction: column;
+  gap: 14rpx;
+}
+
+.egg {
+  display: flex;
+  align-items: center;
+  gap: 20rpx;
+  padding: 22rpx 26rpx;
+  background: $gz-surface;
+  border: 1rpx solid $gz-line;
+  border-radius: $gz-radius-md;
+}
+
+.egg.is-locked {
+  border-style: dashed;
+}
+
+.egg__mark {
+  flex: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 68rpx;
+  height: 68rpx;
+  border: 1rpx solid $gz-accent;
+  border-radius: 50%;
+  background: $gz-accent-soft;
+  color: $gz-accent;
+  font-size: 30rpx;
+  font-weight: 700;
+}
+
+.egg__mark.is-locked {
+  border-color: $gz-line;
+  background: transparent;
+  color: $gz-ink-3;
+}
+
+.egg__body {
+  flex: 1;
+  min-width: 0;
+}
+
+.egg__name {
+  display: block;
+  font-size: $gz-fs-body;
+  font-weight: 700;
+  color: $gz-ink;
+}
+
+.egg.is-locked .egg__name {
+  color: $gz-ink-2;
+}
+
+.egg__desc {
+  display: block;
+  margin-top: 6rpx;
+  font-size: $gz-fs-caption;
+  line-height: 1.7;
+  color: $gz-ink-3;
+}
+
+.egg__state {
+  flex: none;
+  padding: 4rpx 14rpx;
+  border-radius: 999rpx;
+  background: $gz-accent-soft;
+  font-size: $gz-fs-caption;
+  color: $gz-accent;
+}
+
+.egg.is-locked .egg__state {
+  background: transparent;
+  color: $gz-ink-3;
+}
+
+.eggs__note {
+  display: block;
+  margin-top: 16rpx;
+  font-size: $gz-fs-caption;
+  line-height: 1.8;
+  color: $gz-ink-3;
+}
+
+/* 彩蛋详情里的奖励块 */
+.sheet__reward {
+  margin-top: 16rpx;
+  padding: 18rpx 22rpx;
+  border-radius: $gz-radius-sm;
+  background: $gz-accent-soft;
+}
+
+.sheet__reward-k {
+  display: block;
+  font-size: $gz-fs-caption;
+  color: $gz-accent;
+}
+
+.sheet__reward-v {
+  display: block;
+  margin-top: 6rpx;
+  font-size: $gz-fs-small;
+  font-weight: 600;
+  color: $gz-ink;
+}
+
+.sheet__note {
+  display: block;
+  margin-top: 14rpx;
+  font-size: $gz-fs-caption;
+  line-height: 1.7;
+  color: $gz-ink-3;
+}

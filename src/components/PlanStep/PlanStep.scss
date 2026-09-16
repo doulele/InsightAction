@@ -1,0 +1,98 @@
+/**
+ * PlanStep —— 一条「步子」行（今天要走的步子 / 待办池 / 计划详情共用）。
+ * 由 components/PlanStep/PlanStep.vue 通过 @import 引入（样式超过 100 行，按项目约定外置）。
+ */
+
+.step {
+  display: flex;
+  align-items: flex-start;
+  gap: 20rpx;
+  padding: 22rpx 0;
+  border-bottom: 1rpx solid $gz-line-soft;
+
+  &:last-child {
+    border-bottom: none;
+  }
+}
+
+.step__check {
+  flex: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 44rpx;
+  height: 44rpx;
+  margin-top: 2rpx;
+  border: 2rpx solid $gz-ink-3;
+  border-radius: 50%;
+  color: transparent;
+  transition: all 0.2s ease;
+}
+
+.step__check.is-on {
+  background: $gz-cta-bg;
+  border-color: $gz-cta-bg;
+  color: $gz-on-cta;
+}
+
+.step__tick {
+  font-size: 26rpx;
+  font-weight: 700;
+}
+
+.step__body {
+  flex: 1;
+  min-width: 0;
+}
+
+.step__head {
+  display: flex;
+  align-items: center;
+  gap: 12rpx;
+}
+
+.step__title {
+  flex: 1;
+  min-width: 0;
+  font-size: $gz-fs-body;
+  color: $gz-ink;
+
+  &.is-done {
+    color: $gz-ink-3;
+    text-decoration: line-through;
+  }
+}
+
+/* 挑战三型小印：与「理 / 步」同级的信息，不做强调色 */
+.step__tag {
+  flex: none;
+  padding: 2rpx 12rpx;
+  border-radius: 999rpx;
+  border: 1rpx solid $gz-line;
+  font-size: 18rpx;
+  color: $gz-ink-3;
+}
+
+.step__meta {
+  display: flex;
+  align-items: center;
+  gap: 14rpx;
+  margin-top: 6rpx;
+}
+
+.step__from {
+  font-size: $gz-fs-caption;
+  color: $gz-ink-3;
+}
+
+/* 逾期只陈述事实，不用红色催办（2026-09-15 决策：不催办、不扣分） */
+.step__shelf {
+  font-size: $gz-fs-caption;
+  color: $gz-accent;
+}
+
+.step__acts {
+  display: flex;
+  gap: 20rpx;
+  margin-top: 12rpx;
+}

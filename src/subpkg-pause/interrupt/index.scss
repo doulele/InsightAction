@@ -1,0 +1,341 @@
+/**
+ * index.vue 的样式（超过 100 行，按项目约定外置到同目录 index.scss）。
+ * 由 index.vue 通过 @import 引入；以后改样式改本文件。
+ */
+.page {
+  min-height: 100vh;
+  padding: 24rpx $gz-page-pad 60rpx;
+}
+
+.nav {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8rpx 0 20rpx;
+}
+
+.nav__side {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 72rpx;
+  height: 72rpx;
+}
+
+.nav__back {
+  font-size: 56rpx;
+  color: $gz-ink-2;
+  line-height: 1;
+}
+
+.nav__title {
+  font-size: $gz-fs-title;
+  font-weight: 700;
+  color: $gz-ink;
+}
+
+/* ---- 顶部 ---- */
+.intro {
+  padding: 30rpx;
+  background: $gz-surface;
+  border: 1rpx solid $gz-line;
+  border-radius: $gz-radius-lg;
+}
+
+.intro__title {
+  display: block;
+  font-size: 34rpx;
+  font-weight: 800;
+  color: $gz-ink;
+}
+
+.intro__text {
+  display: block;
+  margin-top: 10rpx;
+  font-size: $gz-fs-small;
+  line-height: 1.8;
+  color: $gz-ink-3;
+}
+
+.cards {
+  display: flex;
+  gap: 16rpx;
+  margin-top: 22rpx;
+}
+
+.card {
+  flex: 1;
+  padding: 20rpx;
+  text-align: center;
+  border-radius: $gz-radius-md;
+  background: $gz-accent-soft;
+}
+
+.card__value {
+  font-size: 40rpx;
+  font-weight: 800;
+  color: $gz-accent;
+}
+
+.card__unit {
+  margin-left: 4rpx;
+  font-size: $gz-fs-caption;
+  font-weight: 400;
+  color: $gz-accent;
+}
+
+.card__label {
+  display: block;
+  margin-top: 4rpx;
+  font-size: $gz-fs-caption;
+  color: $gz-ink-2;
+}
+
+.section {
+  margin-top: 30rpx;
+}
+
+.section__head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  margin-bottom: 16rpx;
+}
+
+.section__title {
+  font-size: $gz-fs-body;
+  font-weight: 700;
+  color: $gz-ink;
+}
+
+.section__hint {
+  font-size: $gz-fs-caption;
+  color: $gz-ink-3;
+}
+
+/* ---- 场景 ---- */
+.chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 14rpx;
+}
+
+.chip {
+  display: flex;
+  align-items: center;
+  gap: 8rpx;
+  padding: 14rpx 22rpx;
+  border-radius: 999rpx;
+  border: 1rpx solid $gz-line;
+  background: $gz-surface;
+}
+
+.chip.is-on {
+  background: $gz-accent;
+  border-color: $gz-accent;
+}
+
+.chip.is-on .chip__name {
+  color: $gz-on-cta;
+}
+
+.chip__name {
+  font-size: $gz-fs-body;
+  color: $gz-ink;
+}
+
+.chip__del {
+  font-size: $gz-fs-small;
+  color: $gz-ink-3;
+  padding: 0 4rpx;
+}
+
+.chip.is-on .chip__del {
+  color: $gz-on-cta;
+}
+
+.chip--add .chip__name {
+  color: $gz-accent;
+}
+
+.chip__alt {
+  display: block;
+  margin-top: 16rpx;
+  font-size: $gz-fs-small;
+  color: $gz-ink-2;
+  line-height: 1.7;
+}
+
+/* ---- 时长 ---- */
+.durs {
+  display: flex;
+  gap: 14rpx;
+}
+
+.dur {
+  flex: 1;
+  display: flex;
+  align-items: baseline;
+  justify-content: center;
+  gap: 6rpx;
+  height: 96rpx;
+  border-radius: $gz-radius-md;
+  background: $gz-surface;
+  border: 1rpx solid $gz-line;
+}
+
+.dur.is-on {
+  border-color: $gz-accent;
+  background: $gz-accent-soft;
+}
+
+.dur__num {
+  font-size: 40rpx;
+  font-weight: 800;
+  color: $gz-ink;
+}
+
+.dur__unit {
+  font-size: $gz-fs-caption;
+  color: $gz-ink-3;
+}
+
+.start {
+  margin-top: 24rpx;
+  height: 96rpx;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: $gz-radius-md;
+  background: linear-gradient(90deg, $gz-accent, $gz-grad-to);
+  color: #fff;
+  font-size: 34rpx;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  box-shadow: 0 10rpx 24rpx rgba(0, 0, 0, 0.14);
+}
+
+/* ---- 呼吸中 ---- */
+.pause {
+  margin-top: 40rpx;
+  padding: 60rpx 40rpx 40rpx;
+  text-align: center;
+  background: $gz-surface;
+  border: 1rpx solid $gz-line;
+  border-radius: $gz-radius-lg;
+}
+
+.pause__phase {
+  display: block;
+  font-size: 40rpx;
+  font-weight: 800;
+  letter-spacing: 0.1em;
+  color: $gz-accent;
+}
+
+.pause__phase.is-hold {
+  color: $gz-ink-2;
+}
+
+.pause__phase.is-out {
+  color: $gz-ink-3;
+}
+
+.pause__clock {
+  display: block;
+  margin-top: 30rpx;
+  font-size: 120rpx;
+  font-weight: 800;
+  line-height: 1;
+  color: $gz-ink;
+  font-variant-numeric: tabular-nums;
+}
+
+.pause__scene {
+  display: block;
+  margin-top: 26rpx;
+  font-size: $gz-fs-small;
+  color: $gz-ink-3;
+}
+
+.pause__acts {
+  margin-top: 40rpx;
+}
+
+.pause__cancel {
+  display: inline-flex;
+  padding: 16rpx 40rpx;
+  border-radius: 999rpx;
+  border: 1rpx solid $gz-line;
+  color: $gz-ink-3;
+  font-size: $gz-fs-small;
+}
+
+.foot {
+  padding: 44rpx 0 10rpx;
+  text-align: center;
+}
+
+.foot__text {
+  font-size: $gz-fs-caption;
+  color: $gz-ink-3;
+}
+
+/* ---- 弹层 ---- */
+.overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 200;
+  display: flex;
+  align-items: flex-end;
+  background: rgba(0, 0, 0, 0.35);
+}
+
+.sheet {
+  width: 100%;
+  padding: 36rpx 32rpx calc(40rpx + env(safe-area-inset-bottom));
+  border-radius: $gz-radius-lg $gz-radius-lg 0 0;
+  background: $gz-surface;
+}
+
+.sheet__title {
+  display: block;
+  font-size: 32rpx;
+  font-weight: 800;
+  color: $gz-ink;
+}
+
+.sheet__input {
+  margin-top: 20rpx;
+  padding: 20rpx 24rpx;
+  border-radius: $gz-radius-md;
+  background: $gz-surface;
+  border: 1rpx solid $gz-line;
+  font-size: $gz-fs-body;
+  color: $gz-ink;
+}
+
+.sheet__row {
+  display: flex;
+  gap: 16rpx;
+  margin-top: 28rpx;
+}
+
+.sheet__btn {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 88rpx;
+  border-radius: $gz-radius-md;
+  background: $gz-accent;
+  color: $gz-on-cta;
+  font-size: $gz-fs-body;
+  font-weight: 600;
+}
+
+.sheet__btn--ghost {
+  background: transparent;
+  border: 1rpx solid $gz-line;
+  color: $gz-ink-2;
+}

@@ -86,3 +86,201 @@ export function hallStatus(hall: HallId, mode: ModeId, stats: DailyStats): strin
   }
   return render(template, stats)
 }
+
+/* ==========================================================================
+ * 大厅头部「一句」—— 共用组件 HallHead 的主心骨（2026-09-16）
+ *
+ * 与 hallStatus 的分工：
+ *   status = "今天怎么样了"（细，挂在印章旁，带当日数值）；
+ *   line   = "今天为什么值得做"（大，摆在卡片下半部，是这块横幅的主张）。
+ * 两个都塞进头部会让同一块地方把话说两遍，所以四个大厅的头部改用 line + 关键数字，
+ * 只有「观」大厅继续用 status（它要报信息配额）。
+ *
+ * 兜底顺序（与 hallStatus 同思路，但这一层先只做内置 + 页面回落）：
+ *   1. 本文件内置模板（三模式各一句；**只写主张、不塞数字** —— 数字由 stats 承担，免得重复）；
+ *   2. 模板缺失或渲染为空 → 回落到各页传入的现成文案（例如「止」页的连胜提示、
+ *      「我」页的"距下一级还差 N 点"），保证任何模式下头部都不会空着。
+ * 远端接线（以后要做时）：给 content.json 的 lexicon 加一个 line 字段，这里改成优先读它即可。
+ * ========================================================================== */
+
+/** 「一句」适用的大厅 —— 比 hallStatus 多一个「我」：它没有状态行，但有头部主张 */
+export type HallLineId = HallId | 'me'
+
+const LOCAL_LINES: Record<HallLineId, Record<ModeId, string>> = {
+  observe: {
+    normal: '今天看到的事，值得收进自己的理里',
+    tech: '先辨源，再入库',
+    dao: '观事入心，方成己理',
+  },
+  pause: {
+    normal: '今天走完一段，就是第 1 天',
+    tech: '专注是今天唯一的指标',
+    dao: '止念一炷香，道行自生长',
+  },
+  reflect: {
+    normal: '看懂的东西，用自己的话说一遍才算',
+    tech: '输出一条，才算读进去',
+    dao: '以己言解圣言，方为真知',
+  },
+  action: {
+    normal: '想清楚一件，就做掉一件',
+    tech: '闭环优先，其余排队',
+    dao: '知行合一，功德自增',
+  },
+  me: {
+    normal: '把走过的路，回看一眼',
+    tech: '读数即成长',
+    dao: '日积一善，道行自深',
+  },
+}
+
+/**
+ * 读取某一大厅 / 某一模式下头部那句主张。
+ * @param fallback 模板不可用时的现成文案（各页自己那句今日提示），可为空串
+ */
+export function hallLine(hall: HallLineId, mode: ModeId, fallback = ''): string {
+  const template = LOCAL_LINES[hall]?.[mode] ?? ''
+  const text = template ? render(template, {}).trim() : ''
+  return text || fallback
+}
+
+/* ==========================================================================
+ * 行 · 计划（挑战升级版，2026-09-15 拍板）的三模式叫法
+ *
+ * 为什么放在 lexicon 而不是 phrases：
+ *   这里的词带**参数**（进度 n/m、搁置 N 天），与大厅状态栏同一类；
+ *   phrases 只放无占位符的固定短语。
+ * 顺序沿用 phrases.ts 的基调：normal 生活感 / tech 指标感 / dao 道统感。
+ * ========================================================================== */
+
+/** 挑战三型（与 stores/plan.ts 的 ChallengeType 同构，两处字面量一致即可互相赋值） */
+export type PlanChallenge = 'abstain' | 'try' | 'cog'
+
+/** 挑战三型的中文名：三类语义是产品定义，不做三套说法 */
+export const CHALLENGE_LABEL: Record<PlanChallenge, string> = {
+  abstain: '戒断',
+  try: '尝试',
+  cog: '认知',
+}
+
+/** 挑战三型一句话说明（新建计划时选类型用） */
+export const CHALLENGE_DESC: Record<PlanChallenge, string> = {
+  abstain: 'N 天不做某件事',
+  try: '做一件没做过的事',
+  cog: '证明我原来的一个判断是错的',
+}
+
+/** 收束回望的提问（写进【知】的那一句，按挑战三型问不同的问题） */
+export const CHALLENGE_REFLECT: Record<PlanChallenge, string> = {
+  abstain: '最难的是哪天，怎么过的？',
+  try: '和我想的不一样在哪？',
+  cog: '原来的判断错在哪？现在怎么看？',
+}
+
+/** 未标挑战类型的普通计划，收束时的通用回望提问 */
+export const PLAN_REFLECT_DEFAULT = '这段路走完，最想留下的一句话是什么？'
+
+export interface PlanWords {
+  /** 入口小印字 */
+  mark: string
+  /** 长期计划名词 */
+  plan: string
+  /** 大厅英文小字（副标题） */
+  en: string
+  /** 节点名词 */
+  node: string
+  /** 今日派单区标题 */
+  today: string
+  /** 待办池 */
+  pool: string
+  /** 进度文案（带上数字） */
+  progress: (done: number, total: number) => string
+  /** 搁置文案（带上天数） */
+  shelf: (days: number) => string
+  /** 长期空态 */
+  emptyLong: string
+  /** 今日空态 */
+  emptyToday: string
+  /** 长期计划上限提示（文案对齐习惯的「别贪多」） */
+  cap: string
+  /** 新建长期计划按钮 */
+  newLong: string
+  /** 加一条今日事按钮 */
+  newToday: string
+  /** 「下一节点」标签 */
+  next: string
+  /** 三态标签 */
+  statusActive: string
+  statusDone: string
+  statusArchived: string
+  /** 30 天无动作的轻问 */
+  stale: string
+}
+
+const LOCAL_PLAN_WORDS: Record<ModeId, PlanWords> = {
+  normal: {
+    mark: '划',
+    plan: '长路',
+    en: 'ROAD · 一条要走很久的路',
+    node: '一步',
+    today: '今天要走的步子',
+    pool: '待办池',
+    progress: (done, total) => `走了 ${done}/${total} 步`,
+    shelf: (days) => `已搁置 ${days} 天`,
+    emptyLong: '还没有在走的长路。\n立一条，把「想做的事」变成一个能走完的东西。',
+    emptyToday: '今天还没有额外的步子。\n三件事之外还想做点什么，就写一条。',
+    cap: '别贪多，先走完手上的 3 条长路',
+    newLong: '立一条长路',
+    newToday: '加一条今天的步子',
+    next: '下一步',
+    statusActive: '在路上',
+    statusDone: '已走完',
+    statusArchived: '已收起',
+    stale: '这条长路 30 天没动过了 —— 还继续吗？',
+  },
+  tech: {
+    mark: '划',
+    plan: '计划',
+    en: 'PLAN · 目标 · 里程碑 · 收敛',
+    node: '里程碑',
+    today: '今日任务',
+    pool: '待排队列',
+    progress: (done, total) => `进度 ${done}/${total}`,
+    shelf: (days) => `积压 ${days} 天`,
+    emptyLong: '暂无进行中的计划。\n建立一条，把一个模糊目标拆成可验证的里程碑。',
+    emptyToday: '今日无额外任务。\n除三项主任务外仍需推进的，在此登记。',
+    cap: '并发上限 3，先收敛手上的计划',
+    newLong: '新建计划',
+    newToday: '补录今日任务',
+    next: '下一里程碑',
+    statusActive: '进行中',
+    statusDone: '已完成',
+    statusArchived: '已归档',
+    stale: '该计划 30 天无更新 —— 继续或归档？',
+  },
+  dao: {
+    mark: '划',
+    plan: '大愿',
+    en: 'VOW · 发愿 · 关隘 · 圆满',
+    node: '关隘',
+    today: '今日功课',
+    pool: '未了之事',
+    progress: (done, total) => `已过 ${done}/${total} 关`,
+    shelf: (days) => `搁置 ${days} 日`,
+    emptyLong: '尚无在行之大愿。\n立下一桩，把心之所向化作可过之关。',
+    emptyToday: '今日无额外功课。\n三事之外尚有所求者，记于此。',
+    cap: '大愿不宜多，先了结手上的三桩',
+    newLong: '立一桩大愿',
+    newToday: '记一笔今日功课',
+    next: '下一关隘',
+    statusActive: '在行',
+    statusDone: '圆满',
+    statusArchived: '封存',
+    stale: '此愿三十日未曾提起 —— 仍要续行否？',
+  },
+}
+
+/** 计划的三模式叫法（纯内置；改动随发版，故不接远端下发） */
+export function planWords(mode: ModeId): PlanWords {
+  return LOCAL_PLAN_WORDS[mode] ?? LOCAL_PLAN_WORDS.normal
+}

@@ -1,0 +1,297 @@
+/**
+ * 我 · 修行看板（四维雷达 / 认知深度分布 / 知→行转化率 / 成长图谱）—— 样式外置（超过 100 行）。
+ * 由 subpkg-me/board/index.vue 通过 @import 引入。
+ */
+
+.page {
+  min-height: 100vh;
+  box-sizing: border-box;
+  padding: calc(var(--status-bar-height) + 16rpx) $gz-page-pad 60rpx;
+}
+
+.nav {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8rpx 0 10rpx;
+}
+
+.nav__side {
+  width: 76rpx;
+  height: 76rpx;
+}
+
+.nav__back {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 76rpx;
+  height: 76rpx;
+  border: 1rpx solid $gz-line;
+  border-radius: 50%;
+  background: $gz-surface;
+  color: $gz-ink-2;
+  font-size: 52rpx;
+  line-height: 1;
+  padding-bottom: 8rpx;
+}
+
+.nav__title {
+  font-size: 34rpx;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  color: $gz-ink;
+}
+
+/* ---- 通用卡片 ---- */
+.card {
+  margin-top: 22rpx;
+  padding: 30rpx;
+  background: $gz-surface;
+  border: 1rpx solid $gz-line;
+  border-radius: $gz-radius-lg;
+}
+
+.card__head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+}
+
+.card__title {
+  font-size: 32rpx;
+  font-weight: 700;
+  color: $gz-ink;
+}
+
+.card__badge {
+  font-size: $gz-fs-caption;
+  color: $gz-accent;
+  font-variant-numeric: tabular-nums;
+}
+
+.card__note {
+  display: block;
+  margin-top: 16rpx;
+  font-size: $gz-fs-caption;
+  line-height: 1.8;
+  color: $gz-ink-3;
+}
+
+.empty {
+  display: block;
+  margin-top: 20rpx;
+  font-size: $gz-fs-caption;
+  line-height: 1.8;
+  color: $gz-ink-3;
+}
+
+/* ---- 雷达 ---- */
+.radar-wrap {
+  display: flex;
+  justify-content: center;
+  margin-top: 22rpx;
+}
+
+.radar {
+  display: block;
+}
+
+.legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 14rpx 26rpx;
+  margin-top: 12rpx;
+}
+
+.legend__item {
+  display: flex;
+  align-items: center;
+  gap: 10rpx;
+}
+
+.legend__dot {
+  width: 14rpx;
+  height: 14rpx;
+  border: 2rpx solid;
+  border-radius: 50%;
+}
+
+.legend__label {
+  font-size: $gz-fs-caption;
+  color: $gz-ink-2;
+}
+
+.legend__value {
+  font-size: $gz-fs-caption;
+  font-weight: 700;
+  color: $gz-ink;
+  font-variant-numeric: tabular-nums;
+}
+
+/* ---- 深度分布 ---- */
+.stack {
+  display: flex;
+  height: 20rpx;
+  margin-top: 24rpx;
+  border-radius: 999rpx;
+  overflow: hidden;
+  background: $gz-line-soft;
+}
+
+.stack__seg {
+  height: 100%;
+  transition: width 0.4s ease;
+}
+
+.dl {
+  margin-top: 18rpx;
+}
+
+.dl__row {
+  display: flex;
+  align-items: center;
+  gap: 12rpx;
+  padding: 8rpx 0;
+}
+
+.dl__dot {
+  width: 14rpx;
+  height: 14rpx;
+  border-radius: 50%;
+}
+
+.dl__label {
+  flex: 1;
+  font-size: $gz-fs-small;
+  color: $gz-ink-2;
+}
+
+.dl__n {
+  font-size: $gz-fs-caption;
+  color: $gz-ink-3;
+  font-variant-numeric: tabular-nums;
+}
+
+/* ---- 转化率 ---- */
+.big {
+  display: flex;
+  align-items: baseline;
+  gap: 16rpx;
+  margin-top: 20rpx;
+}
+
+.big__n {
+  font-size: 72rpx;
+  font-weight: 800;
+  line-height: 1;
+  color: $gz-accent;
+  font-variant-numeric: tabular-nums;
+}
+
+.big__unit {
+  font-size: 30rpx;
+  font-weight: 600;
+}
+
+.big__cap {
+  font-size: $gz-fs-caption;
+  color: $gz-ink-3;
+}
+
+.bar {
+  margin-top: 20rpx;
+  height: 12rpx;
+  border-radius: 999rpx;
+  background: $gz-line-soft;
+  overflow: hidden;
+}
+
+.bar__fill {
+  height: 100%;
+  border-radius: 999rpx;
+  background: linear-gradient(90deg, $gz-accent, $gz-grad-to);
+  transition: width 0.4s ease;
+}
+
+/* ---- 成长图谱 ---- */
+.fails {
+  margin-top: 12rpx;
+}
+
+.fail {
+  display: flex;
+  align-items: baseline;
+  gap: 16rpx;
+  padding: 16rpx 0;
+  border-bottom: 1rpx solid $gz-line-soft;
+
+  &:last-child {
+    border-bottom: none;
+  }
+}
+
+.fail__when {
+  flex: none;
+  font-size: $gz-fs-caption;
+  color: $gz-ink-3;
+  font-variant-numeric: tabular-nums;
+}
+
+.fail__text {
+  flex: 1;
+  min-width: 0;
+  font-size: $gz-fs-small;
+  line-height: 1.6;
+  color: $gz-ink-2;
+}
+
+/* ---- 趋势 ---- */
+.trend {
+  display: flex;
+  align-items: flex-end;
+  gap: 10rpx;
+  margin-top: 26rpx;
+  height: 120rpx;
+}
+
+.trend__col {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8rpx;
+  height: 100%;
+}
+
+.trend__track {
+  flex: 1;
+  width: 100%;
+  display: flex;
+  align-items: flex-end;
+  border-radius: $gz-radius-sm;
+  background: $gz-line-soft;
+  overflow: hidden;
+}
+
+.trend__fill {
+  width: 100%;
+  min-height: 6rpx;
+  border-radius: $gz-radius-sm;
+  background: $gz-line;
+  transition: height 0.4s ease;
+}
+
+.trend__fill.is-cur {
+  background: linear-gradient(180deg, $gz-accent, $gz-grad-to);
+}
+
+.trend__label {
+  font-size: 18rpx;
+  color: $gz-ink-3;
+}
+
+.trend__label.is-cur {
+  color: $gz-accent;
+  font-weight: 700;
+}

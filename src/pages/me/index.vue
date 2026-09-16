@@ -1,12 +1,61 @@
 <template>
   <view class="page" :class="skinClass">
-    <!-- 大厅头 -->
-    <view class="hall-head">
-      <view class="hall-head__row">
-        <text class="hall-head__mark">我</text>
-        <text class="hall-head__en">MINE · 看见自己的成长全貌</text>
+    <!--
+      大厅头（五页共用组件）：名号已经并到这里 ——
+      原先首屏是「印章『我』」与「名号卡『我』」两个我，现在印章位直接是头像、
+      昵称当主标题、右侧挂「起号 / 修改」；点它在本页原地展开下面的编辑面板。
+    -->
+    <HallHead
+      :mark="profile.initial"
+      :avatar="profile.avatar"
+      :title="profile.nickname || '还没起号'"
+      :state="profileSub"
+      :action="profile.settled ? '修改 ›' : '起号 ›'"
+      :line="headLine"
+      :stats="headStats"
+      @action="startEdit"
+    />
+
+    <!--
+      名号编辑面板（只在编辑态出现）：展示态已并入大厅头，所以这里不再有「头像 + 名字」那一行。
+      仍用微信的「头像昵称填写能力」（chooseAvatar + type=nickname），拿到什么就存本机什么 ——
+      默认不过网，开了云备份才随备份一起走（见 PRIVACY.md）。
+    -->
+    <view v-if="editing" class="profile">
+      <!-- 编辑态 -->
+      <view class="profile__edit">
+        <!-- #ifdef MP-WEIXIN -->
+        <button
+          class="profile__avatar-btn"
+          open-type="chooseAvatar"
+          hover-class="none"
+          @chooseavatar="onChooseAvatar"
+        >
+          <image v-if="profile.avatar" class="profile__img" :src="profile.avatar" mode="aspectFill" />
+          <text v-else class="profile__letter">{{ profile.initial }}</text>
+        </button>
+        <!-- #endif -->
+        <view class="profile__fields">
+          <input
+            class="profile__input"
+            type="nickname"
+            :value="draftName"
+            :maxlength="16"
+            placeholder="起个名字"
+            placeholder-class="profile__ph"
+            @blur="onNameBlur"
+          />
+          <text class="profile__tip">只存在你本机 · 开启云备份后随备份一起走</text>
+        </view>
+        <view class="profile__ops">
+          <text class="profile__op" hover-class="gz-hover" @click="resetAsk = true">用回默认</text>
+          <text class="profile__op is-main" hover-class="gz-hover" @click="finishEdit">完成</text>
+        </view>
       </view>
     </view>
+
+    <!-- 第一周解锁引导（第 6 天主角是「我」） -->
+    <WeekGuide for="me" />
 
     <!-- 等级卡：修为 store 真实累计，三模式各 9 级、叫法随皮肤 -->
     <view class="rank">
@@ -37,12 +86,38 @@
       收件池 / 理库 / 痕迹一多，换机即丢的代价就大了 —— 这个痛要提前露出来，
       而不是等丢的那天才想起来（备份开关本身在设置页，这里只做状态和一键）。
     -->
-    <view class="backup" hover-class="gz-hover" @click="goBackup">
+    <!-- <view class="backup" hover-class="gz-hover" @click="goBackup">
       <view class="backup__body">
         <text class="backup__title">数据备份</text>
         <text class="backup__sub">{{ backupText }}</text>
       </view>
       <text class="backup__go">{{ cloudOn ? '去备份' : '开启 ›' }}</text>
+    </view> -->
+    
+    
+
+    <!-- 今日四维 -->
+    <view class="section">
+      <view class="section__head">
+        <text class="section__title">今日四维</text>
+        <text class="section__badge">按今日目标</text>
+      </view>
+      <!--
+        四个维度并列成一行环形进度（2026-09-16 定稿：横条 → 竖柱 → 环形）。
+        数字全部进环内：**百分比落在圆心**、数量（今日/目标，如 3/5）贴孔内下缘 ——
+        环下只留名称，文字行不再扛数字。环 128rpx、孔径 102rpx。
+      -->
+      <view class="dims">
+        <view v-for="dim in dims" :key="dim.label" class="dimr">
+          <view class="dimr__ring" :style="ringStyle(dim)">
+            <view class="dimr__hole">
+              <text class="dimr__pct" :style="{ color: dim.color }">{{ dim.pct }}%</text>
+              <text class="dimr__frac">{{ dim.cur }}/{{ dim.goal }}</text>
+            </view>
+          </view>
+          <text class="dimr__label">{{ dim.label }}</text>
+        </view>
+      </view>
     </view>
 
     <!-- 修行语言切换：三模式共用一套修行数据，只换「叫法 + 视觉」 -->
@@ -66,25 +141,6 @@
       </view>
     </view>
 
-    <!-- 今日四维 -->
-    <view class="section">
-      <view class="section__head">
-        <text class="section__title">今日四维</text>
-        <text class="section__badge">观 · 止 · 知 · 行</text>
-      </view>
-      <view class="dims">
-        <view v-for="dim in dims" :key="dim.label" class="dim">
-          <view class="dim__row">
-            <text class="dim__label">{{ dim.label }}</text>
-            <text class="dim__value">{{ dim.value }}</text>
-          </view>
-          <view class="bar bar--mini">
-            <view class="bar__fill" :style="{ width: `${dim.pct}%`, background: dim.color }" />
-          </view>
-        </view>
-      </view>
-    </view>
-
     <!-- 看板入口 -->
     <view class="section">
       <view class="section__head">
@@ -102,15 +158,6 @@
           :disabled="!item.url"
         />
       </view>
-    </view>
-
-    <!-- 今日日课卡入口（批次 D） -->
-    <view class="dailytip" hover-class="gz-hover" @click="openDailyCard">
-      <view class="dailytip__body">
-        <text class="dailytip__title">今日日课卡</text>
-        <text class="dailytip__sub">每日一张 · 境界与四维 · 可转发给同道</text>
-      </view>
-      <text class="dailytip__go">→</text>
     </view>
 
     <!-- 底部 -->
@@ -134,8 +181,27 @@
       @confirm="confirmSwitch"
     />
 
+    <!-- 用回默认名号：清掉昵称与头像（修行数据不受影响） -->
+    <GzDialog
+      :show="resetAsk"
+      :skin="modeStore.id"
+      title="用回默认名号"
+      content="会清掉你设置的昵称与头像（头像文件从本机删除），修行数据不受影响。"
+      :banner="false"
+      cancel-text="再想想"
+      confirm-text="清掉"
+      @cancel="resetAsk = false"
+      @confirm="confirmReset"
+    />
+
+    <!-- 隐私授权拦截弹窗：头像昵称 / 剪贴板等接口在用户同意前会被微信拦下 -->
+    <PrivacyGate />
+
     <!-- 批次 D · 小枢全局浮层 -->
     <BuddyFloat />
+
+    <!-- 远端提示层：公告 + 版本更新（强制更新 / 新包已下载、重启生效） -->
+    <RemoteNotice />
   </view>
 </template>
 
@@ -147,6 +213,9 @@
  * - 修行档案：测评建档 / 成就墙 / 活跃日历 / 痕迹时间轴 / 设置均为可进入的真实子页。
  */
 import { computed, ref } from 'vue'
+import HallHead from '@/components/HallHead/HallHead.vue'
+import { hallLine } from '@/config/lexicon'
+import WeekGuide from '@/components/WeekGuide/WeekGuide.vue'
 import { onShow } from '@dcloudio/uni-app'
 import { useAppStore } from '@/stores/app'
 import { useModeStore } from '@/stores/mode'
@@ -154,17 +223,20 @@ import { useXpStore } from '@/stores/xp'
 import { useAssessmentStore } from '@/stores/assessment'
 import { useDailyStore, todayKey } from '@/stores/daily'
 import { useFocusStore } from '@/stores/focus'
+import { useKnowledgeStore } from '@/stores/knowledge'
 import { useTraceStore } from '@/stores/trace'
 import { useProverbStore } from '@/stores/proverb'
 import { useAccountStore } from '@/stores/account'
+import { useIdentityStore } from '@/stores/identity'
 import { backupNow } from '@/utils/cloudBackup'
-import { poke, openDailyCard, bondLv, bondXp } from '@/composables/useBuddy'
+import { poke, bondLv, bondXp, buddyStageName } from '@/composables/useBuddy'
 import { useSkinClass } from '@/composables/useSkin'
 import { applySkin, syncTabBar } from '@/utils/skin'
+import { requirePrivacyAuthorize } from '@/utils/privacy'
 import { getAssessmentBank, tierIndex } from '@/config/assessment'
 import { LEVEL_NAMES, LEVEL_THRESHOLDS, levelIndexFromXp, levelProgress } from '@/config/levels'
 import { BADGE_RULES, unlockedCount } from '@/config/badges'
-import { buildBadgeContext, dayStats, monthActiveCount } from '@/utils/growth'
+import { buildBadgeContext, dayStats, monthActiveCount, yearStats } from '@/utils/growth'
 import { useContentStore } from '@/stores/content'
 import { getModeMeta, MODES } from '@/config/modes'
 import type { ModeId } from '@/config/modes'
@@ -182,6 +254,7 @@ const assessment = useAssessmentStore()
 const xp = useXpStore()
 const focus = useFocusStore()
 const trace = useTraceStore()
+const knowledge = useKnowledgeStore()
 const contentStore = useContentStore()
 /** 记住的句子（开屏箴言 / 小枢对话 / 日课三处来源都汇到这里） */
 const proverbs = useProverbStore()
@@ -199,6 +272,70 @@ onShow(() => {
   /* tabBar 原生样式/图标只能在本类大厅页上同步 */
   syncTabBar(modeStore.id)
 })
+
+/* —— 个人名号：昵称与头像（微信头像昵称填写能力；只存本机） —— */
+const profile = useIdentityStore()
+/** 编辑态开关：点卡片进入，点「完成」退出 */
+const editing = ref(false)
+/**
+ * 昵称草稿。
+ * type="nickname" 的输入框**不会**自动同步 v-model（微信刻意如此，防止随意预填昵称），
+ * 只能在 blur 时从 event.detail.value 取 —— 所以这里用草稿 + 完成时再写回 store。
+ */
+const draftName = ref('')
+/** 「用回默认」的二次确认 */
+const resetAsk = ref(false)
+
+const profileSub = computed(() =>
+  profile.settled ? '点这里换昵称或头像' : '设置昵称与头像 · 只存在你本机',
+)
+
+/**
+ * 进入名号编辑。
+ *
+ * 顺序不能反：`<input type="nickname">` 的"微信昵称一键填入"是**渲染时**校验隐私授权的能力，
+ * 未授权时组件会当场降级成普通输入（控制台报
+ * `showNicknameAccessory:fail ... privacy permission is unauthorized`，errno 104）——
+ * 所以必须先要授权、后渲染输入框。
+ * 用户拒绝或不支持该 API 时照样进编辑态：那时它就是个普通输入框，手输昵称一样能用。
+ */
+async function startEdit(): Promise<void> {
+  draftName.value = profile.nickname
+  await requirePrivacyAuthorize()
+  editing.value = true
+}
+
+/**
+ * 昵称失焦取值。
+ * 空串不写回草稿 —— 用户点进来什么都没干就直接退出时，名字不能凭空消失。
+ */
+function onNameBlur(e: unknown): void {
+  /* uni 给 blur 的事件类型里 detail 是 number，实际小程序是 { value } —— 按真实结构取 */
+  const detail = (e as { detail?: { value?: string } } | null)?.detail
+  const v = String(detail?.value ?? '').trim()
+  if (v) draftName.value = v.slice(0, 16)
+}
+
+/** 头像：chooseAvatar 只给临时文件路径，落盘（拷进私有永久目录）由 store 负责 */
+function onChooseAvatar(e: { detail?: { avatarUrl?: string } }): void {
+  const tmp = e?.detail?.avatarUrl
+  if (!tmp) return
+  if (!profile.setAvatar(tmp)) {
+    uni.showToast({ title: '头像没保存成 · 再试一次', icon: 'none' })
+  }
+}
+
+function finishEdit(): void {
+  if (draftName.value.trim()) profile.setNickname(draftName.value)
+  editing.value = false
+}
+
+function confirmReset(): void {
+  profile.clear()
+  resetAsk.value = false
+  editing.value = false
+  uni.showToast({ title: '已用回默认名号', icon: 'none' })
+}
 
 /* —— 数据备份：状态可见 + 一键备份（未开启则直达设置） —— */
 const account = useAccountStore()
@@ -310,7 +447,18 @@ const nextHint = computed(() => {
 })
 
 /* —— 今日四维：观/止/知/行全部接真实 store（色值取「暗底也清晰」一档） —— */
-const dims = computed(() => {
+interface Dim {
+  /** 维度名（随修行语言变） */
+  label: string
+  /** 今日已完成 / 今日目标：显示成「3/5」，一眼看出差多少 */
+  cur: number
+  goal: number
+  /** 完成度，用来画环 */
+  pct: number
+  color: string
+}
+
+const dims = computed<Dim[]>(() => {
   const k = todayKey()
   const st = dayStats(k)
   const plan = Math.max(daily.planCount, 1)
@@ -318,12 +466,22 @@ const dims = computed(() => {
   /* 今日知识产出 = 新建卡片 + 今日拷问作答（答卡即时 Lv.3，未落库故并列计入） */
   const know = st.cards + (st.answered ? 1 : 0)
   return [
-    { label: dl('observe'), value: `${st.marks} 次`, pct: Math.min(100, Math.round((st.marks / 5) * 100)), color: '#4E8FD4' },
-    { label: dl('pause'), value: `${st.focusMin} 分`, pct: Math.min(100, Math.round((st.focusMin / focusGoal) * 100)), color: '#84A268' },
-    { label: dl('reflect'), value: `${know} 条`, pct: Math.min(100, Math.round((know / 3) * 100)), color: '#9C8AC4' },
-    { label: dl('action'), value: `${daily.doneCount}/${plan} 件`, pct: Math.round((daily.doneCount / plan) * 100), color: '#C4602E' },
+    { label: dl('observe'), cur: st.marks, goal: 5, pct: Math.min(100, Math.round((st.marks / 5) * 100)), color: '#4E8FD4' },
+    { label: dl('pause'), cur: st.focusMin, goal: focusGoal, pct: Math.min(100, Math.round((st.focusMin / focusGoal) * 100)), color: '#84A268' },
+    { label: dl('reflect'), cur: know, goal: 3, pct: Math.min(100, Math.round((know / 3) * 100)), color: '#9C8AC4' },
+    { label: dl('action'), cur: daily.doneCount, goal: plan, pct: Math.round((daily.doneCount / plan) * 100), color: '#C4602E' },
   ]
 })
+
+/**
+ * 环的 conic-gradient：从 12 点方向顺时针画到完成度，剩下的是槽。
+ * 用 CSS 画环而不用 canvas —— canvas 是原生组件、层级最高，会盖住小枢悬浮球，滚动页里还会闪。
+ * 槽色走皮肤变量（三套各有一条），取不到时回落到半透明黑，环不会整个消失。
+ */
+function ringStyle(dim: Dim): Record<string, string> {
+  const slot = 'var(--gz-line-soft, rgba(0, 0, 0, 0.08))'
+  return { background: `conic-gradient(${dim.color} 0% ${dim.pct}%, ${slot} ${dim.pct}% 100%)` }
+}
 
 interface MoreEntry {
   mark: string
@@ -357,19 +515,78 @@ const assessmentEntry = computed<{ subtitle: string; badge: EntryBadge }>(() => 
 
 /* 成就 / 活跃天数 / 痕迹：同源真实计数，入口文案随之跳动 */
 const badgeUnlocked = computed(() => unlockedCount(buildBadgeContext()))
+
+/**
+ * 知 → 行 转化率（本周）：写了多少条卡片、其中多少条点过「我用上了」。
+ * 与「修行看板」页同一个口径 —— 入口徽标与页内大数字不能各说各话。
+ */
+const conversionPct = computed(() => {
+  const now = new Date()
+  const pad = (n: number) => String(n).padStart(2, '0')
+  const mon = new Date(now)
+  mon.setDate(mon.getDate() - ((now.getDay() + 6) % 7))
+  const from = `${mon.getFullYear()}-${pad(mon.getMonth() + 1)}-${pad(mon.getDate())}`
+  const to = todayKey()
+  const cards = knowledge.cards.filter((c) => {
+    const d = new Date(c.createdAt)
+    const k = `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`
+    return k >= from && k <= to
+  }).length
+  if (cards === 0) return 0
+  const applied = trace.between(from, to).filter((t) => t.kind === 'reflect.apply').length
+  return Math.min(100, Math.round((applied / cards) * 100))
+})
 const activeMonth = computed(() => {
   const now = new Date()
   return monthActiveCount(now.getFullYear(), now.getMonth())
 })
+/* 年度回顾入口：computed 保证进页回看时跟着变（内部一次遍历，不是逐天扫描） */
+const yearStat = computed(() => yearStats())
+
+/**
+ * 大厅头部的「一句」+ 两个关键数字（2026-09-16 定的形态）。
+ * 「我」大厅没有状态行，头部下半部就靠这两块撑：
+ * 一句走 lexicon.hallLine，模板不可用时回落到本页的"距下一级还差 N 点"；
+ * 数字给"当前阶位"与"今年有痕迹天数" —— 修为点数与距下一级的差距留给下面那张等级卡，不重复。
+ */
+const headLine = computed(() => hallLine('me', modeStore.id, nextHint.value))
+
+const headStats = computed(() => [
+  { value: `Lv.${lv.value}`, label: '当前阶位' },
+  { value: `${yearStat.value.activeDays}`, label: '今年有痕迹 · 天' },
+])
 
 /* 档案入口文案里的测评名随当前模式变化，故用 computed 保持即时刷新 */
 const moreEntries = computed<MoreEntry[]>(() => [
+  /*
+   * 今日日课卡：原先在列表外单独写了一个主色描边的 .dailytip 块（批次 D），
+   * 统一进列表后放在**第一位**（2026-09-16）：这一列按「越往后越沉淀」排
+   * （记录回顾 → 陪伴 → 配置），而它是唯一"每天都会变、当天就要用"的一项
+   * （名字带「今日」、可转发），排在末尾（设置之后）与语义相反。
+   * 点击本就是纯跳转（原 openDailyCard 只做 navigateTo），走 EntryItem 即可。
+   */
+  {
+    mark: '课',
+    title: '今日日课卡',
+    subtitle: '每日一张 · 境界与四维 · 可转发给同道',
+    url: ROUTES.meDailyCard,
+  },
   {
     mark: '测',
     title: '初始测评',
     subtitle: assessmentEntry.value.subtitle,
     badge: assessmentEntry.value.badge,
     url: ROUTES.entryAssessment,
+  },
+  {
+    mark: '板',
+    title: '修行看板 · 四维与转化',
+    subtitle: '四维雷达 · 认知深度分布 · 知→行转化率 · 成长图谱',
+    badge:
+      trace.traces.length > 0
+        ? { text: `转化 ${conversionPct}%`, tone: 'accent' }
+        : { text: '待积累', tone: 'muted' },
+    url: ROUTES.meBoard,
   },
   {
     mark: '勋',
@@ -403,14 +620,43 @@ const moreEntries = computed<MoreEntry[]>(() => [
     url: ROUTES.meProverbs,
   },
   {
+    mark: '年',
+    title: '年度回顾',
+    subtitle:
+      yearStat.value.activeDays > 0
+        ? `今年 ${yearStat.value.activeDays} 天有痕迹 · 入账修为 ${yearStat.value.xp} 点`
+        : '一年到头回头看一眼：今年你留下了什么',
+    badge:
+      yearStat.value.activeDays > 0
+        ? { text: `${yearStat.value.activeDays} 天`, tone: 'accent' }
+        : { text: '待积累', tone: 'muted' },
+    url: ROUTES.meReview,
+  },
+  {
     mark: '羁',
     title: '小枢羁绊 · 对话录',
-    subtitle: `与「${modeMeta.value.assistantName}」相见 ${bondXp.value} 次 · 对话与收藏的箴言都在这里`,
+    subtitle: `与「${modeMeta.value.assistantName}」相见 ${bondXp.value} 次 · 形态「${buddyStageName.value}」· 对话与箴言都在这里`,
     badge:
       bondLv.value > 1
         ? { text: `Lv.${bondLv.value}`, tone: 'accent' }
         : { text: '初遇', tone: 'muted' },
     url: ROUTES.meBond,
+  },
+  /*
+   * 道侣 / 搭档 / 伙伴：结缘码 1v1 绑定 + 互看今日完成度。
+   *
+   * 押后（2026-09-16 拍板），不只因为"要后端"，更因为它有两个硬伤：
+   *  1. **过审**：本质是社交功能，个人主体在社交类目上风险很高；
+   *  2. **调性**：修行数据是这个 app 里最私密的东西，互看完成度与「只看自己、
+   *     不排名不比较」的定位相冲 —— 陪伴感已由「小枢羁绊」（纯本地、20 级）填住。
+   * 保留入口只为让规划可见，标注如实写"后续做"，不写"后端期"——
+   * 它缺的不是后端（后端已具备登录与存储），是产品上还没想清楚要不要做。
+   */
+  {
+    mark: '伴',
+    title: `道侣 · ${modeMeta.value.companionName}`,
+    subtitle: '结缘码绑定、互看今日完成度、低频事件提醒 —— 已排入后续，当前不做',
+    badge: { text: '后续做', tone: 'muted' },
   },
   {
     mark: '设',
@@ -423,403 +669,5 @@ const moreEntries = computed<MoreEntry[]>(() => [
 </script>
 
 <style lang="scss" scoped>
-.page {
-  min-height: 100vh;
-  padding: 24rpx $gz-page-pad 60rpx;
-}
-
-.hall-head {
-  padding: 16rpx 0 30rpx;
-}
-
-.hall-head__row {
-  display: flex;
-  align-items: center;
-  gap: 20rpx;
-}
-
-/* 模式印章：随皮肤走主色 —— 修仙=朱砂印、科技=电光蓝、普通=橄榄 */
-.hall-head__mark {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  flex: none;
-  width: 84rpx;
-  height: 84rpx;
-  font-size: 44rpx;
-  font-weight: 800;
-  color: $gz-accent;
-  background: $gz-accent-soft;
-  border: 2rpx solid $gz-accent;
-  border-radius: 22rpx;
-  line-height: 1;
-}
-
-.hall-head__en {
-  font-size: $gz-fs-caption;
-  letter-spacing: $gz-ls-wide;
-  color: $gz-ink-3;
-}
-
-/*
- * 等级卡：卡面/文字/进度全部走模式色板变量（--gz-rank-*），
- * 三套皮肤各自定义：普通=暖白纸卡+橄榄、科技=终端深卡+电光、修仙=宣纸+朱砂。
- * 切换模式即时换肤，无需模板差异。
- */
-.rank {
-  position: relative;
-  overflow: hidden;
-  padding: 34rpx 30rpx 30rpx;
-  background: var(--gz-rank-bg);
-  border: 1rpx solid var(--gz-rank-border);
-  border-radius: $gz-radius-lg;
-  box-shadow: var(--gz-rank-shadow);
-  color: var(--gz-rank-ink);
-
-  /* 顶缘一条模式色渐变带：一瞥即知当前皮肤 */
-  &::before {
-    content: '';
-    position: absolute;
-    top: 0;
-    left: 0;
-    right: 0;
-    height: 6rpx;
-    background: linear-gradient(90deg, var(--gz-accent), var(--gz-grad-to));
-  }
-}
-
-.rank__row {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-}
-
-.rank__mode {
-  display: block;
-  font-size: $gz-fs-caption;
-  letter-spacing: 0.14em;
-  color: var(--gz-rank-sub);
-}
-
-.rank__title {
-  display: block;
-  margin-top: 10rpx;
-  font-size: 44rpx;
-  font-weight: 800;
-  color: var(--gz-rank-ink);
-}
-
-.rank__lv {
-  font-size: 26rpx;
-  font-weight: 600;
-  color: var(--gz-rank-sub);
-}
-
-.rank__seal {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  flex: none;
-  width: 88rpx;
-  height: 88rpx;
-  background: var(--gz-accent-soft);
-  border: 2rpx solid var(--gz-accent);
-  border-radius: 20rpx;
-  font-size: 40rpx;
-  font-weight: 800;
-  color: var(--gz-accent);
-}
-
-.rank .bar {
-  margin-top: 28rpx;
-  background: var(--gz-rank-track);
-}
-
-.rank .bar__fill {
-  background: linear-gradient(90deg, var(--gz-accent), var(--gz-grad-to));
-}
-
-.rank__next {
-  display: block;
-  margin-top: 16rpx;
-  font-size: $gz-fs-caption;
-  color: var(--gz-rank-sub);
-}
-
-/* 起点基线：建档结果（称号 · 得分率 · 建档日期）；未建档时这一行本身就是入口 */
-.rank__base {
-  display: flex;
-  align-items: center;
-  gap: 14rpx;
-  margin-top: 18rpx;
-  padding-top: 18rpx;
-  border-top: 1rpx solid var(--gz-rank-border);
-}
-
-.rank__base-label {
-  flex: none;
-  font-size: $gz-fs-caption;
-  letter-spacing: 0.06em;
-  color: var(--gz-rank-sub);
-}
-
-.rank__base-text {
-  flex: 1;
-  font-size: $gz-fs-caption;
-  color: var(--gz-rank-ink);
-
-  &.is-missing {
-    color: var(--gz-rank-sub);
-  }
-}
-
-.rank__base-cta {
-  flex: none;
-  padding: 4rpx 16rpx;
-  border-radius: 999rpx;
-  border: 1rpx solid var(--gz-rank-border);
-  font-size: $gz-fs-caption;
-  color: var(--gz-accent);
-}
-
-/* 数据备份行 */
-.backup {
-  display: flex;
-  align-items: center;
-  gap: 18rpx;
-  margin-top: 18rpx;
-  padding: 22rpx 26rpx;
-  border: 1rpx dashed $gz-line;
-  border-radius: $gz-radius-md;
-  background: $gz-surface;
-}
-
-.backup__body {
-  flex: 1;
-  min-width: 0;
-  display: flex;
-  flex-direction: column;
-  gap: 4rpx;
-}
-
-.backup__title {
-  font-size: $gz-fs-small;
-  font-weight: 600;
-  color: $gz-ink;
-}
-
-.backup__sub {
-  font-size: $gz-fs-caption;
-  color: $gz-ink-3;
-}
-
-.backup__go {
-  flex: none;
-  font-size: $gz-fs-caption;
-  color: $gz-accent;
-  font-weight: 600;
-}
-
-/* 修行语言切换行 */
-.lang {
-  display: flex;
-  align-items: center;
-  gap: 26rpx;
-  margin-top: 22rpx;
-  padding: 26rpx 28rpx;
-  background: $gz-surface;
-  border: 1rpx solid $gz-line;
-  border-radius: $gz-radius-md;
-}
-
-.lang__mark {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  flex: none;
-  width: 76rpx;
-  height: 76rpx;
-  border: 1rpx solid $gz-line;
-  border-radius: 18rpx;
-  background: $gz-paper;
-  color: $gz-accent;
-  font-size: 34rpx;
-  font-weight: 600;
-}
-
-.lang__body {
-  flex: 1;
-  min-width: 0;
-}
-
-.lang__title {
-  display: block;
-  font-size: $gz-fs-title;
-  font-weight: 600;
-  color: $gz-ink;
-}
-
-.lang__sub {
-  display: block;
-  margin-top: 6rpx;
-  font-size: $gz-fs-small;
-  line-height: 1.6;
-  color: $gz-ink-3;
-}
-
-/* 三种修行语言缩略色点：当前模式放大 + 主色光圈，点/不点都可整行点击切换 */
-.lang__dots {
-  flex: none;
-  display: flex;
-  align-items: center;
-  gap: 14rpx;
-  padding-left: 12rpx;
-}
-
-.lang__dot {
-  width: 16rpx;
-  height: 16rpx;
-  border-radius: 50%;
-  opacity: 0.35;
-  transition: all 0.25s ease;
-}
-
-.lang__dot.is-on {
-  width: 30rpx;
-  height: 30rpx;
-  opacity: 1;
-  box-shadow: 0 0 0 6rpx $gz-accent-soft;
-}
-
-.section {
-  margin-top: 36rpx;
-}
-
-.section__head {
-  display: flex;
-  align-items: baseline;
-  justify-content: space-between;
-  margin-bottom: 20rpx;
-}
-
-.section__title {
-  font-size: 32rpx;
-  font-weight: 700;
-  color: $gz-ink;
-}
-
-.section__badge {
-  font-size: $gz-fs-caption;
-  color: $gz-ink-3;
-}
-
-.dims {
-  padding: 10rpx 30rpx 24rpx;
-  background: $gz-surface;
-  border: 1rpx solid $gz-line;
-  border-radius: $gz-radius-lg;
-}
-
-.dim {
-  padding: 22rpx 0 6rpx;
-}
-
-.dim__row {
-  display: flex;
-  align-items: baseline;
-  justify-content: space-between;
-  margin-bottom: 12rpx;
-}
-
-.dim__label {
-  font-size: $gz-fs-small;
-  color: $gz-ink-2;
-}
-
-.dim__value {
-  font-size: $gz-fs-small;
-  font-weight: 700;
-  color: $gz-ink;
-}
-
-.bar {
-  height: 12rpx;
-  border-radius: 999rpx;
-  background: var(--gz-line-soft);
-  overflow: hidden;
-}
-
-.bar__fill {
-  height: 100%;
-  border-radius: 999rpx;
-  background: linear-gradient(90deg, $gz-accent, $gz-grad-to);
-  transition: width 0.6s ease;
-}
-
-.bar--mini {
-  height: 8rpx;
-}
-
-.entries {
-  display: flex;
-  flex-direction: column;
-  gap: 18rpx;
-}
-
-/* 今日日课卡入口（批次 D） */
-.dailytip {
-  margin: 40rpx 0 8rpx;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 16rpx;
-  padding: 24rpx 26rpx;
-  border-radius: $gz-radius-md;
-  border: 1rpx solid $gz-accent;
-  background: linear-gradient(135deg, $gz-accent-soft, transparent 72%);
-}
-
-.dailytip__body {
-  display: flex;
-  flex-direction: column;
-  min-width: 0;
-}
-
-.dailytip__title {
-  font-size: $gz-fs-body;
-  font-weight: 800;
-  letter-spacing: 0.04em;
-  color: $gz-accent;
-}
-
-.dailytip__sub {
-  margin-top: 6rpx;
-  font-size: $gz-fs-caption;
-  color: $gz-ink-3;
-}
-
-.dailytip__go {
-  flex: none;
-  font-size: 34rpx;
-  color: $gz-accent;
-}
-
-.foot {
-  margin-top: 56rpx;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 8rpx;
-  padding-bottom: 20rpx;
-}
-
-.foot__text {
-  font-size: $gz-fs-caption;
-  letter-spacing: 0.1em;
-  color: $gz-ink-2;
-}
-
-.foot__text.is-dim {
-  color: $gz-ink-3;
-}
+@import './index.scss';
 </style>

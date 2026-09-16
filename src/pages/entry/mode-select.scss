@@ -1,0 +1,232 @@
+/**
+ * mode-select.vue 的样式（超过 100 行，按项目约定外置到同目录 mode-select.scss）。
+ * 由 mode-select.vue 通过 @import 引入；以后改样式改本文件。
+ */
+.page {
+  min-height: 100vh;
+  padding: calc(var(--status-bar-height) + 48rpx) $gz-page-pad 70rpx;
+  box-sizing: border-box;
+}
+
+.head__caption {
+  display: block;
+  font-size: $gz-fs-caption;
+  letter-spacing: $gz-ls-wide;
+  color: $gz-ink-3;
+}
+
+.head__title {
+  display: block;
+  margin-top: 18rpx;
+  font-size: 46rpx;
+  font-weight: 700;
+  line-height: 1.4;
+  color: $gz-ink;
+}
+
+.head__sub {
+  display: block;
+  margin-top: 14rpx;
+  font-size: $gz-fs-small;
+  line-height: 1.7;
+  color: $gz-ink-2;
+}
+
+.modes {
+  margin-top: 44rpx;
+  display: flex;
+  flex-direction: column;
+  gap: 26rpx;
+}
+
+.mode {
+  position: relative;
+  padding: 36rpx 30rpx 32rpx;
+  overflow: hidden;
+  border: 2rpx solid var(--m-line);
+  border-radius: $gz-radius-lg;
+  transition: box-shadow 0.2s ease;
+  background-color: var(--m-bg);
+  color: var(--m-ink);
+}
+
+.mode.is-chosen {
+  border-color: var(--m-accent);
+  box-shadow: 0 0 0 1rpx var(--m-accent), 0 10rpx 34rpx var(--m-glow);
+}
+
+/* 三卡各自主题：固定色预览，不随整页皮肤串色 */
+.mode--normal {
+  --m-accent: #6D8B3F;
+  --m-bg: #FCFAF4;
+  --m-ink: #26231E;
+  --m-ink2: #6B655B;
+  --m-ink3: #9C9589;
+  --m-line: rgba(38, 35, 30, 0.10);
+  --m-chip-bg: rgba(109, 139, 63, 0.10);
+  --m-chip-ink: #5E7A38;
+  --m-glow: rgba(109, 139, 63, 0.16);
+}
+
+.mode--tech {
+  --m-accent: #3FA9FF;
+  --m-bg: #111926;
+  --m-ink: #E6EDF5;
+  --m-ink2: #9AA7B8;
+  --m-ink3: #5F6E84;
+  --m-line: rgba(63, 169, 255, 0.24);
+  --m-chip-bg: rgba(63, 169, 255, 0.14);
+  --m-chip-ink: #7CC4FF;
+  --m-glow: rgba(63, 169, 255, 0.30);
+  /* 暗夜 + 极淡电路网格 */
+  background-image:
+    linear-gradient(rgba(63, 169, 255, 0.05) 1rpx, transparent 1rpx),
+    linear-gradient(90deg, rgba(63, 169, 255, 0.04) 1rpx, transparent 1rpx);
+  background-size: 44rpx 44rpx;
+}
+
+.mode--dao {
+  --m-accent: #A4471F;
+  --m-bg: #F6F0DE;
+  --m-ink: #2A251E;
+  --m-ink2: #6E6759;
+  --m-ink3: #A29A89;
+  --m-line: rgba(42, 37, 30, 0.18);
+  --m-chip-bg: rgba(164, 71, 31, 0.08);
+  --m-chip-ink: #8C3E1E;
+  --m-glow: rgba(164, 71, 31, 0.18);
+}
+
+/* 修仙卡顶部横幅（真 <image>，WXSS 不支持本地背景图） */
+.mode__art {
+  display: block;
+  width: auto;
+  height: 200rpx;
+  margin: -36rpx -30rpx 22rpx;
+  border-radius: calc(var(--gz-radius-lg) - 2rpx) calc(var(--gz-radius-lg) - 2rpx) 0 0;
+}
+
+/* 无远程横幅图时的三主题兜底饰带（复用 .mode__art 尺寸/出血，保持两态版式一致） */
+.mode--normal .mode__art--fallback {
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.16) 0%, rgba(255, 255, 255, 0) 40%),
+    linear-gradient(125deg, #a9bb85 0%, #6d8b3f 46%, #46572c 100%);
+}
+
+.mode--tech .mode__art--fallback {
+  background: linear-gradient(rgba(63, 169, 255, 0.09) 1rpx, transparent 1rpx),
+    linear-gradient(90deg, rgba(63, 169, 255, 0.07) 1rpx, transparent 1rpx),
+    linear-gradient(125deg, #2a4766 0%, #14202e 52%, #0b1117 100%);
+  background-size: 44rpx 44rpx, 44rpx 44rpx, 100% 100%;
+}
+
+.mode--dao .mode__art--fallback {
+  background: linear-gradient(125deg, rgba(255, 242, 220, 0.16) 0%, rgba(255, 242, 220, 0) 42%),
+    linear-gradient(125deg, #b98a52 0%, #a4471f 40%, #6e2c12 72%, #431d0b 100%);
+}
+
+.mode__top {
+  display: flex;
+  align-items: baseline;
+  gap: 16rpx;
+}
+
+.mode__dot {
+  align-self: center;
+  width: 14rpx;
+  height: 14rpx;
+  border-radius: 50%;
+}
+
+.mode__name {
+  font-size: 38rpx;
+  font-weight: 700;
+  color: var(--m-accent);
+}
+
+.mode__en {
+  font-size: $gz-fs-caption;
+  letter-spacing: 0.2em;
+  color: var(--m-ink3);
+}
+
+.mode__tagline {
+  display: block;
+  margin-top: 18rpx;
+  padding-left: 20rpx;
+  border-left: 4rpx solid var(--m-accent);
+  border-radius: 2rpx;
+  font-size: $gz-fs-body;
+  line-height: 1.8;
+  color: var(--m-ink2);
+}
+
+.mode__chips {
+  margin-top: 22rpx;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12rpx;
+}
+
+.chip {
+  padding: 6rpx 18rpx;
+  border-radius: 999rpx;
+  background: var(--m-chip-bg);
+  border: 1rpx solid var(--m-line);
+  font-size: $gz-fs-caption;
+  color: var(--m-chip-ink);
+}
+
+.mode__radio {
+  position: absolute;
+  top: 30rpx;
+  right: 30rpx;
+}
+
+.radio {
+  width: 32rpx;
+  height: 32rpx;
+  border: 2rpx solid var(--m-ink3);
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.radio.is-on {
+  border-color: var(--m-accent);
+}
+
+.radio.is-on::after {
+  content: '';
+  width: 16rpx;
+  height: 16rpx;
+  border-radius: 50%;
+  background: var(--m-accent);
+}
+
+.foot {
+  margin-top: 44rpx;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 20rpx;
+}
+
+.cta {
+  width: 100%;
+  padding: 28rpx 0;
+  background: $gz-cta-bg;
+  color: $gz-on-cta;
+  font-size: $gz-fs-body;
+  font-weight: 600;
+  letter-spacing: 0.2em;
+  text-align: center;
+  border-radius: $gz-radius-md;
+}
+
+.foot__note {
+  font-size: $gz-fs-caption;
+  line-height: 1.7;
+  text-align: center;
+  color: $gz-ink-3;
+}

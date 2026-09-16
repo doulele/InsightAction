@@ -5,14 +5,12 @@
  * - 统一外壳解包：自动剥掉 { code, message, data }，业务层拿到即 data；
  * - 业务错误：code !== 0 抛 BizError，页面 catch 后差异化处理；
  * - 401 预留：登录态失效的统一钩子位置；
- * - Mock 分发：后端未就绪时走本地假数据，切换零成本；
  * - Loading / 错误 toast 的内建策略。
  */
 import { ENV } from '@/config/env'
 import { ApiCode, isApiResult } from '@/types/api'
 import type { ApiResult } from '@/types/api'
 import { BizError } from '@/types/api'
-import { matchMock } from './mock'
 
 export type HttpMethod = 'GET' | 'POST' | 'PUT' | 'DELETE'
 
@@ -31,10 +29,6 @@ export interface RequestOptions<D = unknown> {
 }
 
 const DEFAULT_TIMEOUT = 15000
-
-function sleep(ms: number): Promise<void> {
-  return new Promise((resolve) => setTimeout(resolve, ms))
-}
 
 /** 拼接完整地址：全量 URL 原样返回，相对路径挂在 apiBaseUrl 下 */
 function normalizeUrl(url: string): string {
@@ -85,25 +79,7 @@ export async function request<T, D = unknown>(options: RequestOptions<D>): Promi
     if (loading) uni.hideLoading()
   }
 
-  // ---------- 一、Mock 优先 ----------
-  if (ENV.useMock) {
-    const handler = matchMock(url, method)
-    if (handler) {
-      showLoading()
-      try {
-        await sleep(handler.delay ?? 400)
-        const result = await handler.response({ url, method, data })
-        return unwrap<T>(result)
-      } catch (e) {
-        if (showError) showErrorTip(e instanceof Error ? e.message : '请求失败')
-        throw e
-      } finally {
-        hideLoading()
-      }
-    }
-  }
-
-  // ---------- 二、真实请求 ----------
+  // ---------- 真实请求 ----------
   showLoading()
   try {
     const raw = await new Promise<unknown>((resolve, reject) => {

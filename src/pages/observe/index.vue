@@ -1,31 +1,13 @@
 <template>
-  <view class="page" :class="skinClass">
-    <!-- 大厅头：模式化状态栏 -->
-    <view class="hall-head">
-      <view class="hall-head__row">
-        <text class="hall-head__mark">观</text>
-        <text class="hall-head__en">INSIGHT · 观事 → 观理 → 观道</text>
-      </view>
-      <text class="hall-head__state">{{ stateText }}</text>
-    </view>
+  <view class="page" :class="skinClass" @touchstart="armDwell">
+    <!-- 大厅头（五页共用组件：主题艺术画作背景 + 印章 + 定位 + 状态 + 修行语言横幅） -->
+    <HallHead mark="观" en="INSIGHT · 观事 → 观理 → 观道" :state="stateText" show-cap />
+
+    <!-- 第一周解锁引导：今天的主角在这里才挂出 -->
+    <WeekGuide for="observe" />
 
     <!-- 未建档提醒条：跳过建档的人，隔两天在这里温和提一次（不弹窗、不锁功能） -->
     <AssessPrompt />
-
-    <!-- 当前修行语言横幅：与模式选择卡同套艺术画，随皮肤更换 -->
-    <view class="hero">
-      <!--
-        ⚠️ 必须走 modeStore.art（后端 /skins 下发 → 带版本号 → 命中本地缓存读盘），
-        不能用 modeMeta.art：那是构建期变量 VITE_SKIN_BASE_URL 拼的静态地址，
-        没配该变量时恒为 undefined ✗ → 图永远不出现（「观」页顶部空白就是这个原因）。
-      -->
-      <image v-if="modeStore.art" class="hero__art" :src="modeStore.art" mode="aspectFill" />
-      <view class="hero__veil" />
-      <view class="hero__cap">
-        <text class="hero__eyebrow">今日修行 · {{ modeMeta.label }} · {{ modeMeta.labelEn }}</text>
-        <text class="hero__quote">{{ modeMeta.tagline }}</text>
-      </view>
-    </view>
 
     <!--
       外部入口（信息工作台）：只有「今天几个事件」与一个出口，**不含任何新闻内容**。
@@ -42,7 +24,8 @@
     </view>
 
     <!-- 每日一则：首开即可见的常驻卡（不进浮层），一日一条、不补不累计 -->
-    <view class="section">
+    <!-- id="daily"：第一周引导「先读一条」的滚动落点（WeekGuide 的 #daily），改名要同步改 config/unlock.ts -->
+    <view id="daily" class="section">
       <view class="section__head">
         <text class="section__title">每日一则</text>
         <text class="section__badge">不补不累计</text>
@@ -185,10 +168,22 @@
     <view class="section">
       <view class="section__head">
         <text class="section__title">更深的观察</text>
+        <!-- 底噪过滤器：只切显示，不删数据（生存刚需模式） -->
+        <text
+          class="noise"
+          :class="{ 'is-on': settings.lowNoise }"
+          hover-class="gz-hover"
+          @click="toggleLowNoise"
+        >
+          {{ settings.lowNoise ? '底噪过滤器 · 已开' : '底噪过滤器' }}
+        </text>
       </view>
+      <text v-if="settings.lowNoise" class="noise__note">
+        生存刚需模式：只留今天要处理的事和今天那一条。数据一条没删，关掉就回来。
+      </text>
       <view class="entries">
         <EntryItem
-          v-for="item in moreEntries"
+          v-for="item in visibleEntries"
           :key="item.title"
           :title="item.title"
           :subtitle="item.subtitle"
@@ -213,8 +208,14 @@
       @confirm="copyPortal"
     />
 
+    <!-- 隐私授权拦截弹窗：复制链接前需征得同意 -->
+    <PrivacyGate />
+
     <!-- 批次 D · 小枢全局浮层 -->
     <BuddyFloat />
+
+    <!-- 远端提示层：公告 + 版本更新（强制更新 / 新包已下载、重启生效） -->
+    <RemoteNotice />
   </view>
 </template>
 
@@ -229,11 +230,12 @@
  *  - 「记一笔」是用户主动输入的统一入口（事/理/道 × 文章/一句话/视频）。
  */
 import { computed, getCurrentInstance, ref, watch } from 'vue'
-import { onReady, onShow } from '@dcloudio/uni-app'
+import HallHead from '@/components/HallHead/HallHead.vue'
+import WeekGuide from '@/components/WeekGuide/WeekGuide.vue'
+import { onHide, onReady, onShow } from '@dcloudio/uni-app'
 import { useModeStore } from '@/stores/mode'
 import { useSkinClass } from '@/composables/useSkin'
 import { syncTabBar } from '@/utils/skin'
-import { getModeMeta } from '@/config/modes'
 import { hallStatus } from '@/config/lexicon'
 import { dailyOf } from '@/config/daily'
 import type { DailyKind } from '@/config/daily'
@@ -242,7 +244,8 @@ import { useObserveStore } from '@/stores/observe'
 import { useKnowledgeStore } from '@/stores/knowledge'
 import { useReadLaterStore } from '@/stores/readLater'
 import { useQualityStore } from '@/stores/quality'
-import { poke } from '@/composables/useBuddy'
+import { useSettingsStore } from '@/stores/settings'
+import { DWELL_MS, dwellTip, poke } from '@/composables/useBuddy'
 import { navigateTo, ROUTES } from '@/router/routes'
 import type { RoutePath } from '@/router/routes'
 import { todayKey } from '@/stores/daily'
@@ -254,12 +257,14 @@ const skinClass = useSkinClass()
 const readLater = useReadLaterStore()
 const quality = useQualityStore()
 const observe = useObserveStore()
+const settings = useSettingsStore()
 
 /* tabBar 原生样式/图标只能在本类大厅页上同步；顺手清理超过 24h 的临时收藏 */
 onShow(() => {
   /* 批次 D · 小枢：评估到点激励 / 入定到点提醒 */
   poke()
   syncTabBar(modeStore.id)
+  armDwell()
   const cleared = readLater.prune()
   if (cleared > 0) {
     uni.showToast({ title: `已自动清走 ${cleared} 条过期收藏`, icon: 'none' })
@@ -273,7 +278,27 @@ onShow(() => {
   }
 })
 
-const modeMeta = computed(() => getModeMeta(modeStore.id))
+onHide(() => {
+  clearDwell()
+})
+
+/*
+ * 心魔预警：在「观」里停留满 5 分钟且没有任何操作 → 小枢气泡把人拉去「止」。
+ * 任何一次触摸都会重新计时（页面根节点绑 touchstart），所以只有"停着不动"才会触发。
+ */
+let dwellTimer: ReturnType<typeof setTimeout> | null = null
+
+function clearDwell(): void {
+  if (dwellTimer) {
+    clearTimeout(dwellTimer)
+    dwellTimer = null
+  }
+}
+
+function armDwell(): void {
+  clearDwell()
+  dwellTimer = setTimeout(() => dwellTip('observe'), DWELL_MS)
+}
 
 /**
  * 每日信息配额（深度阅读次数）。
@@ -762,6 +787,8 @@ interface MoreEntry {
   url?: RoutePath
   /** 筹备中入口置灰；缺省即可点 */
   disabled?: boolean
+  /** 生存刚需：底噪过滤器打开时仍保留（目前只有「今天要处理的事」） */
+  essential?: boolean
 }
 
 /** 已被标注过的来源数（质量榜入榜数） */
@@ -778,6 +805,8 @@ const moreEntries = computed<MoreEntry[]>(() => {
       subtitle: '你存下的事、理、道，读过写下才算数',
       badge: unhandled > 0 ? { text: `${unhandled} 未处理`, tone: 'accent' } : { text: '都处理了', tone: 'muted' },
       url: ROUTES.observeInbox,
+      /* 生存刚需：待处理的事是「刚需」，底噪过滤器开着时它依然在 */
+      essential: true,
     },
     {
       mark: '理',
@@ -818,680 +847,21 @@ const moreEntries = computed<MoreEntry[]>(() => {
     },
   ]
 })
+
+/* —— 底噪过滤器（生存刚需模式）：只切显示，不删数据 —— */
+const visibleEntries = computed<MoreEntry[]>(() =>
+  settings.lowNoise ? moreEntries.value.filter((e) => e.essential) : moreEntries.value,
+)
+
+function toggleLowNoise(): void {
+  settings.lowNoise = !settings.lowNoise
+  uni.showToast({
+    title: settings.lowNoise ? '已开 · 只看今天要处理的事' : '已关 · 恢复全部入口',
+    icon: 'none',
+  })
+}
 </script>
 
 <style lang="scss" scoped>
-.page {
-  min-height: 100vh;
-  padding: 24rpx $gz-page-pad 60rpx;
-}
-
-.hall-head {
-  padding: 16rpx 0 30rpx;
-}
-
-.hall-head__row {
-  display: flex;
-  align-items: center;
-  gap: 20rpx;
-}
-
-/* 模式印章：随皮肤走主色 —— 修仙=朱砂印、科技=电光蓝、普通=橄榄 */
-.hall-head__mark {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  flex: none;
-  width: 84rpx;
-  height: 84rpx;
-  font-size: 44rpx;
-  font-weight: 800;
-  color: $gz-accent;
-  background: $gz-accent-soft;
-  border: 2rpx solid $gz-accent;
-  border-radius: 22rpx;
-  line-height: 1;
-}
-
-.hall-head__en {
-  font-size: $gz-fs-caption;
-  letter-spacing: $gz-ls-wide;
-  color: $gz-ink-3;
-}
-
-.hall-head__state {
-  display: block;
-  margin-top: 12rpx;
-  font-size: $gz-fs-small;
-  color: $gz-accent;
-}
-
-/* 主屏横幅：三套艺术画之一，随模式切换；底部深色罩保证文字任何图上可读 */
-.hero {
-  position: relative;
-  height: 250rpx;
-  border-radius: $gz-radius-lg;
-  overflow: hidden;
-  box-shadow: 0 12rpx 32rpx rgba(20, 16, 10, 0.14);
-  /* 图还没到（首屏弱网 / 下发未就绪）时的兜底：主题渐变占住画面，不让它是个空框 */
-  background: linear-gradient(135deg, $gz-accent-soft, $gz-accent);
-}
-
-.hero__art {
-  display: block;
-  width: 100%;
-  height: 100%;
-}
-
-.hero__veil {
-  position: absolute;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  height: 78%;
-  background: linear-gradient(180deg, rgba(12, 10, 6, 0) 0%, rgba(12, 10, 6, 0.62) 100%);
-}
-
-.hero__cap {
-  position: absolute;
-  left: 30rpx;
-  right: 30rpx;
-  bottom: 22rpx;
-  display: flex;
-  flex-direction: column;
-}
-
-.hero__eyebrow {
-  font-size: $gz-fs-caption;
-  letter-spacing: 0.14em;
-  color: rgba(255, 255, 255, 0.88);
-}
-
-.hero__quote {
-  display: block;
-  margin-top: 6rpx;
-  font-size: 28rpx;
-  line-height: 1.55;
-  color: #ffffff;
-}
-
-.section {
-  margin-top: 34rpx;
-}
-
-.section__head {
-  display: flex;
-  align-items: baseline;
-  justify-content: space-between;
-  margin-bottom: 20rpx;
-}
-
-.section__title {
-  font-size: 32rpx;
-  font-weight: 700;
-  color: $gz-ink;
-}
-
-.section__badge {
-  font-size: $gz-fs-caption;
-  color: $gz-ink-3;
-}
-
-/* 每日一则 */
-.daily {
-  padding: 30rpx 28rpx 24rpx;
-  background: $gz-surface;
-  border: 1rpx solid $gz-line;
-  border-radius: $gz-radius-md;
-}
-
-.daily__top {
-  display: flex;
-  align-items: center;
-  gap: 14rpx;
-}
-
-.daily__kind {
-  padding: 4rpx 18rpx;
-  border-radius: 999rpx;
-  background: $gz-accent-soft;
-  color: $gz-accent;
-  font-size: $gz-fs-caption;
-  font-weight: 700;
-}
-
-.daily__today {
-  font-size: $gz-fs-caption;
-  color: $gz-ink-3;
-}
-
-.daily__today--back {
-  color: #b24a3a;
-}
-
-/* 往未来拨到的日子：内容算得出来，但还没到来，标一下别让人误会 */
-.daily__today--future {
-  color: #8a6a3c;
-}
-
-/*
-  读完追问：四动作之下"轻推一把"。
-  默认只露一行文字链 —— 只想读的人不会被输入框打扰，想留一句的人一步就能展开。
-*/
-.ask {
-  margin-top: 18rpx;
-  padding-top: 18rpx;
-  border-top: 1rpx dashed $gz-line;
-}
-
-.ask__entry-text {
-  font-size: $gz-fs-caption;
-  font-weight: 600;
-  color: $gz-accent;
-}
-
-.ask__done-text {
-  font-size: $gz-fs-caption;
-  color: $gz-ink-3;
-}
-
-.ask__q {
-  font-size: $gz-fs-small;
-  line-height: 1.6;
-  color: $gz-ink;
-}
-
-.ask__input {
-  margin-top: 12rpx;
-  width: 100%;
-  min-height: 96rpx;
-  padding: 16rpx 18rpx;
-  box-sizing: border-box;
-  border: 1rpx dashed $gz-line;
-  border-radius: $gz-radius-md;
-  font-size: $gz-fs-small;
-  line-height: 1.6;
-}
-
-.ask__ph {
-  color: $gz-ink-3;
-}
-
-.ask__acts {
-  margin-top: 14rpx;
-  display: flex;
-  align-items: center;
-  justify-content: flex-end;
-  gap: 28rpx;
-}
-
-.ask__cancel {
-  font-size: $gz-fs-caption;
-  color: $gz-ink-3;
-}
-
-.ask__save {
-  font-size: $gz-fs-caption;
-  font-weight: 700;
-  color: $gz-accent;
-}
-
-/*
-  每日一则正文的视窗。
-  520rpx ≈ 11 行（28rpx 字号 × 1.7 行高），与 detail 页正文限高保持同一量级。
-  只设 max-height 不设 height：内容短的条目不该被撑出一块空白。
-*/
-.daily__text-box {
-  max-height: 520rpx;
-}
-
-/* 换一个：文字链形态，撑出足够热区；换过之后变成主题色，让人知道"这不是今日原条" */
-.daily__swap {
-  margin-left: auto;
-  display: flex;
-  align-items: center;
-  gap: 6rpx;
-  padding: 6rpx 18rpx;
-  border: 1rpx solid $gz-line;
-  border-radius: 999rpx;
-  background: $gz-input-bg;
-}
-
-.daily__swap.is-on {
-  border-color: $gz-accent;
-  background: $gz-accent-soft;
-}
-
-.daily__swap-ico {
-  font-size: $gz-fs-caption;
-  line-height: 1;
-  color: $gz-ink-3;
-}
-
-.daily__swap.is-on .daily__swap-ico {
-  color: $gz-accent;
-}
-
-.daily__swap-text {
-  font-size: $gz-fs-caption;
-  color: $gz-ink-2;
-}
-
-.daily__swap.is-on .daily__swap-text {
-  color: $gz-accent;
-  font-weight: 600;
-}
-
-.daily__title {
-  display: block;
-  margin-top: 18rpx;
-  font-size: 34rpx;
-  font-weight: 700;
-  line-height: 1.5;
-  color: $gz-ink;
-}
-
-.daily__text {
-  display: block;
-  margin-top: 14rpx;
-  font-size: $gz-fs-small;
-  line-height: 1.9;
-  color: $gz-ink-2;
-}
-
-.daily__counter {
-  display: block;
-  margin-top: 16rpx;
-  padding: 14rpx 18rpx;
-  border-left: 4rpx solid #d9a15b;
-  background: #fbf3e6;
-  border-radius: 0 $gz-radius-sm $gz-radius-sm 0;
-  font-size: $gz-fs-caption;
-  line-height: 1.8;
-  color: #8a6a3c;
-}
-
-.daily__src {
-  display: block;
-  margin-top: 14rpx;
-  font-size: $gz-fs-caption;
-  color: $gz-ink-3;
-}
-
-/* 四动作 */
-.acts {
-  display: flex;
-  gap: 12rpx;
-  margin-top: 22rpx;
-  padding-top: 20rpx;
-  border-top: 1rpx dashed $gz-line;
-}
-
-.act {
-  flex: 1;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  padding: 14rpx 0;
-  border: 1rpx solid $gz-line;
-  border-radius: $gz-radius-sm;
-  background: $gz-input-bg;
-}
-
-.act.is-done {
-  border-color: $gz-accent;
-  background: $gz-accent-soft;
-}
-
-.act__text {
-  font-size: $gz-fs-caption;
-  color: $gz-ink-2;
-}
-
-.act.is-done .act__text {
-  color: $gz-accent;
-  font-weight: 600;
-}
-
-/* ---------- 日期拨轮（密码锁滚轮） ---------- */
-.dial {
-  position: relative;
-  height: 132rpx;
-  margin-top: 18rpx;
-  border: 1rpx solid $gz-line;
-  border-radius: $gz-radius-md;
-  background: $gz-input-bg;
-  overflow: hidden;
-
-  /* 三模式可调项，被下方 .dial--xxx 覆盖 */
-  --dial-edge: rgba(246, 240, 226, 0.92); // 两端收边色（只在最外侧不足一格处起淡出）
-  --dial-win-bg: rgba(255, 255, 255, 0.72); // 中心取景窗填充（在字下层，可以给足）
-  --dial-win-line: rgba(109, 139, 63, 0.34); // 中心取景窗描边
-}
-
-.dial__scroll {
-  position: relative;
-  /* 数字压在取景窗**之上**：底衬可以有底色，字永远清晰 */
-  z-index: 2;
-  height: 100%;
-  white-space: nowrap;
-  /* 首屏"量格宽 → 定位到今天"期间先藏着，避免看到一次跳位（定位完 .is-ready 放出来） */
-  opacity: 0;
-  transition: opacity 0.16s ease;
-}
-
-.dial.is-ready .dial__scroll {
-  opacity: 1;
-}
-
-.dial__track {
-  display: inline-flex;
-  align-items: stretch;
-  height: 100%;
-}
-
-.dial__cell {
-  flex: none;
-  width: 116rpx; // ⚠️ 与脚本里的 CELL_RPX 必须一致
-  height: 100%;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-}
-
-.dial__num {
-  font-size: 26rpx;
-  font-weight: 700;
-  line-height: 1.05;
-  color: $gz-ink;
-}
-
-.dial__sub {
-  margin-top: 6rpx;
-  font-size: 20rpx;
-  line-height: 1.1;
-  color: $gz-ink-3;
-}
-
-/* 正中那一格：主题色 + 加粗，其余靠内联 opacity/font-size 渐变 */
-.dial__cell.is-cur .dial__num {
-  font-weight: 800;
-  color: $gz-accent;
-}
-
-.dial__cell.is-cur .dial__sub {
-  font-weight: 600;
-  color: $gz-accent;
-}
-
-/**
- * 两端收边。
- * ⚠️ 宽度**必须小于一格**（116rpx）：它只负责把被容器切掉的那半格柔化掉，
- * 不能盖住完整的日子 —— 之前 170rpx 的宽遮罩 + backdrop-filter 直接把
- * 左半边拨轮糊没了，看不出两边有日期。
- */
-.dial__veil {
-  position: absolute;
-  z-index: 3;
-  top: 0;
-  bottom: 0;
-  width: 92rpx;
-  pointer-events: none;
-}
-
-.dial__veil--l {
-  left: 0;
-  background: linear-gradient(90deg, var(--dial-edge) 0%, rgba(255, 255, 255, 0) 100%);
-}
-
-.dial__veil--r {
-  right: 0;
-  background: linear-gradient(270deg, var(--dial-edge) 0%, rgba(255, 255, 255, 0) 100%);
-}
-
-/**
- * 中心取景窗：告诉用户"只有这一格是选中的"。
- * ⚠️ 必须在数字**下层**（z-index 1 + .dial__scroll 是 2）——之前它盖在字上，
- * 那层半透明白等于给「今天」糊了层雾，反而比两侧的邻格还虚。
- */
-.dial__win {
-  position: absolute;
-  z-index: 1;
-  top: 14rpx;
-  bottom: 14rpx;
-  left: 50%;
-  width: 104rpx;
-  margin-left: -52rpx;
-  border-radius: 14rpx;
-  border: 1rpx solid var(--dial-win-line);
-  background: var(--dial-win-bg);
-  pointer-events: none;
-}
-
-.dial__bar {
-  position: absolute;
-  left: 50%;
-  width: 60rpx;
-  height: 2rpx;
-  margin-left: -30rpx;
-  background: transparent;
-}
-
-.dial__bar--t {
-  top: 0;
-}
-
-.dial__bar--b {
-  bottom: 0;
-}
-
-.dial__foot {
-  display: flex;
-  align-items: baseline;
-  justify-content: space-between;
-  margin-top: 12rpx;
-}
-
-.dial__hint {
-  font-size: $gz-fs-caption;
-  color: $gz-ink-3;
-}
-
-.dial__picked {
-  font-size: $gz-fs-caption;
-  color: $gz-ink-2;
-  font-weight: 600;
-}
-
-/* —— 普通 · 手账纸：圆润纸槽，柔和不抢 —— */
-.dial--normal {
-  --dial-edge: rgba(246, 240, 226, 0.92);
-  --dial-win-bg: rgba(255, 255, 255, 0.78);
-  --dial-win-line: rgba(109, 139, 63, 0.34);
-}
-
-.dial--normal .dial__win {
-  border-radius: 16rpx;
-}
-
-/* —— 科技 · 实验室：锐利取景框 + 电光蓝上下卡尺 —— */
-.dial--tech {
-  --dial-edge: rgba(26, 36, 49, 0.92);
-  --dial-win-bg: rgba(63, 169, 255, 0.16);
-  --dial-win-line: rgba(63, 169, 255, 0.55);
-}
-
-.dial--tech .dial__win {
-  border-radius: 6rpx;
-  box-shadow: inset 0 0 18rpx rgba(63, 169, 255, 0.16);
-}
-
-.dial--tech .dial__bar {
-  width: 92rpx;
-  margin-left: -46rpx;
-  background: #3fa9ff;
-}
-
-.dial--tech .dial__num {
-  font-variant-numeric: tabular-nums;
-}
-
-/* —— 修仙 · 水墨：朱砂印框，宽字距 —— */
-.dial--dao {
-  --dial-edge: rgba(239, 231, 208, 0.92);
-  --dial-win-bg: rgba(255, 255, 255, 0.64);
-  --dial-win-line: rgba(164, 71, 31, 0.5);
-}
-
-.dial--dao .dial__win {
-  border-radius: 8rpx;
-}
-
-.dial--dao .dial__bar {
-  background: #a4471f;
-}
-
-.dial--dao .dial__num {
-  letter-spacing: 0.08em;
-}
-
-/* 7 天清理提示 */
-.cleandue {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  margin-top: 18rpx;
-  padding: 18rpx 26rpx;
-  border: 1rpx solid #e0b3a8;
-  border-radius: $gz-radius-md;
-  background: #fbf0ec;
-}
-
-.cleandue__text {
-  font-size: $gz-fs-small;
-  color: #b24a3a;
-}
-
-.cleandue__go {
-  font-size: $gz-fs-caption;
-  color: #b24a3a;
-  font-weight: 600;
-}
-
-/* 记一笔通栏入口 */
-.compose {
-  display: flex;
-  align-items: center;
-  gap: 16rpx;
-  margin-top: 26rpx;
-  padding: 28rpx 30rpx;
-  border-radius: $gz-radius-md;
-  background: $gz-accent;
-}
-
-.compose__plus {
-  font-size: 40rpx;
-  line-height: 1;
-  color: $gz-on-cta;
-}
-
-.compose__text {
-  font-size: 32rpx;
-  font-weight: 700;
-  letter-spacing: 0.06em;
-  color: $gz-on-cta;
-}
-
-.compose__hint {
-  margin-left: auto;
-  font-size: $gz-fs-caption;
-  color: $gz-on-cta;
-  opacity: 0.85;
-}
-
-.quota {
-  margin-top: 16rpx;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 20rpx 26rpx;
-  border: 1rpx dashed $gz-line;
-  border-radius: $gz-radius-md;
-}
-
-.quota__left {
-  font-size: $gz-fs-small;
-  font-weight: 600;
-  color: $gz-ink;
-}
-
-/* 用尽：虚线「提醒」变成实线「到位」—— 让它看起来像一道真的关上了的门 */
-.quota.is-out {
-  border-style: solid;
-  border-color: $gz-accent;
-  background: $gz-accent-soft;
-}
-
-.quota__right {
-  font-size: $gz-fs-caption;
-  color: $gz-ink-3;
-}
-
-.quota.is-out .quota__right {
-  color: $gz-accent;
-  font-weight: 600;
-}
-
-/*
-  今日要闻入口（通向站外的那道门）。
-  形态上刻意与内容卡区分：不做"标题 + 正文"的卡片结构，而是一条**扁平的入口条** ——
-  小标签 + 一句状态 + 箭头，一眼就知道这是"出口"而不是"能读的内容"。
-  这既是视觉层级，也是合规考虑：小程序里不该看起来像能读到新闻。
-*/
-.portal {
-  margin-top: 20rpx;
-  display: flex;
-  align-items: center;
-  gap: 12rpx;
-  padding: 20rpx 24rpx;
-  border-radius: $gz-radius-md;
-  background: $gz-accent-soft;
-}
-
-/* 标签形态（像网站首页"最近新闻"那个小标签）—— 实底、胶囊，不抢文字的位置 */
-.portal__title {
-  flex-shrink: 0;
-  padding: 4rpx 16rpx;
-  border-radius: 999rpx;
-  background: $gz-accent;
-  color: $gz-on-cta;
-  font-size: $gz-fs-caption;
-  font-weight: 700;
-  line-height: 1.7;
-}
-
-/* 状态文字占满余下宽度：过长时省略，不把箭头挤出去 */
-.portal__sub {
-  flex: 1;
-  min-width: 0;
-  overflow: hidden;
-  white-space: nowrap;
-  text-overflow: ellipsis;
-  font-size: $gz-fs-caption;
-  color: $gz-ink-3;
-}
-
-.portal__arrow {
-  flex-shrink: 0;
-  font-size: 32rpx;
-  line-height: 1;
-  color: $gz-accent;
-}
-
-.entries {
-  display: flex;
-  flex-direction: column;
-  gap: 18rpx;
-}
+@import './index.scss';
 </style>

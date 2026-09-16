@@ -73,6 +73,29 @@ export const TRACE_META: Record<TraceKind, TraceMeta> = {
 /** 全部事件类型（供统计/筛选遍历） */
 export const TRACE_KINDS = Object.keys(TRACE_META) as TraceKind[]
 
+/**
+ * 每日入账上限（规格 §12.2 · 防刷）。
+ *
+ * 修为是等级与愿望兑换的货币，能刷就等于整套数值失去可信度 —— 所以高频动作必须封顶。
+ * 关键取舍：**上限只影响入账，永远不影响 trace 记录**。
+ * 记录必须完整，否则脊椎会撒谎（周报的「一条路」、四维雷达都读它）。
+ *
+ * `observe.source` 不在此表 —— 它受信息配额（config/quota.ts）约束，两条规则不重复叠加。
+ * `action.todo` 天然只有 3 件，仍写进来是为了堵住「改文本反复勾」这类绕法。
+ */
+export const DAY_CAP: Partial<Record<TraceKind, number>> = {
+  'pause.urge': 5,
+  'observe.clean': 5,
+  'reflect.note': 5,
+  'reflect.apply': 3,
+  'action.todo': 3,
+}
+
+/** 该类事件的每日入账上限；0 = 不限 */
+export function dayCapOf(kind: TraceKind): number {
+  return DAY_CAP[kind] ?? 0
+}
+
 /** 旧版只有三个 type —— 迁移映射（读到老数据时按此补全 kind） */
 export const LEGACY_TYPE_KIND: Record<string, TraceKind> = {
   todo: 'action.todo',

@@ -1,0 +1,593 @@
+/**
+ * index.vue 的样式（超过 100 行，按项目约定外置到同目录 index.scss）。
+ * 由 index.vue 通过 @import 引入；以后改样式改本文件。
+ */
+.page {
+  min-height: 100vh;
+  padding: calc(var(--status-bar-height) + 16rpx) $gz-page-pad 60rpx;
+  box-sizing: border-box;
+}
+
+.nav {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8rpx 0 10rpx;
+}
+
+.nav__side {
+  width: 76rpx;
+  height: 76rpx;
+}
+
+.nav__back {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 76rpx;
+  height: 76rpx;
+  border: 1rpx solid $gz-line;
+  border-radius: 50%;
+  background: $gz-surface;
+  color: $gz-ink-2;
+  font-size: 52rpx;
+  line-height: 1;
+  padding-bottom: 8rpx;
+}
+
+.nav__title {
+  font-size: 34rpx;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  color: $gz-ink;
+}
+
+/* 顶部操作 */
+.ops {
+  display: flex;
+  gap: 16rpx;
+  margin-top: 16rpx;
+}
+
+.op {
+  flex: 1;
+  text-align: center;
+  padding: 22rpx 0;
+  border-radius: $gz-radius-md;
+  border: 1rpx solid $gz-line;
+  font-size: $gz-fs-small;
+  color: $gz-ink-2;
+}
+
+.op--main {
+  background: $gz-accent;
+  border-color: $gz-accent;
+  color: $gz-on-cta;
+  font-weight: 600;
+}
+
+/* 检索 */
+.search {
+  display: flex;
+  align-items: center;
+  gap: 16rpx;
+  margin-top: 26rpx;
+  padding: 18rpx 24rpx;
+  background: $gz-input-bg;
+  border: 1rpx solid $gz-line;
+  border-radius: $gz-radius-md;
+}
+
+.search__mark {
+  color: $gz-accent;
+  font-size: $gz-fs-small;
+}
+
+.search__input {
+  flex: 1;
+  font-size: $gz-fs-small;
+  color: $gz-ink;
+}
+
+.search__ph {
+  color: $gz-ink-3;
+}
+
+.filters {
+  display: flex;
+  gap: 12rpx;
+  margin-top: 18rpx;
+}
+
+.filter {
+  padding: 8rpx 22rpx;
+  border-radius: 999rpx;
+  border: 1rpx solid $gz-line;
+  font-size: $gz-fs-caption;
+  color: $gz-ink-3;
+}
+
+.filter.is-on {
+  color: $gz-accent;
+  border-color: $gz-accent;
+  background: $gz-accent-soft;
+  font-weight: 600;
+}
+
+.tag-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12rpx;
+  margin-top: 16rpx;
+}
+
+.tag {
+  padding: 6rpx 18rpx;
+  border-radius: 999rpx;
+  border: 1rpx solid $gz-line;
+  font-size: $gz-fs-caption;
+  color: $gz-ink-3;
+}
+
+.tag.is-on {
+  border-color: $gz-accent;
+  background: $gz-accent-soft;
+  color: $gz-accent;
+}
+
+.list {
+  display: flex;
+  flex-direction: column;
+  gap: 18rpx;
+  margin-top: 24rpx;
+}
+
+.card {
+  padding: 26rpx 28rpx;
+  background: $gz-surface;
+  border: 1rpx solid $gz-line;
+  border-radius: $gz-radius-md;
+}
+
+.card__top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.card__tag {
+  padding: 4rpx 14rpx;
+  border-radius: 999rpx;
+  font-size: $gz-fs-caption;
+}
+
+.card__src {
+  font-size: $gz-fs-caption;
+  color: $gz-ink-3;
+}
+
+.card__title {
+  display: block;
+  margin-top: 14rpx;
+  font-size: $gz-fs-body;
+  font-weight: 700;
+  line-height: 1.5;
+  color: $gz-ink;
+}
+
+.card__digest {
+  display: block;
+  margin-top: 10rpx;
+  font-size: $gz-fs-small;
+  line-height: 1.8;
+  color: $gz-ink-2;
+}
+
+.card__tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10rpx;
+  margin-top: 14rpx;
+}
+
+.card__tag-mini {
+  padding: 4rpx 14rpx;
+  border-radius: 999rpx;
+  font-size: 20rpx;
+  background: var(--gz-line-soft);
+  color: $gz-ink-3;
+}
+
+.empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 90rpx 30rpx 0;
+}
+
+.empty__seal {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100rpx;
+  height: 100rpx;
+  border: 2rpx solid $gz-accent;
+  border-radius: 24rpx;
+  background: $gz-accent-soft;
+  color: $gz-accent;
+  font-size: 44rpx;
+  font-weight: 700;
+}
+
+.empty__title {
+  margin-top: 26rpx;
+  font-size: $gz-fs-title;
+  font-weight: 700;
+  color: $gz-ink;
+}
+
+.empty__desc {
+  margin-top: 14rpx;
+  font-size: $gz-fs-small;
+  line-height: 1.9;
+  text-align: center;
+  color: $gz-ink-3;
+  white-space: pre-line;
+}
+
+/* 底部面板通用 */
+.mask {
+  position: fixed;
+  inset: 0;
+  z-index: 20;
+  display: flex;
+  align-items: flex-end;
+  background: rgba(20, 16, 10, 0.5);
+}
+
+.sheet {
+  width: 100%;
+  max-height: 78vh;
+  padding: 32rpx 32rpx calc(env(safe-area-inset-bottom) + 30rpx);
+  background: $gz-surface;
+  border-radius: 32rpx 32rpx 0 0;
+  box-sizing: border-box;
+  overflow-y: auto;
+}
+
+.sheet__title {
+  display: block;
+  font-size: 32rpx;
+  font-weight: 700;
+  color: $gz-ink;
+}
+
+.sheet__sub {
+  display: block;
+  margin-top: 8rpx;
+  font-size: $gz-fs-small;
+  color: $gz-ink-3;
+}
+
+.sheet__src {
+  display: block;
+  margin-top: 8rpx;
+  font-size: 20rpx;
+  color: $gz-ink-3;
+}
+
+.sheet__title-row {
+  display: flex;
+  align-items: center;
+}
+
+.sheet__field {
+  margin-top: 22rpx;
+  padding: 18rpx 20rpx;
+  background: $gz-input-bg;
+  border: 1rpx solid $gz-line;
+  border-radius: $gz-radius-md;
+  font-size: $gz-fs-small;
+  color: $gz-ink;
+}
+
+.sheet__area {
+  width: 100%;
+  margin-top: 16rpx;
+  padding: 18rpx 20rpx;
+  min-height: 150rpx;
+  background: $gz-input-bg;
+  border: 1rpx solid $gz-line;
+  border-radius: $gz-radius-md;
+  font-size: $gz-fs-small;
+  line-height: 1.8;
+  color: $gz-ink;
+  box-sizing: border-box;
+}
+
+.sheet__ph {
+  color: $gz-ink-3;
+}
+
+/* ---- 语音转写：按住说话（微信同声传译插件，见 utils/voice.ts） ---- */
+.voice {
+  display: flex;
+  align-items: center;
+  gap: 20rpx;
+  margin-top: 18rpx;
+}
+
+.voice__btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10rpx;
+  flex: none;
+  height: 76rpx;
+  padding: 0 28rpx;
+  border: 1rpx solid $gz-accent;
+  border-radius: 999rpx;
+  background: $gz-accent-soft;
+  color: $gz-accent;
+  font-size: $gz-fs-small;
+  transition: transform 0.15s ease, background 0.15s ease;
+}
+
+/* 录音中：底色压深 + 轻微放大 —— 手指按住时要能"看见"它在工作 */
+.voice__btn.is-rec {
+  background: $gz-accent;
+  color: $gz-on-cta;
+  transform: scale(1.03);
+}
+
+.voice__dot {
+  font-size: 22rpx;
+  line-height: 1;
+}
+
+.voice__hint {
+  flex: 1;
+  min-width: 0;
+  font-size: $gz-fs-caption;
+  line-height: 1.6;
+  color: $gz-ink-3;
+}
+
+.sheet__tag-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12rpx;
+  margin-top: 18rpx;
+}
+
+.sheet__chip {
+  padding: 6rpx 20rpx;
+  border-radius: 999rpx;
+  border: 1rpx solid $gz-line;
+  font-size: $gz-fs-caption;
+  color: $gz-ink-3;
+}
+
+.sheet__chip.is-on {
+  border-color: $gz-accent;
+  background: $gz-accent-soft;
+  color: $gz-accent;
+}
+
+.sheet__btn {
+  margin-top: 26rpx;
+  /* button 被 App.vue 全局重置过 padding/border-radius，必须补回，否则高度塌成一行文字 */
+  padding: 26rpx 0;
+  border-radius: $gz-radius-md;
+  line-height: 1.4;
+  background: $gz-accent;
+  color: $gz-on-cta;
+  font-size: $gz-fs-body;
+  font-weight: 600;
+}
+
+.sheet__top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.sheet__src {
+  font-size: $gz-fs-caption;
+  color: $gz-ink-3;
+}
+
+.sheet__content {
+  display: block;
+  margin-top: 16rpx;
+  font-size: $gz-fs-small;
+  line-height: 1.9;
+  color: $gz-ink-2;
+}
+
+.sheet__deepen {
+  margin-top: 26rpx;
+  padding: 20rpx 0;
+  text-align: center;
+  background: $gz-accent-soft;
+  color: $gz-accent;
+  border-radius: $gz-radius-md;
+  font-size: $gz-fs-body;
+  font-weight: 600;
+}
+
+.sheet__danger {
+  margin-top: 16rpx;
+  padding: 16rpx 0;
+  text-align: center;
+  border: 1rpx solid rgba(196, 96, 46, 0.5);
+  color: #b25a2c;
+  border-radius: $gz-radius-md;
+  font-size: $gz-fs-small;
+}
+
+.sheet__close {
+  margin-top: 18rpx;
+  padding: 12rpx 0;
+  text-align: center;
+  font-size: $gz-fs-small;
+  color: $gz-ink-3;
+}
+
+.import-void {
+  margin-top: 24rpx;
+  padding: 34rpx 24rpx;
+  border: 1rpx dashed $gz-line;
+  border-radius: $gz-radius-md;
+  font-size: $gz-fs-caption;
+  line-height: 1.8;
+  text-align: center;
+  color: $gz-ink-3;
+}
+
+.import-list {
+  display: flex;
+  flex-direction: column;
+  gap: 16rpx;
+  margin-top: 24rpx;
+}
+
+.import-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 20rpx;
+  padding: 20rpx 22rpx;
+  background: $gz-input-bg;
+  border-radius: $gz-radius-md;
+}
+
+.import-row__body {
+  min-width: 0;
+}
+
+.import-row__name {
+  display: block;
+  font-size: $gz-fs-body;
+  font-weight: 700;
+  color: $gz-ink;
+}
+
+.import-row__note {
+  display: block;
+  margin-top: 6rpx;
+  font-size: $gz-fs-caption;
+  line-height: 1.6;
+  color: $gz-ink-3;
+}
+
+.import-row__btn {
+  flex: none;
+  padding: 10rpx 26rpx;
+  border-radius: 999rpx;
+  background: $gz-accent;
+  color: $gz-on-cta;
+  font-size: $gz-fs-caption;
+}
+
+/* AI 辅助：智能标签 / 费曼检验（虚线边＝可选增强，区别于实线的主操作） */
+.ai-row {
+  display: flex;
+  gap: 14rpx;
+  margin-top: 20rpx;
+}
+
+.ai-row__btn {
+  flex: 1;
+  padding: 16rpx 0;
+  text-align: center;
+  border: 1rpx dashed $gz-accent;
+  border-radius: $gz-radius-md;
+  color: $gz-accent;
+  font-size: $gz-fs-caption;
+}
+
+.ai-row__btn.is-off {
+  opacity: 0.45;
+}
+
+.ai-row__hint {
+  display: block;
+  margin-top: 10rpx;
+  font-size: 20rpx;
+  color: $gz-ink-3;
+}
+
+/* 费曼检验结果 */
+.fy {
+  margin-top: 18rpx;
+  padding: 20rpx 22rpx;
+  background: $gz-input-bg;
+  border-radius: $gz-radius-md;
+}
+
+.fy__head {
+  display: block;
+  font-size: $gz-fs-small;
+  font-weight: 700;
+  color: #b25a2c;
+}
+
+.fy__head.is-clear {
+  color: $gz-accent;
+}
+
+/* 兜底来源标注：低对比度小字 —— 说明这是基础规则而非模型判断，不喧宾夺主但要如实 */
+.fy__src {
+  display: block;
+  margin-top: 6rpx;
+  font-size: 20rpx;
+  color: $gz-ink-3;
+}
+
+/* 结论 + 来源标识同一行，标识紧跟结论，扫一眼就知道这段谁说的 */
+.fy__head-row {
+  display: flex;
+  align-items: center;
+}
+
+.fy__plain {
+  display: block;
+  margin-top: 10rpx;
+  font-size: $gz-fs-caption;
+  line-height: 1.8;
+  color: $gz-ink;
+}
+
+.fy__item {
+  display: block;
+  margin-top: 8rpx;
+  font-size: $gz-fs-caption;
+  line-height: 1.7;
+  color: $gz-ink-2;
+}
+
+.fy__ask {
+  display: block;
+  margin-top: 12rpx;
+  font-size: $gz-fs-caption;
+  line-height: 1.7;
+  color: $gz-accent;
+}
+
+/* 极简报亮点 */
+.hl {
+  display: flex;
+  flex-direction: column;
+  gap: 12rpx;
+  margin-top: 18rpx;
+}
+
+.hl__item {
+  padding: 14rpx 18rpx;
+  background: $gz-input-bg;
+  border-radius: $gz-radius-md;
+  font-size: $gz-fs-caption;
+  line-height: 1.7;
+  color: $gz-ink-2;
+}

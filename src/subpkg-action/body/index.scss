@@ -1,0 +1,262 @@
+/**
+ * 身体电量页样式（超过 100 行，按项目约定外置到同目录 index.scss）。
+ * 由 index.vue 通过 @import 引入；改样式改本文件。
+ */
+.page {
+  min-height: 100vh;
+  padding: 24rpx $gz-page-pad 60rpx;
+}
+
+.nav {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8rpx 0 20rpx;
+}
+
+.nav__side {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 72rpx;
+  height: 72rpx;
+}
+
+.nav__back {
+  font-size: 56rpx;
+  color: $gz-ink-2;
+  line-height: 1;
+}
+
+.nav__title {
+  font-size: $gz-fs-title;
+  font-weight: 700;
+  color: $gz-ink;
+}
+
+/* ---- 今日电量 ---- */
+.bat {
+  padding: 30rpx 32rpx 34rpx;
+  background: $gz-surface;
+  border: 1rpx solid $gz-line;
+  border-radius: $gz-radius-lg;
+}
+
+.bat__top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.bat__label {
+  font-size: $gz-fs-small;
+  color: $gz-ink-2;
+  letter-spacing: 0.08em;
+}
+
+.bat__time {
+  font-size: $gz-fs-caption;
+  color: $gz-ink-3;
+}
+
+.bat__num {
+  display: flex;
+  align-items: baseline;
+  gap: 10rpx;
+  margin-top: 14rpx;
+}
+
+.bat__value {
+  font-size: 88rpx;
+  font-weight: 800;
+  color: $gz-ink;
+  line-height: 1.05;
+}
+
+.bat__unit {
+  font-size: $gz-fs-body;
+  color: $gz-ink-2;
+}
+
+.bat__goal {
+  margin-left: 8rpx;
+  font-size: $gz-fs-small;
+  color: $gz-ink-3;
+}
+
+/* 电量格：外壳是纸底色，填充走皮肤渐变，一眼看出还剩多少 */
+.bat__cell {
+  position: relative;
+  height: 26rpx;
+  margin-top: 22rpx;
+  overflow: hidden;
+  background: var(--gz-line-soft);
+  border-radius: 999rpx;
+}
+
+.bat__fill {
+  height: 100%;
+  background: linear-gradient(90deg, var(--gz-accent), var(--gz-grad-to));
+  border-radius: 999rpx;
+  transition: width 0.4s ease;
+}
+
+.bat__word {
+  display: block;
+  margin-top: 18rpx;
+  font-size: $gz-fs-body;
+  line-height: 1.7;
+  color: $gz-ink-2;
+}
+
+.bat__stale {
+  display: block;
+  margin-top: 12rpx;
+  font-size: $gz-fs-caption;
+  line-height: 1.6;
+  color: $gz-ink-3;
+}
+
+/* ---- 目标选择 ---- */
+.goals {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-top: 28rpx;
+  padding: 20rpx 30rpx;
+  background: $gz-surface;
+  border: 1rpx solid $gz-line;
+  border-radius: $gz-radius-md;
+}
+
+.goals__label {
+  font-size: $gz-fs-small;
+  color: $gz-ink-2;
+}
+
+.goals__list {
+  display: flex;
+  gap: 14rpx;
+}
+
+.goal {
+  padding: 8rpx 22rpx;
+  background: $gz-input-bg;
+  border: 1rpx solid $gz-line;
+  border-radius: 999rpx;
+  font-size: $gz-fs-small;
+  color: $gz-ink-2;
+}
+
+.goal.is-on {
+  background: $gz-accent-soft;
+  border-color: $gz-accent;
+  color: $gz-accent;
+  font-weight: 600;
+}
+
+/* ---- 最近七天 ---- */
+.week {
+  margin-top: 28rpx;
+  padding: 26rpx 30rpx 22rpx;
+  background: $gz-surface;
+  border: 1rpx solid $gz-line;
+  border-radius: $gz-radius-lg;
+}
+
+.week__head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 16rpx;
+}
+
+.week__title {
+  font-size: $gz-fs-title;
+  font-weight: 600;
+  color: $gz-ink;
+}
+
+.week__tip {
+  font-size: $gz-fs-caption;
+  color: $gz-ink-3;
+}
+
+.week__bars {
+  display: flex;
+  align-items: flex-end;
+  gap: 12rpx;
+  margin-top: 26rpx;
+}
+
+.col {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  min-width: 0;
+}
+
+.col__track {
+  display: flex;
+  align-items: flex-end;
+  width: 100%;
+  height: 160rpx;
+  background: var(--gz-line-soft);
+  border-radius: 12rpx;
+  overflow: hidden;
+}
+
+.col__bar {
+  width: 100%;
+  background: linear-gradient(180deg, var(--gz-accent), var(--gz-grad-to));
+  border-radius: 12rpx;
+  transition: height 0.4s ease;
+}
+
+.col__n {
+  margin-top: 10rpx;
+  font-size: $gz-fs-caption;
+  color: $gz-ink-2;
+}
+
+.col__d {
+  margin-top: 2rpx;
+  font-size: $gz-fs-caption;
+  color: $gz-ink-3;
+}
+
+/* ---- 同步按钮 ---- */
+.sync {
+  margin-top: 32rpx;
+  padding: 28rpx 0;
+  background: $gz-cta-bg;
+  border-radius: $gz-radius-md;
+  color: $gz-on-cta;
+  font-size: $gz-fs-body;
+  font-weight: 600;
+  text-align: center;
+}
+
+.sync.is-busy {
+  opacity: 0.7;
+}
+
+.again {
+  margin-top: 18rpx;
+  font-size: $gz-fs-small;
+  color: $gz-accent;
+  text-align: center;
+}
+
+/* ---- 脚注 ---- */
+.note {
+  margin-top: 34rpx;
+}
+
+.note__row {
+  display: block;
+  font-size: $gz-fs-caption;
+  line-height: 1.9;
+  color: $gz-ink-3;
+}

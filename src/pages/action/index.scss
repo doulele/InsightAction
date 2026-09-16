@@ -1,0 +1,347 @@
+/**
+ * index.vue 的样式（超过 100 行，按项目约定外置到同目录 index.scss）。
+ * 由 index.vue 通过 @import 引入；以后改样式改本文件。
+ */
+.page {
+  min-height: 100vh;
+  padding: 24rpx $gz-page-pad 60rpx;
+}
+
+.today {
+  position: relative;
+  overflow: hidden;
+  padding: 34rpx 30rpx 30rpx;
+  background: $gz-surface;
+  border: 1rpx solid $gz-line;
+  border-radius: $gz-radius-lg;
+
+  /* 模式顶缘：与「我」页等级卡同一道模式色带，一瞥即知当前皮肤 */
+  &::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 6rpx;
+    background: linear-gradient(90deg, $gz-accent, $gz-grad-to);
+  }
+}
+
+.today__head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+}
+
+.today__label {
+  font-size: 32rpx;
+  font-weight: 700;
+  color: $gz-ink;
+}
+
+.today__count {
+  font-size: 44rpx;
+  font-weight: 800;
+  color: $gz-accent;
+}
+
+.todo {
+  display: flex;
+  align-items: flex-start;
+  gap: 20rpx;
+  padding: 22rpx 0;
+  border-bottom: 1rpx solid $gz-line-soft;
+}
+
+.todo:last-child {
+  border-bottom: none;
+}
+
+.todo__check {
+  flex: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 44rpx;
+  height: 44rpx;
+  border: 2rpx solid $gz-ink-3;
+  border-radius: 50%;
+  color: transparent;
+  transition: all 0.2s ease;
+}
+
+.todo__check.is-on {
+  background: $gz-cta-bg;
+  border-color: $gz-cta-bg;
+  color: $gz-on-cta;
+}
+
+.todo__tick {
+  font-size: 26rpx;
+  font-weight: 700;
+}
+
+.todo__input {
+  flex: 1;
+  min-width: 0;
+  font-size: $gz-fs-body;
+  color: $gz-ink;
+}
+
+.todo__input.is-done {
+  color: $gz-ink-3;
+  text-decoration: line-through;
+}
+
+.todo__ph {
+  color: $gz-ink-3;
+}
+
+/* 出处行（§4.4）：挂在输入下面，不抢主行的注意力 */
+.todo__body {
+  flex: 1;
+  min-width: 0;
+}
+
+.todo__src {
+  display: flex;
+  align-items: center;
+  gap: 10rpx;
+  margin-top: 8rpx;
+}
+
+.todo__src-tag {
+  flex: none;
+  padding: 2rpx 10rpx;
+  border-radius: 999rpx;
+  background: rgba($gz-accent, 0.1);
+  font-size: 20rpx;
+  color: $gz-accent;
+}
+
+.todo__src-tag.is-none {
+  background: transparent;
+  border: 1rpx solid $gz-line;
+  color: $gz-ink-3;
+}
+
+.todo__src-text {
+  flex: 1;
+  min-width: 0;
+  font-size: 22rpx;
+  color: $gz-ink-3;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.todo__src-x {
+  flex: none;
+  padding: 0 6rpx;
+  font-size: 20rpx;
+  color: $gz-ink-3;
+}
+
+.today__done {
+  margin-top: 24rpx;
+  padding: 22rpx 0 6rpx;
+  text-align: center;
+}
+
+.today__done-title {
+  display: block;
+  font-size: $gz-fs-body;
+  font-weight: 700;
+  color: $gz-accent;
+}
+
+.today__done-sub {
+  display: block;
+  margin-top: 8rpx;
+  font-size: $gz-fs-caption;
+  color: $gz-ink-3;
+}
+
+.section {
+  margin-top: 36rpx;
+}
+
+.section__head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  margin-bottom: 20rpx;
+}
+
+.section__title {
+  font-size: 32rpx;
+  font-weight: 700;
+  color: $gz-ink;
+}
+
+.section__more {
+  font-size: $gz-fs-caption;
+  color: $gz-accent;
+}
+
+/* ---- 今天要走的步子（三件事之外的推进） ---- */
+.steps {
+  margin-top: 24rpx;
+  padding: 30rpx;
+  background: $gz-surface;
+  border: 1rpx solid $gz-line;
+  border-radius: $gz-radius-lg;
+}
+
+.steps__head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+}
+
+.steps__label {
+  font-size: 30rpx;
+  font-weight: 700;
+  color: $gz-ink;
+}
+
+.steps__n {
+  font-size: 34rpx;
+  font-weight: 800;
+  color: $gz-accent;
+  font-variant-numeric: tabular-nums;
+}
+
+.steps__list {
+  margin-top: 8rpx;
+}
+
+.steps__empty {
+  display: block;
+  margin-top: 18rpx;
+  font-size: $gz-fs-caption;
+  line-height: 1.8;
+  color: $gz-ink-3;
+}
+
+.steps__quick {
+  display: flex;
+  gap: 14rpx;
+  margin-top: 22rpx;
+}
+
+.steps__input {
+  flex: 1;
+  min-width: 0;
+  padding: 18rpx 22rpx;
+  border: 1rpx dashed $gz-line;
+  border-radius: $gz-radius-md;
+  font-size: $gz-fs-small;
+  color: $gz-ink;
+}
+
+.steps__ph {
+  color: $gz-ink-3;
+}
+
+.steps__btn {
+  flex: none;
+  display: flex;
+  align-items: center;
+  padding: 0 32rpx;
+  border-radius: $gz-radius-md;
+  background: $gz-accent;
+  color: $gz-on-cta;
+  font-size: $gz-fs-small;
+  font-weight: 600;
+}
+
+/* 舒适线提示：只提示不拦截（2026-09-15 定案） */
+.steps__warn {
+  display: block;
+  margin-top: 12rpx;
+  font-size: $gz-fs-caption;
+  color: $gz-accent;
+}
+
+.steps__pool {
+  display: block;
+  margin-top: 12rpx;
+  font-size: $gz-fs-caption;
+  color: $gz-ink-3;
+}
+
+/* ---- 在走的长路 ---- */
+.plan {
+  margin-bottom: 18rpx;
+  padding: 26rpx 30rpx;
+  background: $gz-surface;
+  border: 1rpx solid $gz-line;
+  border-radius: $gz-radius-md;
+}
+
+.plan__row {
+  display: flex;
+  align-items: center;
+  gap: 12rpx;
+}
+
+.plan__title {
+  flex: 1;
+  min-width: 0;
+  font-size: $gz-fs-body;
+  font-weight: 700;
+  color: $gz-ink;
+}
+
+.plan__tag {
+  flex: none;
+  padding: 2rpx 12rpx;
+  border: 1rpx solid $gz-line;
+  border-radius: 999rpx;
+  font-size: 18rpx;
+  color: $gz-ink-3;
+}
+
+.bar--plan {
+  margin-top: 18rpx;
+  height: 10rpx;
+  border-radius: 999rpx;
+  background: $gz-line-soft;
+  overflow: hidden;
+}
+
+.bar--plan .bar__fill {
+  height: 100%;
+  border-radius: 999rpx;
+  background: linear-gradient(90deg, $gz-accent, $gz-grad-to);
+  transition: width 0.4s ease;
+}
+
+.plan__meta {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 16rpx;
+  margin-top: 12rpx;
+}
+
+.plan__progress {
+  font-size: $gz-fs-caption;
+  color: $gz-accent;
+  font-variant-numeric: tabular-nums;
+}
+
+.plan__next {
+  flex: 1;
+  min-width: 0;
+  text-align: right;
+  font-size: $gz-fs-caption;
+  color: $gz-ink-3;
+}
+
+.entries {
+  display: flex;
+  flex-direction: column;
+  gap: 18rpx;
+}

@@ -1,0 +1,183 @@
+/**
+ * index.vue 的样式（超过 100 行，按项目约定外置到同目录 index.scss）。
+ * 由 index.vue 通过 @import 引入；以后改样式改本文件。
+ */
+.page {
+  min-height: 100vh;
+  padding: 24rpx $gz-page-pad 60rpx;
+}
+
+.today {
+  position: relative;
+  overflow: hidden;
+  padding: 34rpx 30rpx 30rpx;
+  background: $gz-surface;
+  border: 1rpx solid $gz-line;
+  border-radius: $gz-radius-lg;
+
+  /* 模式顶缘：与「我」页等级卡同一道模式色带，一瞥即知当前皮肤 */
+  &::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 6rpx;
+    background: linear-gradient(90deg, $gz-accent, $gz-grad-to);
+  }
+}
+
+.today__row {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+}
+
+.today__label {
+  display: block;
+  font-size: 32rpx;
+  font-weight: 700;
+  color: $gz-ink;
+}
+
+.today__sub {
+  display: block;
+  margin-top: 8rpx;
+  font-size: $gz-fs-caption;
+  color: $gz-ink-3;
+}
+
+.today__num {
+  font-size: 44rpx;
+  font-weight: 800;
+  color: $gz-accent;
+}
+
+.today__unit {
+  font-size: $gz-fs-small;
+  font-weight: 400;
+  color: $gz-ink-3;
+}
+
+.bar {
+  margin-top: 26rpx;
+  height: 12rpx;
+  border-radius: 999rpx;
+  background: var(--gz-line-soft);
+  overflow: hidden;
+}
+
+.bar__fill {
+  height: 100%;
+  border-radius: 999rpx;
+  background: linear-gradient(90deg, $gz-accent, $gz-grad-to);
+  transition: width 0.6s ease;
+}
+
+.today__streak {
+  margin-top: 18rpx;
+  font-size: $gz-fs-caption;
+  color: $gz-ink-2;
+}
+
+.section {
+  margin-top: 36rpx;
+}
+
+.section__head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  margin-bottom: 20rpx;
+}
+
+.section__title {
+  font-size: 32rpx;
+  font-weight: 700;
+  color: $gz-ink;
+}
+
+.section__hint {
+  font-size: $gz-fs-caption;
+  color: $gz-ink-3;
+}
+
+.pills {
+  display: flex;
+  gap: 16rpx;
+  margin-bottom: 22rpx;
+}
+
+.pill {
+  flex: 1;
+  padding: 18rpx 0;
+  text-align: center;
+  font-size: $gz-fs-small;
+  color: $gz-ink-2;
+  background: $gz-surface;
+  border: 1rpx solid $gz-line;
+  border-radius: $gz-radius-md;
+}
+
+.pill.is-on {
+  color: $gz-accent;
+  border-color: $gz-accent;
+  font-weight: 600;
+}
+
+.cta {
+  width: 100%;
+  padding: 26rpx 0;
+  border-radius: $gz-radius-md;
+  font-size: $gz-fs-body;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+}
+
+.cta--ghost {
+  background: $gz-accent-soft;
+  color: $gz-accent;
+}
+
+.tea {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 16rpx;
+}
+
+.tea__room {
+  width: calc((100% - 32rpx) / 3);
+  box-sizing: border-box;
+  padding: 22rpx 18rpx;
+  background: $gz-surface;
+  border: 1rpx solid $gz-line;
+  border-radius: $gz-radius-md;
+}
+
+.tea__dot {
+  width: 12rpx;
+  height: 12rpx;
+  border-radius: 50%;
+}
+
+.tea__name {
+  display: block;
+  margin-top: 12rpx;
+  font-size: $gz-fs-body;
+  font-weight: 700;
+  color: $gz-ink;
+}
+
+.tea__desc {
+  display: block;
+  margin-top: 6rpx;
+  font-size: $gz-fs-caption;
+  line-height: 1.6;
+  color: $gz-ink-3;
+}
+
+.entries {
+  display: flex;
+  flex-direction: column;
+  gap: 18rpx;
+}

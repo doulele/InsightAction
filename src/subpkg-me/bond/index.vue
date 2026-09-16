@@ -27,7 +27,29 @@
         </view>
       </view>
     </view>
-    <text class="bond__note">每一次问候、每一次打开面板，都算一次见面。高阶形态与特效随皮肤系统推进。</text>
+    <text class="bond__note">每一次问候、每一次打开面板，都算一次见面。羁绊只管小枢怎么说话，它的样子随境界长。</text>
+
+    <!-- 形态谱：小枢的样子随**修为等级**长，与羁绊无关（两套成长刻意分开，不叠在一起） -->
+    <view class="form">
+      <view class="form__head">
+        <text class="form__title">形态 · {{ buddyStageName }}</text>
+        <text class="form__body">{{ buddyBodyName }}</text>
+      </view>
+      <view class="form__track">
+        <view
+          v-for="s in buddyStages"
+          :key="s.idx"
+          class="form__step"
+          :class="{ 'is-on': s.on, 'is-cur': s.cur }"
+        >
+          <view class="form__dot" />
+          <text class="form__name">{{ s.name }}</text>
+          <text class="form__from">{{ s.idx === 0 ? '初始' : `「${s.from}」起` }}</text>
+        </view>
+      </view>
+      <text class="form__note">{{ buddyStageNote }}</text>
+      <text class="form__next">{{ stageNext }}</text>
+    </view>
 
     <!-- 对话录 / 箴言墙 切换 -->
     <view class="tabs">
@@ -100,6 +122,9 @@
     <view class="foot">
       <text class="foot__text">小枢与你 · 来日方长</text>
     </view>
+
+    <!-- 隐私授权拦截弹窗（复制羁绊文案前需征得同意） -->
+    <PrivacyGate />
   </view>
 </template>
 
@@ -109,6 +134,9 @@
  * 纯本地——对话录记录每一次到点问候 / 守护提醒 / 见面互动；
  * 箴言墙收纳收藏的小枢语录；羁绊等级随累计见面次数 Lv.1-20 渐进。
  * 数据源与逻辑在 composables/useBuddy.ts（模块级单例，随大厅 onShow poke 自动积累）。
+ *
+ * 本页同时是小枢「成长体系」的展示面：羁绊（怎么说话）+ 形态谱（长什么样）。
+ * 两者刻意分开呈现——见 config/buddyForms.ts 顶部的分工说明。
  */
 import { computed, ref } from 'vue'
 import { useBuddy, type BuddyLine } from '@/composables/useBuddy'
@@ -118,6 +146,12 @@ import { ROUTES } from '@/router/routes'
 const {
   buddyGlyph,
   assistantName,
+  buddyStageName,
+  buddyBodyName,
+  buddyStageNote,
+  buddyStages,
+  buddyNextStageName,
+  buddyStageGap,
   bondLv,
   bondLvName,
   bondXp,
@@ -130,6 +164,13 @@ const {
 } = useBuddy()
 
 const skinClass = useSkinClass()
+
+/** 下一阶提示：满了就说满了，不编"敬请期待" */
+const stageNext = computed(() =>
+  buddyStageGap.value > 0
+    ? `距「${buddyNextStageName.value}」还差 ${buddyStageGap.value} 点修为`
+    : '四阶已满 —— 形与器都在你手里了。',
+)
 
 const tab = ref<'lines' | 'favs'>('lines')
 
@@ -224,352 +265,5 @@ function goBack(): void {
 </script>
 
 <style lang="scss" scoped>
-.page {
-  min-height: 100vh;
-  padding: 24rpx $gz-page-pad 60rpx;
-}
-
-.nav {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 8rpx 0 20rpx;
-}
-
-.nav__side {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 72rpx;
-  height: 72rpx;
-}
-
-.nav__back {
-  font-size: 56rpx;
-  color: $gz-ink-2;
-  line-height: 1;
-}
-
-.nav__title {
-  font-size: $gz-fs-title;
-  font-weight: 700;
-  color: $gz-ink;
-}
-
-/* ---- 羁绊卡 ---- */
-.bond {
-  display: flex;
-  align-items: center;
-  gap: 26rpx;
-  padding: 30rpx;
-  background: var(--gz-surface);
-  border: 1rpx solid var(--gz-line);
-  border-radius: $gz-radius-lg;
-  box-shadow: 0 10rpx 30rpx rgba(0, 0, 0, 0.05);
-}
-
-.bond__orb {
-  flex: none;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 116rpx;
-  height: 116rpx;
-  border-radius: 50%;
-  background: radial-gradient(circle at 30% 24%, var(--gz-grad-to), var(--gz-accent) 70%);
-  box-shadow: 0 12rpx 28rpx rgba(0, 0, 0, 0.18);
-}
-
-.bond__orb-glyph {
-  color: #fff;
-  font-size: 52rpx;
-  font-weight: 800;
-}
-
-.bond__info {
-  flex: 1;
-  min-width: 0;
-}
-
-.bond__head {
-  display: flex;
-  align-items: center;
-  gap: 16rpx;
-}
-
-.bond__name {
-  font-size: 38rpx;
-  font-weight: 800;
-  letter-spacing: 0.04em;
-  color: var(--gz-ink);
-}
-
-.bond__lv {
-  padding: 4rpx 16rpx;
-  border-radius: 999rpx;
-  background: var(--gz-accent-soft);
-  color: var(--gz-accent);
-  font-size: $gz-fs-caption;
-  font-weight: 700;
-}
-
-.bond__sub {
-  display: block;
-  margin-top: 8rpx;
-  font-size: $gz-fs-small;
-  color: var(--gz-ink-3);
-}
-
-.bar {
-  margin-top: 18rpx;
-  height: 14rpx;
-  border-radius: 999rpx;
-  background: var(--gz-line-soft);
-  overflow: hidden;
-}
-
-.bar__fill {
-  height: 100%;
-  border-radius: 999rpx;
-  background: linear-gradient(90deg, var(--gz-accent), var(--gz-grad-to));
-  transition: width 0.4s ease;
-}
-
-.bond__note {
-  display: block;
-  padding: 18rpx 8rpx 0;
-  font-size: $gz-fs-caption;
-  line-height: 1.7;
-  color: $gz-ink-3;
-}
-
-/* ---- 切换 ---- */
-.tabs {
-  display: flex;
-  gap: 12rpx;
-  margin-top: 30rpx;
-}
-
-.tabs__item {
-  position: relative;
-  flex: 1;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  height: 80rpx;
-  border-radius: $gz-radius-md;
-  background: $gz-surface;
-  border: 1rpx solid $gz-line;
-  font-size: $gz-fs-body;
-  font-weight: 600;
-  color: $gz-ink-2;
-}
-
-.tabs__item.is-on {
-  background: $gz-accent-soft;
-  border-color: $gz-accent;
-  color: $gz-accent;
-  font-weight: 700;
-}
-
-.tabs__count {
-  margin-left: 8rpx;
-  font-size: $gz-fs-caption;
-  color: inherit;
-  opacity: 0.8;
-}
-
-.sec {
-  margin-top: 24rpx;
-}
-
-/* ---- 对话录 ---- */
-.grp__label {
-  display: block;
-  padding: 8rpx 4rpx 14rpx;
-  font-size: $gz-fs-small;
-  letter-spacing: 0.08em;
-  color: $gz-ink-3;
-}
-
-.line {
-  display: flex;
-  align-items: flex-start;
-  gap: 20rpx;
-  padding: 22rpx 26rpx;
-  margin-bottom: 16rpx;
-  background: $gz-surface;
-  border: 1rpx solid $gz-line;
-  border-radius: $gz-radius-md;
-}
-
-.line__dot {
-  flex: none;
-  margin-top: 10rpx;
-  width: 16rpx;
-  height: 16rpx;
-  border-radius: 50%;
-  background: $gz-line;
-}
-
-.line__dot.is-greet {
-  background: #6d8b3f;
-}
-
-.line__dot.is-guard {
-  background: #c4602e;
-}
-
-.line__dot.is-remind {
-  background: #9c8ac4;
-}
-
-.line__dot.is-meet {
-  background: #4e8fd4;
-}
-
-.line__dot.is-proverb {
-  background: #c4602e;
-}
-
-.line__body {
-  flex: 1;
-  min-width: 0;
-}
-
-.line__text {
-  display: block;
-  font-size: $gz-fs-body;
-  line-height: 1.7;
-  color: $gz-ink;
-}
-
-.line__meta {
-  display: block;
-  margin-top: 6rpx;
-  font-size: $gz-fs-caption;
-  color: $gz-ink-3;
-}
-
-.line__fav {
-  flex: none;
-  width: 56rpx;
-  height: 56rpx;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  border-radius: 50%;
-  font-size: 32rpx;
-  color: $gz-ink-3;
-  border: 1rpx solid $gz-line;
-}
-
-.line__fav.is-on {
-  color: #c4602e;
-  border-color: #c4602e;
-  background: rgba(196, 96, 46, 0.08);
-}
-
-/* ---- 箴言墙 ---- */
-.fav {
-  display: flex;
-  align-items: flex-start;
-  gap: 12rpx;
-  padding: 24rpx 26rpx;
-  margin-bottom: 16rpx;
-  background: $gz-surface;
-  border: 1rpx solid $gz-line;
-  border-radius: $gz-radius-md;
-}
-
-.fav__mark {
-  flex: none;
-  color: $gz-accent;
-  font-size: 44rpx;
-  line-height: 1;
-}
-
-.fav__body {
-  flex: 1;
-  min-width: 0;
-}
-
-.fav__text {
-  display: block;
-  font-size: $gz-fs-body;
-  line-height: 1.7;
-  color: $gz-ink;
-}
-
-.fav__meta {
-  display: block;
-  margin-top: 8rpx;
-  font-size: $gz-fs-caption;
-  color: $gz-ink-3;
-}
-
-.fav__acts {
-  flex: none;
-  display: flex;
-  flex-direction: column;
-  gap: 10rpx;
-}
-
-.fav__btn {
-  padding: 6rpx 18rpx;
-  border-radius: 999rpx;
-  background: $gz-accent-soft;
-  color: $gz-accent;
-  font-size: $gz-fs-caption;
-}
-
-.fav__btn--off {
-  background: transparent;
-  border: 1rpx solid $gz-line;
-  color: $gz-ink-3;
-}
-
-.tip {
-  padding: 16rpx 8rpx 4rpx;
-}
-
-.tip__text {
-  font-size: $gz-fs-caption;
-  color: $gz-ink-3;
-}
-
-/* ---- 空态 ---- */
-.empty {
-  padding: 70rpx 40rpx;
-  text-align: center;
-  background: $gz-surface;
-  border: 1rpx dashed $gz-line;
-  border-radius: $gz-radius-lg;
-}
-
-.empty__title {
-  display: block;
-  font-size: $gz-fs-title;
-  font-weight: 700;
-  color: $gz-ink-2;
-}
-
-.empty__text {
-  display: block;
-  margin-top: 12rpx;
-  font-size: $gz-fs-small;
-  line-height: 1.8;
-  color: $gz-ink-3;
-}
-
-.foot {
-  padding: 40rpx 0 10rpx;
-  text-align: center;
-}
-
-.foot__text {
-  font-size: $gz-fs-caption;
-  letter-spacing: 0.1em;
-  color: $gz-ink-3;
-}
+@import './index.scss';
 </style>

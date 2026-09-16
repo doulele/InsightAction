@@ -480,7 +480,7 @@
       "dao": "初次立档。此后每三十日可测一次，此处自会显出进退。"
     },
     "baseline.title": { "normal": "起点基线", "tech": "基线参数", "dao": "入门根骨" },
-    "baseline.missing": { "normal": "未建立 · 建档后这里会显示你的起点与变化", "tech": "未采样 · 建档后此处显示基线值与环比", "dao": "未立 · 建档后此处显示根骨与进退" },
+    "baseline.missing": { "normal": "未建立 · 建档后展示你的起点与变化", "tech": "未采样 · 建档后此处显示基线值与环比", "dao": "未立 · 建档后此处显示根骨与进退" },
     "baseline.cta": { "normal": "去建档", "tech": "去采样", "dao": "去测灵根" },
     "prompt.title": { "normal": "还差一次建档", "tech": "基线未建立", "dao": "尚未立档" },
     "prompt.note": {

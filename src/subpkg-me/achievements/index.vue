@@ -48,9 +48,41 @@
       </view>
     </view>
 
+    <!--
+      彩蛋（规格 §12.5 单人 6 个）：与徽章分开列，因为它们是「意外惊喜」而非里程碑。
+      检测规则见 utils/easter.ts —— 全部用本地真实数据判定，凑不出来的条件不写进来。
+    -->
+    <view class="section">
+      <view class="section__head">
+        <text class="section__title">彩蛋</text>
+        <text class="section__n">{{ eggUnlocked }}/{{ eggs.length }}</text>
+      </view>
+      <view class="eggs">
+        <view
+          v-for="e in eggs"
+          :key="e.rule.id"
+          class="egg"
+          :class="{ 'is-locked': !e.unlocked }"
+          hover-class="gz-hover"
+          @click="openEgg(e)"
+        >
+          <view class="egg__mark" :class="{ 'is-locked': !e.unlocked }">{{ e.rule.name.slice(0, 1) }}</view>
+          <view class="egg__body">
+            <text class="egg__name">{{ e.rule.name }}</text>
+            <text class="egg__desc">{{ e.rule.desc }}</text>
+          </view>
+          <text class="egg__state">{{ e.unlocked ? '已触发' : '未触发' }}</text>
+        </view>
+      </view>
+      <text class="eggs__note">
+        彩蛋只记录「触发过」；对应的外观奖励（夜间主题 / 头像框 / 形态 / 特效）属视觉进阶，
+        需登录与后端下发，当前版本尚未开放。
+      </text>
+    </view>
+
     <!-- 说明脚注 -->
     <view class="foot">
-      <text class="foot__text">本地行为即可判定 · 登录同步后端期开放</text>
+      <text class="foot__text">全部由本机行为判定 · 随云备份一起同步</text>
     </view>
 
     <!-- 徽章详情层 -->
@@ -65,18 +97,39 @@
         <view class="sheet__close" hover-class="gz-hover" @click="detailOpen = false">知道了</view>
       </view>
     </view>
+
+    <!-- 彩蛋详情层 -->
+    <view v-if="eggOpen && activeEgg" class="mask" @click="eggOpen = false">
+      <view class="sheet" @click.stop>
+        <view class="sheet__mark" :class="{ 'is-locked': !activeEggUnlocked }">
+          {{ activeEgg.name.slice(0, 1) }}
+        </view>
+        <text class="sheet__title">{{ activeEgg.name }}</text>
+        <text class="sheet__cap">{{ activeEggUnlocked ? '已触发' : '未触发 · 触发条件' }}</text>
+        <text class="sheet__desc">{{ activeEgg.desc }}</text>
+        <view class="sheet__reward">
+          <text class="sheet__reward-k">解锁奖励</text>
+          <text class="sheet__reward-v">{{ activeEgg.reward }}</text>
+        </view>
+        <text class="sheet__note">
+          奖励为外观类（主题 / 头像框 / 小枢形态 / 特效），属视觉进阶，需登录与后端下发，当前版本尚未开放。
+        </text>
+        <view class="sheet__close" hover-class="gz-hover" @click="eggOpen = false">知道了</view>
+      </view>
+    </view>
   </view>
 </template>
 
 <script setup lang="ts">
 /**
  * 成就墙 · 徽章（批次 C · 我）· 分包 subpkg-me。
- * 全部 18 枚徽章均由本地行为快照判定（规则见 config/badges.ts），
+ * 徽章（规格 §12.4 的 25 枚 + 箴言 3 枚）均由本地行为快照判定（规则见 config/badges.ts），
  * 与「我」页入口的已解锁数同源；点击徽章可看达成条件。
  */
 import { computed, ref } from 'vue'
 import { badgeDesc, evaluateBadges, type BadgeRule } from '@/config/badges'
 import { buildBadgeContext } from '@/utils/growth'
+import { evaluateEggs, type EggResult, type EggRule } from '@/utils/easter'
 import { useSkinClass } from '@/composables/useSkin'
 import { useDimLabel } from '@/composables/usePhrase'
 import { ROUTES } from '@/router/routes'
@@ -106,6 +159,20 @@ function open(item: BadgeItem): void {
   detailOpen.value = true
 }
 
+/* ---------------- 彩蛋 ---------------- */
+const eggs = computed<EggResult[]>(() => evaluateEggs())
+const eggUnlocked = computed(() => eggs.value.filter((e) => e.unlocked).length)
+
+const eggOpen = ref(false)
+const activeEgg = ref<EggRule | null>(null)
+const activeEggUnlocked = ref(false)
+
+function openEgg(e: EggResult): void {
+  activeEgg.value = e.rule
+  activeEggUnlocked.value = e.unlocked
+  eggOpen.value = true
+}
+
 function goBack(): void {
   const pages = getCurrentPages()
   if (pages.length > 1) {
@@ -117,278 +184,5 @@ function goBack(): void {
 </script>
 
 <style lang="scss" scoped>
-.page {
-  min-height: 100vh;
-  padding: calc(var(--status-bar-height) + 16rpx) $gz-page-pad 60rpx;
-  box-sizing: border-box;
-}
-
-.nav {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 8rpx 0 10rpx;
-}
-
-.nav__side {
-  width: 76rpx;
-  height: 76rpx;
-}
-
-.nav__back {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 76rpx;
-  height: 76rpx;
-  border: 1rpx solid $gz-line;
-  border-radius: 50%;
-  background: $gz-surface;
-  color: $gz-ink-2;
-  font-size: 52rpx;
-  line-height: 1;
-  padding-bottom: 8rpx;
-}
-
-.nav__title {
-  font-size: 34rpx;
-  font-weight: 700;
-  letter-spacing: 0.08em;
-  color: $gz-ink;
-}
-
-/* 总况 */
-.head {
-  margin-top: 16rpx;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 30rpx 32rpx;
-  background: $gz-surface;
-  border: 1rpx solid $gz-line;
-  border-radius: $gz-radius-lg;
-}
-
-.head__num {
-  display: block;
-  font-size: 72rpx;
-  font-weight: 800;
-  line-height: 1;
-  color: $gz-accent;
-  font-variant-numeric: tabular-nums;
-}
-
-.head__total {
-  font-size: 30rpx;
-  color: $gz-ink-3;
-}
-
-.head__cap {
-  display: block;
-  margin-top: 12rpx;
-  font-size: $gz-fs-caption;
-  color: $gz-ink-3;
-}
-
-.head__seal {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  flex: none;
-  width: 104rpx;
-  height: 104rpx;
-  border: 2rpx solid $gz-accent;
-  border-radius: 24rpx;
-  background: $gz-accent-soft;
-  color: $gz-accent;
-  font-size: 48rpx;
-  font-weight: 800;
-}
-
-.head__seal.is-empty {
-  opacity: 0.4;
-}
-
-/* 下一枚 */
-.next {
-  margin-top: 22rpx;
-  padding: 24rpx 30rpx;
-  background: $gz-accent-soft;
-  border: 1rpx solid $gz-accent;
-  border-radius: $gz-radius-md;
-}
-
-.next.is-full {
-  background: $gz-surface;
-  border-color: $gz-line;
-}
-
-.next__cap {
-  display: block;
-  font-size: $gz-fs-caption;
-  letter-spacing: 0.1em;
-  color: $gz-accent;
-}
-
-.next__title {
-  display: block;
-  margin-top: 8rpx;
-  font-size: $gz-fs-body;
-  font-weight: 700;
-  color: $gz-ink;
-}
-
-.next__desc {
-  display: block;
-  margin-top: 6rpx;
-  font-size: $gz-fs-caption;
-  line-height: 1.6;
-  color: $gz-ink-3;
-}
-
-/* 墙 */
-.wall {
-  margin-top: 26rpx;
-  display: flex;
-  flex-wrap: wrap;
-  gap: 16rpx;
-}
-
-.tile {
-  width: calc((100% - 32rpx) / 3);
-  box-sizing: border-box;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  padding: 26rpx 8rpx 22rpx;
-  background: $gz-surface;
-  border: 1rpx solid $gz-line;
-  border-radius: $gz-radius-md;
-  transition: opacity 0.2s ease;
-}
-
-.tile.is-locked {
-  opacity: 0.45;
-}
-
-.tile__mark {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 84rpx;
-  height: 84rpx;
-  border-radius: 22rpx;
-  border: 2rpx solid $gz-accent;
-  background: $gz-accent-soft;
-  color: $gz-accent;
-  font-size: 38rpx;
-  font-weight: 800;
-}
-
-.tile__mark.is-locked {
-  border-style: dashed;
-  filter: grayscale(1);
-}
-
-.tile__name {
-  display: block;
-  margin-top: 14rpx;
-  font-size: 24rpx;
-  font-weight: 600;
-  color: $gz-ink;
-  text-align: center;
-}
-
-.tile__state {
-  display: block;
-  margin-top: 6rpx;
-  font-size: 18rpx;
-  color: $gz-ink-3;
-}
-
-.foot {
-  margin-top: 44rpx;
-  display: flex;
-  justify-content: center;
-}
-
-.foot__text {
-  font-size: $gz-fs-caption;
-  letter-spacing: 0.06em;
-  color: $gz-ink-3;
-}
-
-/* 详情层 */
-.mask {
-  position: fixed;
-  inset: 0;
-  z-index: 20;
-  display: flex;
-  align-items: flex-end;
-  background: rgba(20, 16, 10, 0.5);
-}
-
-.sheet {
-  width: 100%;
-  padding: 44rpx 40rpx calc(env(safe-area-inset-bottom) + 40rpx);
-  background: $gz-surface;
-  border-radius: 32rpx 32rpx 0 0;
-  box-sizing: border-box;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-}
-
-.sheet__mark {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 120rpx;
-  height: 120rpx;
-  border: 2rpx solid $gz-accent;
-  border-radius: 28rpx;
-  background: $gz-accent-soft;
-  color: $gz-accent;
-  font-size: 56rpx;
-  font-weight: 800;
-}
-
-.sheet__mark.is-locked {
-  border-style: dashed;
-  opacity: 0.5;
-}
-
-.sheet__title {
-  margin-top: 24rpx;
-  font-size: 40rpx;
-  font-weight: 800;
-  color: $gz-ink;
-}
-
-.sheet__cap {
-  margin-top: 10rpx;
-  font-size: $gz-fs-caption;
-  letter-spacing: 0.1em;
-  color: $gz-accent;
-}
-
-.sheet__desc {
-  margin-top: 18rpx;
-  font-size: $gz-fs-body;
-  line-height: 1.8;
-  text-align: center;
-  color: $gz-ink-2;
-}
-
-.sheet__close {
-  margin-top: 34rpx;
-  width: 100%;
-  padding: 22rpx 0;
-  text-align: center;
-  background: $gz-accent-soft;
-  color: $gz-accent;
-  font-size: $gz-fs-body;
-  font-weight: 600;
-  border-radius: $gz-radius-md;
-}
+@import './index.scss';
 </style>

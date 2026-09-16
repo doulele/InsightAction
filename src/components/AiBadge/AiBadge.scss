@@ -1,0 +1,33 @@
+/**
+ * 来源标识。
+ * 颜色不引主题变量：组件可能被任意页面复用，写死色值保证任何皮肤下都可读。
+ * AI 用蓝（与深度 Lv.2 同色系，暗示"加工过"），本地用灰（中性、不抢眼）。
+ */
+.ai-badge {
+  display: inline-block;
+  padding: 2rpx 10rpx;
+  margin-left: 8rpx;
+  border-radius: 999rpx;
+  font-size: 20rpx;
+  line-height: 1.5;
+  vertical-align: middle;
+  white-space: nowrap;
+
+  &.is-ai {
+    background: rgba(78, 143, 212, 0.12);
+    color: #4e8fd4;
+  }
+
+  &.is-local {
+    background: rgba(120, 120, 120, 0.1);
+    color: #999;
+  }
+
+  /* 迷你：嵌在标签 chip 内，不撑高 chip */
+  &.is-mini {
+    padding: 0 6rpx;
+    margin-left: 4rpx;
+    font-size: 16rpx;
+    line-height: 1.4;
+  }
+}

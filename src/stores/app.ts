@@ -17,6 +17,11 @@ export const useAppStore = defineStore(
     const launchCount = ref(0)
     /** 最近一次启动时间（ISO） */
     const lastLaunchAt = ref('')
+    /**
+     * 首次启动时间（ISO）—— 用作「第一周解锁曲线」的起跑线。
+     * 只在第一次启动写入，之后不再更新（跨天/跨周都不动它）。
+     */
+    const firstLaunchAt = ref('')
     /** 当前包版本号 */
     const versionName = APP_VERSION
 
@@ -25,6 +30,7 @@ export const useAppStore = defineStore(
       firstLaunch.value = false
       launchCount.value += 1
       lastLaunchAt.value = new Date().toISOString()
+      if (!firstLaunchAt.value) firstLaunchAt.value = lastLaunchAt.value
     }
 
     /** 完成首次引导后调用（此后每次冷启动直接进主界面） */
@@ -32,9 +38,9 @@ export const useAppStore = defineStore(
       onboarded.value = true
     }
 
-    return { onboarded, firstLaunch, launchCount, lastLaunchAt, versionName, recordLaunch, finishOnboarding }
+    return { onboarded, firstLaunch, launchCount, lastLaunchAt, firstLaunchAt, versionName, recordLaunch, finishOnboarding }
   },
   {
-    persist: { key: 'app', paths: ['onboarded', 'firstLaunch', 'launchCount', 'lastLaunchAt'] },
+    persist: { key: 'app', paths: ['onboarded', 'firstLaunch', 'launchCount', 'lastLaunchAt', 'firstLaunchAt'] },
   },
 )

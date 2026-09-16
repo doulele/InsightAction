@@ -1,13 +1,10 @@
 <template>
   <view class="page" :class="skinClass">
-    <!-- 大厅头 -->
-    <view class="hall-head">
-      <view class="hall-head__row">
-        <text class="hall-head__mark">止</text>
-        <text class="hall-head__en">HOLD · 止刷 → 止行 → 止念</text>
-      </view>
-      <text class="hall-head__state">{{ stateText }}</text>
-    </view>
+    <!-- 大厅头（五页共用组件：主题艺术画作背景 + 印章 + 定位 + 状态） -->
+    <HallHead mark="止" en="HOLD · 止刷 → 止行 → 止念" :line="headLine" :stats="headStats" />
+
+    <!-- 第一周解锁引导：今天的主角在这里才挂出 -->
+    <WeekGuide for="pause" />
 
     <!-- 今日定力 -->
     <view class="today">
@@ -82,6 +79,9 @@
 
     <!-- 批次 D · 小枢全局浮层 -->
     <BuddyFloat />
+
+    <!-- 远端提示层：公告 + 版本更新（强制更新 / 新包已下载、重启生效） -->
+    <RemoteNotice />
   </view>
 </template>
 
@@ -91,18 +91,22 @@
  * 批次 A：定力展示 + 时长选择视觉；批次 B：禅定沙漏 / 静心茶室均为真实子页（分包），计时走完全程写入今日定力。
  */
 import { computed, ref } from 'vue'
+import HallHead from '@/components/HallHead/HallHead.vue'
+import WeekGuide from '@/components/WeekGuide/WeekGuide.vue'
 import { onShow } from '@dcloudio/uni-app'
 import { useModeStore } from '@/stores/mode'
 import { useRemoteStore } from '@/stores/remote'
 import { useFocusStore } from '@/stores/focus'
 import { useReminderStore } from '@/stores/reminder'
 import { useInterruptStore } from '@/stores/interrupt'
+import { useUrgeStore } from '@/stores/urge'
+import { useVowStore } from '@/stores/vow'
 import { todayKey } from '@/stores/daily'
 import { useDimLabel } from '@/composables/usePhrase'
 import { poke } from '@/composables/useBuddy'
 import { useSkinClass } from '@/composables/useSkin'
 import { syncTabBar } from '@/utils/skin'
-import { hallStatus } from '@/config/lexicon'
+import { hallLine } from '@/config/lexicon'
 import { navigateTo, ROUTES } from '@/router/routes'
 import type { RoutePath } from '@/router/routes'
 import type { EntryBadge } from '@/components/EntryItem/EntryItem.vue'
@@ -114,6 +118,19 @@ const skinClass = useSkinClass()
 const focus = useFocusStore()
 const reminder = useReminderStore()
 const interrupt = useInterruptStore()
+/** 立约（当日档）与冲动记录（长期档）——规格 v2 §4.2 的两个新增件 */
+const vow = useVowStore()
+const urge = useUrgeStore()
+
+/** 立约入口徽标：今天的状态一眼可见（未立 / 待回看 / 守住 / 破了） */
+const vowBadge = computed<EntryBadge>(() => {
+  const v = vow.todayVow
+  if (!v) return { text: '今日未立', tone: 'muted' }
+  if (v.status === 'open') return { text: '待回看', tone: 'accent' }
+  return v.status === 'kept' ? { text: '守住了', tone: 'accent' } : { text: '破了 · 已记原因', tone: 'muted' }
+})
+
+const urgeToday = computed(() => urge.ofDay().length)
 /** 四维取词：大厅标题用「止 · 静修 / 专注 / 定力」 */
 const dl = useDimLabel()
 
@@ -122,6 +139,8 @@ onShow(() => {
   /* 批次 D · 小枢：评估到点激励 / 入定到点提醒 */
   poke()
   syncTabBar(modeStore.id)
+  /* 昨天的立约若还没回看 → 归档（不催、不补看） */
+  vow.ensureToday()
   /**
    * 大厅标题随模式换说法：止 · 静修 / 止 · 专注 / 止 · 定力大厅。
    * pages.json 里的静态标题只作首帧兜底（它不是动态的），这行让冷启动后立刻对上。
@@ -140,9 +159,22 @@ const streakText = computed(() =>
 const heldToday = computed(() => interrupt.heldOn(todayKey()))
 const focusPct = computed(() => Math.min(100, Math.round((todayMin.value / focus.dailyGoal) * 100)))
 
-const stateText = computed(() =>
-  hallStatus('pause', modeStore.id, { focusMin: todayMin.value, streak: streak.value }),
-)
+/**
+ * 大厅头部的「一句」（2026-09-16 与用户定下的形态：一句主张 + 两个关键数字）。
+ * 三模式措辞来自 lexicon.hallLine；模板不可用时回落到本页现成的连胜提示，
+ * 保证任何模式下这一行都不会空着。
+ */
+const headLine = computed(() => hallLine('pause', modeStore.id, streakText.value))
+
+/**
+ * 头部两个关键数字：刻意避开下面「今日定力」卡已经在报的进度 ——
+ * 这里给"连续天数"（累计）与"每日目标"（设定值），进度条与今日分钟留给那张卡，
+ * 一眼扫下来两处不重复。
+ */
+const headStats = computed(() => [
+  { value: `${streak.value}`, label: '连续天数' },
+  { value: `${focus.dailyGoal}`, label: '每日目标 · 分' },
+])
 
 /** 点连胜卡直达目标设置页 */
 function toStreak(): void {
@@ -220,6 +252,25 @@ const moreEntries = computed<MoreEntry[]>(() => [
     url: ROUTES.pauseStreak,
   },
   {
+    mark: '约',
+    title: '立约 · 当日一条',
+    subtitle: '触发条件 + 我承诺 + 替代动作 —— 只立今天，晚上回看一次',
+    badge: vowBadge.value,
+    url: ROUTES.pauseVow,
+  },
+  {
+    mark: '动',
+    title: '冲动记录 · 触发点地图',
+    subtitle: '想刷 / 嘴馋 / 想下单时记一笔，攒够十几次就看出形状了',
+    badge:
+      urgeToday.value > 0
+        ? { text: `今日 ${urgeToday.value} 次`, tone: 'accent' }
+        : urge.records.length > 0
+          ? { text: `累计 ${urge.records.length} 次`, tone: 'muted' }
+          : { text: '记第一笔', tone: 'muted' },
+    url: ROUTES.pauseUrge,
+  },
+  {
     mark: '停',
     title: '触发干预卡片',
     subtitle: '想打开某开关的瞬间 · 用 1-3 分钟呼吸把它摁回去',
@@ -233,222 +284,5 @@ const moreEntries = computed<MoreEntry[]>(() => [
 </script>
 
 <style lang="scss" scoped>
-.page {
-  min-height: 100vh;
-  padding: 24rpx $gz-page-pad 60rpx;
-}
-
-.hall-head {
-  padding: 16rpx 0 30rpx;
-}
-
-.hall-head__row {
-  display: flex;
-  align-items: center;
-  gap: 20rpx;
-}
-
-/* 模式印章：随皮肤走主色 —— 修仙=朱砂印、科技=电光蓝、普通=橄榄 */
-.hall-head__mark {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  flex: none;
-  width: 84rpx;
-  height: 84rpx;
-  font-size: 44rpx;
-  font-weight: 800;
-  color: $gz-accent;
-  background: $gz-accent-soft;
-  border: 2rpx solid $gz-accent;
-  border-radius: 22rpx;
-}
-
-.hall-head__en {
-  font-size: $gz-fs-caption;
-  letter-spacing: $gz-ls-wide;
-  color: $gz-ink-3;
-}
-
-.hall-head__state {
-  display: block;
-  margin-top: 12rpx;
-  font-size: $gz-fs-small;
-  color: $gz-accent;
-}
-
-.today {
-  position: relative;
-  overflow: hidden;
-  padding: 34rpx 30rpx 30rpx;
-  background: $gz-surface;
-  border: 1rpx solid $gz-line;
-  border-radius: $gz-radius-lg;
-
-  /* 模式顶缘：与「我」页等级卡同一道模式色带，一瞥即知当前皮肤 */
-  &::before {
-    content: '';
-    position: absolute;
-    top: 0;
-    left: 0;
-    right: 0;
-    height: 6rpx;
-    background: linear-gradient(90deg, $gz-accent, $gz-grad-to);
-  }
-}
-
-.today__row {
-  display: flex;
-  align-items: flex-start;
-  justify-content: space-between;
-}
-
-.today__label {
-  display: block;
-  font-size: 32rpx;
-  font-weight: 700;
-  color: $gz-ink;
-}
-
-.today__sub {
-  display: block;
-  margin-top: 8rpx;
-  font-size: $gz-fs-caption;
-  color: $gz-ink-3;
-}
-
-.today__num {
-  font-size: 44rpx;
-  font-weight: 800;
-  color: $gz-accent;
-}
-
-.today__unit {
-  font-size: $gz-fs-small;
-  font-weight: 400;
-  color: $gz-ink-3;
-}
-
-.bar {
-  margin-top: 26rpx;
-  height: 12rpx;
-  border-radius: 999rpx;
-  background: var(--gz-line-soft);
-  overflow: hidden;
-}
-
-.bar__fill {
-  height: 100%;
-  border-radius: 999rpx;
-  background: linear-gradient(90deg, $gz-accent, $gz-grad-to);
-  transition: width 0.6s ease;
-}
-
-.today__streak {
-  margin-top: 18rpx;
-  font-size: $gz-fs-caption;
-  color: $gz-ink-2;
-}
-
-.section {
-  margin-top: 36rpx;
-}
-
-.section__head {
-  display: flex;
-  align-items: baseline;
-  justify-content: space-between;
-  margin-bottom: 20rpx;
-}
-
-.section__title {
-  font-size: 32rpx;
-  font-weight: 700;
-  color: $gz-ink;
-}
-
-.section__hint {
-  font-size: $gz-fs-caption;
-  color: $gz-ink-3;
-}
-
-.pills {
-  display: flex;
-  gap: 16rpx;
-  margin-bottom: 22rpx;
-}
-
-.pill {
-  flex: 1;
-  padding: 18rpx 0;
-  text-align: center;
-  font-size: $gz-fs-small;
-  color: $gz-ink-2;
-  background: $gz-surface;
-  border: 1rpx solid $gz-line;
-  border-radius: $gz-radius-md;
-}
-
-.pill.is-on {
-  color: $gz-accent;
-  border-color: $gz-accent;
-  font-weight: 600;
-}
-
-.cta {
-  width: 100%;
-  padding: 26rpx 0;
-  border-radius: $gz-radius-md;
-  font-size: $gz-fs-body;
-  font-weight: 600;
-  letter-spacing: 0.08em;
-}
-
-.cta--ghost {
-  background: $gz-accent-soft;
-  color: $gz-accent;
-}
-
-.tea {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 16rpx;
-}
-
-.tea__room {
-  width: calc((100% - 32rpx) / 3);
-  box-sizing: border-box;
-  padding: 22rpx 18rpx;
-  background: $gz-surface;
-  border: 1rpx solid $gz-line;
-  border-radius: $gz-radius-md;
-}
-
-.tea__dot {
-  width: 12rpx;
-  height: 12rpx;
-  border-radius: 50%;
-}
-
-.tea__name {
-  display: block;
-  margin-top: 12rpx;
-  font-size: $gz-fs-body;
-  font-weight: 700;
-  color: $gz-ink;
-}
-
-.tea__desc {
-  display: block;
-  margin-top: 6rpx;
-  font-size: $gz-fs-caption;
-  line-height: 1.6;
-  color: $gz-ink-3;
-}
-
-.entries {
-  display: flex;
-  flex-direction: column;
-  gap: 18rpx;
-}
+@import './index.scss';
 </style>
