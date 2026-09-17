@@ -6,24 +6,34 @@
  * 每渲染一次就交给框架去取一次网（跨页面、切模式返回、反复进出子页都会重来），
  * 既慢又费流量。
  *
- * 这里的做法：首次用到某个地址时**下载到本地临时文件**，之后所有用图的地方
- * 都拿本地路径 —— 同一个地址在整个会话里只请求一次，二次进入是**磁盘直读**。
+ * 这里的做法：首次用到某个地址时**下载下来并搬进私有永久目录**，之后所有用图的地方
+ * 都拿本地路径 —— 同一个地址只在第一次请求，二次进入是**磁盘直读**。
  *
  * 四条设计约束：
  *  1. **同步返回，不阻塞渲染**：`resolve()` 是同步的（有缓存给本地路径，
  *     没有则先返回原地址并**顺手**触发一次后台下载）。渲染永不等网络。
  *  2. **响应式升级**：下载完成后写入响应式映射 → 用到它的 computed 自动重算，
  *     图片"无感"地从远端切换成本地（不会闪、不会重排）。
- *  3. **失败有冷却**：下载失败记时间戳，同一会话内 5 分钟不再重试 ——
+ *  3. **失败有冷却**：下载/读图失败记时间戳，5 分钟内不再重试 ——
  *     否则渲染循环里会对着坏地址反复打网（这是最容易踩的坑）。
- *  4. **落盘可跨会话**：映射持久化；冷启动先校验本地文件是否还在
- *     （临时目录会被系统清理），不在就剔除、回落到远端地址并重新下载。
+ *  4. **落盘可跨会话**：映射持久化；冷启动先校验本地文件是否还在，
+ *     不在就剔除、回落到远端地址并重新下载。
+ *
+ * 2026-09-16：缓存从**临时目录**改到**私有永久目录**（`wx.env.USER_DATA_PATH`，
+ * 见 utils/localFile.ts）。原因：临时目录会被系统/工具清理，缓存等于白做；
+ * 且开发者工具里 `http://tmp/…` 会 307 跳到 `127.0.0.1:端口/__tmp__/…`，
+ * 渲染层按跨域处理而本地服务不带 ACAO → 控制台刷 CORS 报错、图出不来
+ * （真机走 `wxfile://` 不跨域，现象只在工具里出现）。
  */
 import { defineStore } from 'pinia'
 import { ref } from 'vue'
+import { copyToUserDir, extOf, isTempPath } from '@/utils/localFile'
 
 /** 下载失败后的冷却时间：这段时间内不再重试同一个地址 */
 const FAIL_COOLDOWN_MS = 5 * 60 * 1000
+
+/** 缓存文件名前缀（落在私有永久目录 wx.env.USER_DATA_PATH 下） */
+const CACHE_PREFIX = 'gz-img-'
 
 /** FileSystemManager 的最小结构（只用到存在性校验） */
 interface MiniFs {
@@ -45,6 +55,18 @@ function isVerifiablePath(path: string): boolean {
   if (path.startsWith('wxfile://')) return true
   if (path.includes('://')) return false
   return path.startsWith('/')
+}
+
+/**
+ * 缓存文件名：`gz-img-<地址哈希>.<扩展名>`。
+ *
+ * 用**地址哈希**而不是时间戳：同一个地址重新下载时写的是同一个文件（覆盖），
+ * 不会在永久目录里留下一堆同名不同编号的旧图（那是换不回来的空间泄漏）。
+ */
+function cacheName(url: string): string {
+  let h = 5381
+  for (let i = 0; i < url.length; i += 1) h = (h * 33 + url.charCodeAt(i)) >>> 0
+  return `${CACHE_PREFIX}${h.toString(36)}.${extOf(url)}`
 }
 
 export const useImageStore = defineStore(
@@ -77,11 +99,17 @@ export const useImageStore = defineStore(
       return url ? map.value[url] : undefined
     }
 
-    /** 让某个地址的本地缓存作废（文件被系统清理/读失败时调用），下次用到会重新下载 */
+    /**
+     * 让某个地址的本地缓存作废（文件被系统清理/读失败时调用），下次用到会重新下载。
+     *
+     * 同时记一次**失败冷却**：本地文件刚读坏时不立刻重下 ——
+     * 否则「渲染本地文件 → 报错 → 作废 → 重新下载 → 又渲染本地文件」会自己转起来，
+     * 网络面板里就是同一张图被无限重下。冷却期内直接走远端地址（页面照常出图）。
+     */
     function invalidate(url?: string): void {
       if (!url) return
       delete map.value[url]
-      delete failed.value[url]
+      failed.value[url] = Date.now()
     }
 
     /** 下载单个地址到本地（已缓存 / 下载中 / 冷却中都会直接返回） */
@@ -98,7 +126,14 @@ export const useImageStore = defineStore(
           success: (res) => {
             const path = (res as { tempFilePath?: string }).tempFilePath
             if (res.statusCode === 200 && path) {
-              map.value[url] = path
+              /*
+               * 下载下来的是**临时**文件，必须搬进私有永久目录再用：
+               *  · 临时目录会被系统/工具清理 → 明天打开图就没了；
+               *  · 开发者工具里 `http://tmp/…` 会 307 跳到 `__tmp__/`，
+               *    渲染层按跨域处理而本地服务不带 ACAO → 刷 CORS 报错、图出不来。
+               * 搬家失败（环境不支持）时退回临时路径 —— 至少这一会话里还能显示。
+               */
+              map.value[url] = copyToUserDir(path, cacheName(url)) || path
               if (failed.value[url]) delete failed.value[url]
             } else {
               failed.value[url] = Date.now()
@@ -137,8 +172,19 @@ export const useImageStore = defineStore(
      * 详见 isVerifiablePath 的注释（不这么做会导致每次冷启动整表失效、图片反复重下）。
      */
     async function verifyExisting(): Promise<void> {
-      if (!fs?.accessSync) return
       for (const [url, path] of Object.entries(map.value)) {
+        /*
+         * 老版本留下来的临时路径（还没搬过家的）：趁冷启动搬进永久目录。
+         * 搬不过去说明临时文件已经被清掉了 —— 剔除它，让这类条目直接重新下载，
+         * 而不是一直指向一个读不出来的地址（那正是 CORS / 坏图的来源）。
+         */
+        if (isTempPath(path)) {
+          const dest = copyToUserDir(path, cacheName(url))
+          if (dest) map.value[url] = dest
+          else delete map.value[url]
+          continue
+        }
+        if (!fs?.accessSync) continue
         if (!isVerifiablePath(path)) continue
         try {
           fs.accessSync(path)

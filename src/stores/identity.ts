@@ -21,18 +21,7 @@
  */
 import { computed, ref } from 'vue'
 import { defineStore } from 'pinia'
-
-/** 小程序文件能力的子集（只用得到同步的几个方法） */
-interface MiniFs {
-  copyFileSync?: (src: string, dest: string) => void
-  unlinkSync?: (path: string) => void
-  accessSync?: (path: string) => void
-}
-interface MiniFileApi {
-  env?: { USER_DATA_PATH?: string }
-  getFileSystemManager?: () => MiniFs
-}
-const mp = uni as unknown as MiniFileApi
+import { copyToUserDir, fileExists, isTempPath, removeFile } from '@/utils/localFile'
 
 /** 头像文件名前缀（落在私有目录 wx.env.USER_DATA_PATH 下） */
 const AVATAR_PREFIX = 'gz-avatar-'
@@ -59,33 +48,16 @@ export const useIdentityStore = defineStore(
       updatedAt.value = new Date().toISOString()
     }
 
-    /** 删掉一张本地头像文件（失败无所谓：清理不掉不影响功能） */
-    function removeFile(path: string): void {
-      if (!path) return
-      try {
-        mp.getFileSystemManager?.().unlinkSync?.(path)
-      } catch {
-        /* 文件不在就算了 */
-      }
-    }
-
     /**
      * 保存头像。入参是 `chooseAvatar` 给的**临时**文件路径，会被系统清理，
-     * 必须先拷到私有永久目录。返回 false = 没能落盘（调用方据此提示）。
+     * 必须先拷到私有永久目录（拷贝本身带 base64 重写兜底，见 utils/localFile）。
+     * 返回 false = 没能落盘（调用方据此提示）。
      */
     function setAvatar(tmpPath: string): boolean {
-      const fs = mp.getFileSystemManager?.()
-      const dir = mp.env?.USER_DATA_PATH
-      if (!tmpPath || !fs?.copyFileSync || !dir) return false
-
+      if (!tmpPath) return false
       const ext = /\.([a-zA-Z0-9]+)$/.exec(tmpPath)?.[1] || 'png'
-      const dest = `${dir}/${AVATAR_PREFIX}${Date.now()}.${ext}`
-      try {
-        fs.copyFileSync(tmpPath, dest)
-      } catch (e) {
-        console.warn('[identity] 头像保存失败：', e)
-        return false
-      }
+      const dest = copyToUserDir(tmpPath, `${AVATAR_PREFIX}${Date.now()}.${ext}`)
+      if (!dest) return false
       /* 只有新图落盘成功才换指针、删旧图 —— 中途失败不至于连老头像也没了 */
       const old = avatar.value
       avatar.value = dest
@@ -110,13 +82,16 @@ export const useIdentityStore = defineStore(
     function verify(): void {
       const path = avatar.value
       if (!path) return
-      const fs = mp.getFileSystemManager?.()
-      if (!fs?.accessSync) return
-      try {
-        fs.accessSync(path)
-      } catch {
-        avatar.value = ''
+      /*
+       * 极端情况：存下来的还是临时路径（早期版本 / 拷贝失败留下的）。
+       * 趁冷启动再搬一次家；搬不动说明文件已经没了 → 回落成「名字章」。
+       */
+      if (isTempPath(path)) {
+        const dest = copyToUserDir(path, `${AVATAR_PREFIX}${Date.now()}.png`)
+        avatar.value = dest
+        return
       }
+      if (!fileExists(path)) avatar.value = ''
     }
 
     return { nickname, avatar, updatedAt, settled, initial, setNickname, setAvatar, clear, verify }

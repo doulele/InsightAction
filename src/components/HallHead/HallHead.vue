@@ -5,7 +5,7 @@
       不能用 modeMeta.art：那是构建期变量 VITE_SKIN_BASE_URL 拼的静态地址，
       没配该变量时恒为 undefined ✗ → 图永远不出现（「观」页顶部空白就是这个原因）。
     -->
-    <image v-if="modeStore.art" class="hall-head__art" :src="modeStore.art" mode="aspectFill" />
+    <image v-if="modeStore.art" class="hall-head__art" :src="modeStore.art" mode="aspectFill" @error="onArtError" />
     <view class="hall-head__veil" />
     <view class="hall-head__body">
       <view class="hall-head__row">
@@ -70,6 +70,7 @@
  */
 import { computed } from 'vue'
 import { useModeStore } from '@/stores/mode'
+import { useImageStore } from '@/stores/images'
 import { getModeMeta } from '@/config/modes'
 
 const props = withDefaults(
@@ -105,6 +106,16 @@ function onMarkTap(): void {
 
 const modeStore = useModeStore()
 const meta = computed(() => getModeMeta(modeStore.id))
+
+/**
+ * 横幅读不出来（本地缓存被系统清掉 / 工具里本地文件失效）→ 作废这条缓存。
+ *
+ * 作废后 `modeStore.art` 会自动回落到**远端地址**（页面照常出图），
+ * 缓存层自己也带 5 分钟冷却，不会「报错 → 重下 → 再报错」打转。
+ */
+function onArtError(): void {
+  useImageStore().invalidate(modeStore.remoteArtOf(modeStore.id))
+}
 
 /** 数字行（归一成数组，模板里不用再判 undefined） */
 const statList = computed(() => props.stats ?? [])
