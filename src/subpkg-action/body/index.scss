@@ -117,16 +117,19 @@
   color: $gz-ink-3;
 }
 
-/* ---- 目标选择 ---- */
+/* ---- 目标选择（四档 + 自定义，一行放得下靠 k / w 短写法） ---- */
 .goals {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
   margin-top: 28rpx;
-  padding: 20rpx 30rpx;
+  padding: 22rpx 30rpx 24rpx;
   background: $gz-surface;
   border: 1rpx solid $gz-line;
   border-radius: $gz-radius-md;
+}
+
+.goals__top {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
 }
 
 .goals__label {
@@ -134,13 +137,20 @@
   color: $gz-ink-2;
 }
 
+.goals__now {
+  font-size: $gz-fs-caption;
+  color: $gz-ink-3;
+}
+
 .goals__list {
   display: flex;
-  gap: 14rpx;
+  flex-wrap: wrap;
+  gap: 12rpx;
+  margin-top: 18rpx;
 }
 
 .goal {
-  padding: 8rpx 22rpx;
+  padding: 10rpx 22rpx;
   background: $gz-input-bg;
   border: 1rpx solid $gz-line;
   border-radius: 999rpx;
@@ -152,6 +162,39 @@
   background: $gz-accent-soft;
   border-color: $gz-accent;
   color: $gz-accent;
+  font-weight: 600;
+}
+
+.goals__custom {
+  display: flex;
+  gap: 12rpx;
+  margin-top: 16rpx;
+}
+
+.goals__input {
+  flex: 1;
+  min-width: 0;
+  padding: 14rpx 20rpx;
+  background: $gz-input-bg;
+  border: 1rpx solid $gz-line;
+  border-radius: $gz-radius-sm;
+  font-size: $gz-fs-small;
+  color: $gz-ink;
+}
+
+.goals__ph {
+  color: $gz-ink-3;
+}
+
+.goals__ok {
+  flex: none;
+  display: flex;
+  align-items: center;
+  padding: 0 26rpx;
+  border-radius: $gz-radius-sm;
+  background: $gz-accent;
+  color: $gz-on-cta;
+  font-size: $gz-fs-small;
   font-weight: 600;
 }
 

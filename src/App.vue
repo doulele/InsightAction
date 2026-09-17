@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { onLaunch } from '@dcloudio/uni-app'
+import { onHide, onLaunch, onShow } from '@dcloudio/uni-app'
 import { watch } from 'vue'
 import { useAppStore } from '@/stores/app'
 import { useModeStore } from '@/stores/mode'
@@ -9,10 +9,12 @@ import { useImageStore } from '@/stores/images'
 import { useProverbStore } from '@/stores/proverb'
 import { useIdentityStore } from '@/stores/identity'
 import { useObserveStore } from '@/stores/observe'
+import { useSettingsStore } from '@/stores/settings'
 import { applySkin } from '@/utils/skin'
 import { initUpdateManager } from '@/utils/update'
 import { initPrivacyGuard } from '@/utils/privacy'
 import { autoBackupIfDue } from '@/utils/cloudBackup'
+import { initAudioOption, resumeAudio, setSoundEnabled, suspendAudio } from '@/utils/audio'
 import { installRouterGuard, ROUTES } from '@/router/routes'
 
 onLaunch(() => {
@@ -30,6 +32,14 @@ onLaunch(() => {
    * 必须最早挂：晚一步就可能漏掉启动时发生的那次调用。
    */
   initPrivacyGuard()
+
+  /*
+   * 静修声音（2026-09-17）：先定播放口径 —— 跟随系统静音键、不与其他音频混音；
+   * 再把用户的总开关同步进播放器（utils/audio.ts 的模块级开关，
+   * 关掉后沙漏 / 茶室 / 呼吸干预的一切播放请求直接返回，不下载也不发声）。
+   */
+  initAudioOption()
+  setSoundEnabled(useSettingsStore().soundOn)
 
   // 应用级初始化：记录启动
   const appStore = useAppStore()
@@ -96,6 +106,21 @@ watch(
     useImageStore().warmBanner(modeStore.remoteArtOf(id))
   },
 )
+
+// 静修声音总开关：设置页改动即时生效（关掉立即停声，不用等下次进页面）
+const settings = useSettingsStore()
+watch(
+  () => settings.soundOn,
+  (on) => setSoundEnabled(on),
+)
+
+/*
+ * 切后台 / 回前台：普通 innerAudioContext 会被微信挂起，这里主动收干净，
+ * 回前台再按记录把环境音续上。页面不用管这件事 ——
+ * 计时按墙上时间照走（沙漏/茶室的规则不变），只是声音断一下。
+ */
+onHide(() => suspendAudio())
+onShow(() => resumeAudio())
 </script>
 
 <style lang="scss">

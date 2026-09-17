@@ -181,7 +181,14 @@
           "path": "urge/index",
           "style": {
             "navigationStyle": "custom",
-            "navigationBarTitleText": "冲动记录"
+            "navigationBarTitleText": "止欲 · 冲动记录"
+          }
+        },
+        {
+          "path": "thought/index",
+          "style": {
+            "navigationStyle": "custom",
+            "navigationBarTitleText": "止念一刻"
           }
         }
       ]

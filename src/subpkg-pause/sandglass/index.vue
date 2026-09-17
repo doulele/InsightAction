@@ -31,6 +31,24 @@
           {{ d }} 分
         </view>
       </view>
+
+      <!-- 走时声：计时中循环播放的一段背景音。默认「静」—— 沙漏的语义本来就是安静 -->
+      <view class="pills__head">
+        <text class="pills__title">走时声</text>
+        <text class="pills__hint">{{ ambient.hint }}</text>
+      </view>
+      <view class="pills pills--sound">
+        <view
+          v-for="a in AMBIENTS"
+          :key="a.id"
+          class="pill"
+          :class="{ 'is-on': a.id === settings.sandglassAmbient }"
+          @click="pickAmbient(a.id)"
+        >
+          {{ a.name }}
+        </view>
+      </view>
+
       <button class="cta" hover-class="gz-hover" @click="start">
         开始一段静修
       </button>
@@ -52,6 +70,18 @@
       <view class="tip">
         <text class="tip__line">沙漏以真实时间为准：息屏、切走，时间仍在流</text>
         <text class="tip__line">走完全程才会写入今日定力</text>
+      </view>
+      <!-- 走时声：计时中也能换 —— 嫌吵就点「静」，不必中断这一程 -->
+      <view class="pills pills--sound pills--runtime">
+        <view
+          v-for="a in AMBIENTS"
+          :key="a.id"
+          class="pill"
+          :class="{ 'is-on': a.id === settings.sandglassAmbient }"
+          @click="pickAmbient(a.id)"
+        >
+          {{ a.name }}
+        </view>
       </view>
       <button class="giveup" hover-class="gz-hover" @click="openGiveUp">
         提前结束这一程
@@ -104,16 +134,25 @@
  *    切走期间跑满了回到前台也照实结算。
  */
 import { computed, ref } from 'vue'
-import { onHide, onShow, onUnload, onBackPress } from '@dcloudio/uni-app'
+import { onHide, onLoad, onShow, onUnload, onBackPress } from '@dcloudio/uni-app'
 import { useFocusStore } from '@/stores/focus'
+import { useSettingsStore } from '@/stores/settings'
 import { useSkinClass } from '@/composables/useSkin'
+import { SANDGLASS_AMBIENTS, sandglassAmbientById } from '@/config/audio'
+import { playCue, prefetchAmbient, prefetchCue, startAmbient, stopAmbient, teardownAudio } from '@/utils/audio'
 import { ROUTES } from '@/router/routes'
 
 const focus = useFocusStore()
+const settings = useSettingsStore()
 const skinClass = useSkinClass()
 
 const DURATIONS = [5, 15, 30, 60] as const
 const GIVE_UP_CAUSES = ['心神不宁', '被外物打断', '身体不适', '另有安排'] as const
+
+/** 走时声选项（第一项是默认的「静」）；模板直接用，故起个短名 */
+const AMBIENTS = SANDGLASS_AMBIENTS
+/** 当前选中的走时声（id 存在偏好里，配置表在 config/audio.ts） */
+const ambient = computed(() => sandglassAmbientById(settings.sandglassAmbient))
 
 type Phase = 'idle' | 'running' | 'done'
 const phase = ref<Phase>('idle')
@@ -138,6 +177,36 @@ const pct = computed(() => (totalMs.value > 0 ? 1 - remainMs.value / totalMs.val
 const pctText = computed(() => `${Math.floor(pct.value * 100)}%`)
 
 let ticker: ReturnType<typeof setInterval> | null = null
+
+/* ---- 走时声（背景音） ---- */
+
+/**
+ * 进页面就预热：一记提示音 + 当前选中的走时声。
+ *
+ * 用户在这里还要挑时长，通常有 3–5 秒 —— 足够把音频下进本地（首次 300–600KB），
+ * 点「开始一段静修」时立刻有声，而不是先静几秒（那会让人以为声音坏了。
+ * 素材没上传/无网时全程静默，计时照常）。
+ */
+onLoad(() => {
+  prefetchCue('open')
+  const track = ambient.value.track
+  if (track) prefetchAmbient(track.files)
+})
+
+/** 选走时声：写偏好；计时中立刻换（点「静」就是停，不用中断这一程） */
+function pickAmbient(id: string): void {
+  settings.sandglassAmbient = id
+  const track = sandglassAmbientById(id).track
+  if (track) prefetchAmbient(track.files)
+  if (phase.value === 'running') applyAmbient()
+}
+
+/** 把当前选中的走时声落到播放器（「静」= 停环境音） */
+function applyAmbient(): void {
+  const track = ambient.value.track
+  if (track) startAmbient(track.files, track.volume)
+  else stopAmbient()
+}
 
 function syncRemain(): void {
   remainMs.value = targetTs.value - Date.now()
@@ -164,6 +233,9 @@ function start(): void {
   uni.setKeepScreenOn({ keepScreenOn: true })
   clearTicker()
   ticker = setInterval(tick, 250)
+  /* 一记开场：让"开始"是听得见的（素材没到位时静默，不影响计时） */
+  playCue('open')
+  applyAmbient()
 }
 
 /** 跑满结算：全程唯一的入账点 */
@@ -173,6 +245,9 @@ function settle(): void {
   uni.setKeepScreenOn({ keepScreenOn: false })
   phase.value = 'done'
   uni.vibrateShort({ type: 'medium' })
+  /* 一记收功：声音收尾 + 一次震动，把"这一程守住了"落成身体记得的信号 */
+  stopAmbient()
+  playCue('close')
 }
 
 /** 中途退出：选因后不入账，回到选时态 */
@@ -181,6 +256,7 @@ function giveUp(cause: string): void {
   clearTicker()
   uni.setKeepScreenOn({ keepScreenOn: false })
   phase.value = 'idle'
+  stopAmbient()
   uni.showToast({ title: `${cause} · 这一程未计入`, icon: 'none' })
 }
 
@@ -235,6 +311,8 @@ onHide(() => {
 onUnload(() => {
   clearTicker()
   uni.setKeepScreenOn({ keepScreenOn: false })
+  /* 离页立即收干净（不等淡出），免得回到大厅还有声音在响 */
+  teardownAudio()
 })
 
 /* 物理返回 / 侧滑：计时中拦截为作答层 */

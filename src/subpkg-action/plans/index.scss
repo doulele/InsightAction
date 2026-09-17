@@ -43,18 +43,18 @@
   color: $gz-ink;
 }
 
-/* ---- Tab ---- */
+/* ---- Tab（四档：今日 / 短期 / 中期 / 长期，横向要能一行放下） ---- */
 .tabs {
   display: flex;
-  gap: 12rpx;
+  gap: 10rpx;
   margin: 12rpx 0 22rpx;
 }
 
 .tab {
   display: flex;
   align-items: center;
-  gap: 10rpx;
-  padding: 14rpx 30rpx;
+  gap: 8rpx;
+  padding: 14rpx 22rpx;
   border: 1rpx solid $gz-line;
   border-radius: 999rpx;
   font-size: $gz-fs-small;
@@ -185,7 +185,15 @@
   color: $gz-ink-2;
 }
 
-/* ---- 长期 ---- */
+/* ---- 期限档说明（列表顶部一句，说清这一档是什么） ---- */
+.horizon-note {
+  display: block;
+  margin: -8rpx 0 18rpx;
+  font-size: $gz-fs-caption;
+  color: $gz-ink-3;
+}
+
+/* ---- 短期 / 中期 / 长期 ---- */
 .stale {
   margin-bottom: 22rpx;
   padding: 22rpx 26rpx;

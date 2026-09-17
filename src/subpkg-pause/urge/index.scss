@@ -115,6 +115,20 @@
   opacity: 1;
 }
 
+/* 待起冷却时的档位选择（10 分钟 / 48 小时） */
+.cool--idle .chips {
+  justify-content: center;
+  margin-top: 20rpx;
+}
+
+.cool__hint {
+  margin-top: 14rpx;
+  text-align: center;
+  font-size: $gz-fs-caption;
+  line-height: 1.7;
+  color: $gz-ink-3;
+}
+
 .cool__btn {
   margin-top: 26rpx;
   padding: 20rpx 56rpx;

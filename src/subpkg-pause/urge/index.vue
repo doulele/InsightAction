@@ -4,7 +4,7 @@
       <view class="nav__side" hover-class="gz-hover" @click="goBack">
         <text class="nav__back">‹</text>
       </view>
-      <text class="nav__title">冲动记录</text>
+      <text class="nav__title">止欲 · 冲动记录</text>
       <view class="nav__side" />
     </view>
 
@@ -23,20 +23,31 @@
 
     <!-- ① 记一笔 -->
     <template v-if="tab === 'log'">
-      <!-- 冷却期 -->
+      <!-- 冷却期（两档：10 分钟 = 当下一口气 / 48 小时 = 大决定先放两天） -->
       <view v-if="cooling" class="cool">
-        <text class="cool__label">冷却中 · 先不决策</text>
+        <text class="cool__label">冷却中 · {{ kindLabel }}</text>
         <text class="cool__time">{{ mmss }}</text>
-        <text class="cool__note">
-          十分钟后还想做，那就做 —— 但多数冲动撑不过这段时间。
-        </text>
-        <view class="cool__btn" hover-class="gz-hover" @click="finishCool">十分钟到了</view>
+        <text class="cool__note">{{ coolNote }}</text>
+        <view class="cool__btn" hover-class="gz-hover" @click="finishCool">{{ coolBtn }}</view>
         <text class="cool__give" hover-class="gz-hover" @click="giveUpCool">不等了，直接记一笔</text>
       </view>
       <view v-else class="cool cool--idle">
         <text class="cool__label">冲动来了？</text>
-        <text class="cool__note">先不决策，给自己十分钟。走完这段算一笔定力。</text>
-        <view class="cool__btn" hover-class="gz-hover" @click="startCool">开始 10 分钟冷却</view>
+        <text class="cool__note">先不决策，挑一档给自己 —— 走完这段算一笔定力。</text>
+        <view class="chips">
+          <view
+            v-for="k in COOLDOWN_KINDS"
+            :key="k.id"
+            class="chip"
+            :class="{ 'is-on': kind === k.id }"
+            hover-class="gz-hover"
+            @click="kind = k.id"
+          >
+            {{ k.label }}
+          </view>
+        </view>
+        <text class="cool__hint">{{ kindNote }}</text>
+        <view class="cool__btn" hover-class="gz-hover" @click="startCool">开始 {{ kindLabel }} 冷却</view>
       </view>
 
       <view class="form">
@@ -166,14 +177,22 @@
 
 <script setup lang="ts">
 /**
- * 止 · 冲动记录 + 触发点地图 + 冷却期（分包 subpkg-pause）—— 规格 v2 §4.2 长期档。
+ * 止欲 · 冲动记录 + 触发点地图 + 冷却期（分包 subpkg-pause）—— 规格 v2 §4.2 轴一「止欲」层。
  * 一次冲动记四件事：什么时候、什么情境、什么感觉、最后做没做。
  * 攒够样本后地图会把形状显出来 —— 结论只在样本 ≥ 5 时才敢下。
+ * 冷却期两档：10 分钟（当下一口气）/ 48 小时（想买、想做的大决定先放两天）。
  * 样式外置在 urge/index.scss（超过 100 行，按项目约定拆出）。
  */
 import { computed, ref } from 'vue'
 import { onLoad, onShow, onUnload } from '@dcloudio/uni-app'
-import { COOLDOWN_MIN, URGE_FEELINGS, URGE_TRIGGERS, useUrgeStore } from '@/stores/urge'
+import {
+  COOLDOWN_KINDS,
+  URGE_FEELINGS,
+  URGE_TRIGGERS,
+  cooldownKindMeta,
+  useUrgeStore,
+} from '@/stores/urge'
+import type { CooldownKind } from '@/stores/urge'
 import { useSkinClass } from '@/composables/useSkin'
 import SceneProbe from '@/components/SceneProbe/SceneProbe.vue'
 import { ROUTES } from '@/router/routes'
@@ -195,12 +214,26 @@ onLoad((query) => {
 const remain = ref(0)
 let ticker: ReturnType<typeof setInterval> | null = null
 
+/** 用户选的那一档（冷却进行中时同步成 store 里那一段的档位，免得文案对不上） */
+const kind = ref<CooldownKind>('quick')
+const kindMeta = computed(() => cooldownKindMeta(kind.value))
+const kindLabel = computed(() => kindMeta.value.label)
+const kindNote = computed(() => kindMeta.value.note)
+
 const cooling = computed(() => remain.value > 0)
+/** 倒计时文案统一在 store 里出（快档 MM:SS / 长档「N 天 N 小时」） */
 const mmss = computed(() => {
-  const m = Math.floor(remain.value / 60)
-  const s = remain.value % 60
-  return `${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`
+  void remain.value
+  return urge.cooldownText()
 })
+
+/** 冷却中的说明与按钮也随档 —— 48 小时那一档不能写成"十分钟后还想做那就做" */
+const coolNote = computed(() =>
+  kind.value === 'long'
+    ? '两天后再看还想不想 —— 大决定不怕晚两天。'
+    : '十分钟后还想做，那就做 —— 但多数冲动撑不过这段时间。',
+)
+const coolBtn = computed(() => (kind.value === 'long' ? '两天到了，我还在想' : '十分钟到了'))
 
 function refreshRemain(): void {
   remain.value = urge.cooldownRemain()
@@ -220,7 +253,7 @@ function startTick(): void {
 }
 
 function startCool(): void {
-  urge.startCooldown(COOLDOWN_MIN)
+  urge.startCooldown(kind.value)
   refreshRemain()
   startTick()
 }
@@ -239,6 +272,8 @@ function giveUpCool(): void {
 }
 
 onShow(() => {
+  /* 冷却可能是在止页起的，也可能是跨天回来的 —— 先把档位对齐再刷新 */
+  kind.value = urge.cooldownKind
   refreshRemain()
   if (remain.value > 0) startTick()
 })

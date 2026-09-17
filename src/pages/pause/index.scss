@@ -139,45 +139,129 @@
   color: $gz-accent;
 }
 
+/* 茶室五盏：一行放下（原为 3 + 2 两行、每盏带一句意境，约占 390rpx；
+   现在一行只留「色点 + 名」，约 110rpx）。
+   与上方沙漏的 pill 行刻意不同形 —— pill 是"选一个值"，这里是"进一个场景" */
 .tea {
   display: flex;
-  flex-wrap: wrap;
-  gap: 16rpx;
+  gap: 12rpx;
 }
 
 .tea__room {
-  width: calc((100% - 32rpx) / 3);
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10rpx;
   box-sizing: border-box;
-  padding: 22rpx 18rpx;
+  padding: 20rpx 6rpx 18rpx;
   background: $gz-surface;
   border: 1rpx solid $gz-line;
   border-radius: $gz-radius-md;
 }
 
 .tea__dot {
-  width: 12rpx;
-  height: 12rpx;
+  width: 14rpx;
+  height: 14rpx;
   border-radius: 50%;
 }
 
 .tea__name {
-  display: block;
-  margin-top: 12rpx;
-  font-size: $gz-fs-body;
+  font-size: 26rpx;
   font-weight: 700;
+  letter-spacing: 0.04em;
   color: $gz-ink;
-}
-
-.tea__desc {
-  display: block;
-  margin-top: 6rpx;
-  font-size: $gz-fs-caption;
-  line-height: 1.6;
-  color: $gz-ink-3;
 }
 
 .entries {
   display: flex;
   flex-direction: column;
   gap: 18rpx;
+}
+
+/* ---------------------------------------------------------------------------
+ * 三层分组（止行 / 止念 / 止欲）—— 规格 v2 §4.2 轴一，2026-09-17 定案。
+ * 层头左边一道主题色竖条 + 层名，下面一句说清"止的是什么"：
+ * 用户扫一眼就知道这三块分别管手、管脑、管心。
+ * ------------------------------------------------------------------------- */
+.layer {
+  margin-top: 46rpx;
+}
+
+.layer__head {
+  position: relative;
+  padding-left: 22rpx;
+  margin-bottom: 22rpx;
+
+  &::before {
+    content: '';
+    position: absolute;
+    left: 0;
+    top: 8rpx;
+    bottom: 8rpx;
+    width: 6rpx;
+    border-radius: 999rpx;
+    background: linear-gradient(180deg, $gz-accent, $gz-grad-to);
+  }
+}
+
+.layer__name {
+  display: block;
+  font-size: 34rpx;
+  font-weight: 800;
+  letter-spacing: 0.1em;
+  color: $gz-ink;
+}
+
+.layer__desc {
+  display: block;
+  margin-top: 6rpx;
+  font-size: $gz-fs-caption;
+  color: $gz-ink-3;
+}
+
+/* 层头的下一段（沙漏 / 茶室 / 层内第二组入口）不必再撑一个大间距 */
+.layer .entries + .section,
+.layer .section + .section {
+  margin-top: 26rpx;
+}
+
+/* 止念条：与知大厅同一形态（不劝多写，劝去用） */
+.stoppen {
+  display: flex;
+  align-items: center;
+  gap: 16rpx;
+  margin-top: 22rpx;
+  padding: 24rpx 26rpx;
+  border: 1rpx solid $gz-accent;
+  border-radius: $gz-radius-md;
+  background: linear-gradient(135deg, $gz-accent-soft, transparent 72%);
+}
+
+.stoppen__body {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6rpx;
+}
+
+.stoppen__title {
+  font-size: $gz-fs-body;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  color: $gz-accent;
+}
+
+.stoppen__text {
+  font-size: $gz-fs-caption;
+  line-height: 1.7;
+  color: $gz-ink-3;
+}
+
+.stoppen__go {
+  flex: none;
+  font-size: $gz-fs-caption;
+  color: $gz-accent;
 }

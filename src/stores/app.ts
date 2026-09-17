@@ -4,7 +4,14 @@
 import { defineStore } from 'pinia'
 import { ref } from 'vue'
 
-export const APP_VERSION = '0.2.0'
+/**
+ * 包版本号（**仅作开发版 / 体验版兜底**）。
+ *
+ * ⚠️ 正式版的版本号以「开发者工具「上传」时填的那个」为准 —— 它在运行时由
+ * getRunningVersion()（utils/version.ts）返回，也是「关于」页与「检查更新」在正式环境显示的数字。
+ * 这里写死的数字只在微信取不到线上版本号时（开发版 / 体验版）兜底显示，**发版不用改它**。
+ */
+export const APP_VERSION = '1.0.0'
 
 export const useAppStore = defineStore(
   'app',

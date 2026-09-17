@@ -27,6 +27,24 @@ export interface BodyBar {
 
 /** 默认目标：世卫口径的日常活动量级参考，**不是医嘱**，可在页面上切换 */
 const DEFAULT_GOAL = 6000
+/** 预设目标：四档常用值，页面另有「自定义」走 setGoal */
+export const GOAL_PRESETS = [4000, 6000, 8000, 10000] as const
+/** 自定义目标的合理区间：低于 1000 谈不上参照，高于 10 万已不是日常活动量 */
+export const GOAL_MIN = 1000
+export const GOAL_MAX = 100000
+
+/**
+ * 目标步数的短写法：满一万用 w，其余用 k。
+ *
+ * 为什么需要它：一行要放「4k 6k 8k 1w 自定义」五个选项，全写成 4000 这种四位数
+ * 必然挤到换行。k / w 是中文语境里现成的单位口语（1w = 一万），比缩字号更好认。
+ */
+export function formatGoal(n: number): string {
+  const v = Number(n)
+  if (!Number.isFinite(v)) return '—'
+  if (v >= 10000) return `${parseFloat((v / 10000).toFixed(1))}w`
+  return `${parseFloat((v / 1000).toFixed(1))}k`
+}
 /** 本地保留天数：微信运动只给最近 31 天，多留一段是为了跨天也能看见趋势 */
 const KEEP_DAYS = 60
 
@@ -77,6 +95,17 @@ export const useBodyStore = defineStore(
       auth.value = 'denied'
     }
 
+    /**
+     * 改今日目标（预设档与自定义都走这里）。
+     * 区间外的数一律拒绝并交给页面提示 —— 目标写成 30 步，电量永远是满的，那不是目标。
+     */
+    function setGoal(n: number): boolean {
+      const v = Math.round(Number(n))
+      if (!Number.isFinite(v) || v < GOAL_MIN || v > GOAL_MAX) return false
+      goal.value = v
+      return true
+    }
+
     /** 最新一天的数据（可能是昨天） */
     const latest = computed<BodyDay | null>(() => {
       const keys = Object.keys(days.value).sort()
@@ -122,7 +151,21 @@ export const useBodyStore = defineStore(
       return Math.max(peak, goal.value)
     })
 
-    return { days, lastSyncAt, auth, goal, record, markDenied, latest, todayStep, hasToday, pct, recent, barMax }
+    return {
+      days,
+      lastSyncAt,
+      auth,
+      goal,
+      record,
+      markDenied,
+      setGoal,
+      latest,
+      todayStep,
+      hasToday,
+      pct,
+      recent,
+      barMax,
+    }
   },
   {
     persist: {

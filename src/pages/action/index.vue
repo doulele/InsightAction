@@ -92,6 +92,7 @@
       <view v-for="p in longTop" :key="p.id" class="plan" hover-class="gz-hover" @click="openPlan(p)">
         <view class="plan__row">
           <text class="plan__title">{{ p.title }}</text>
+          <text class="plan__tag">{{ horizonText(p) }}</text>
           <text v-if="p.challenge" class="plan__tag">{{ challengeText(p) }}</text>
         </view>
         <view class="bar bar--plan">
@@ -165,7 +166,7 @@ import { poke } from '@/composables/useBuddy'
 import { useXpStore } from '@/stores/xp'
 import { useWishStore } from '@/stores/wish'
 import { syncTabBar } from '@/utils/skin'
-import { CHALLENGE_LABEL, hallLine, planWords } from '@/config/lexicon'
+import { CHALLENGE_LABEL, HORIZON_LABEL, hallLine, planWords } from '@/config/lexicon'
 import { navigateTo, ROUTES } from '@/router/routes'
 import type { RoutePath } from '@/router/routes'
 import type { EntryBadge } from '@/components/EntryItem/EntryItem.vue'
@@ -234,6 +235,11 @@ const longTop = computed(() => planStore.activeLong.slice(0, 2))
 
 function challengeText(p: Plan): string {
   return p.challenge ? CHALLENGE_LABEL[p.challenge] : ''
+}
+
+/** 期限档（短期 / 中期 / 长期）：大厅只给一眼能认出的档名，详细的去「划」里看 */
+function horizonText(p: Plan): string {
+  return HORIZON_LABEL[planStore.horizonOf(p)]
 }
 
 function nextHint(p: Plan): string {
@@ -371,7 +377,7 @@ const moreEntries = computed<MoreEntry[]>(() => {
     {
       mark: planW.value.mark,
       title: planW.value.plan,
-      subtitle: '跨天的目标拆成一步步走 · 今天的步子与待办池都在这里',
+      subtitle: '跨天的目标拆成一步步走 · 按短期 / 中期 / 长期分开看',
       badge:
         longTop.value.length > 0 || stepTodo > 0
           ? { text: `进行中 ${planStore.activeLongCount} 个`, tone: 'accent' }

@@ -148,6 +148,25 @@ export function activeDimCount(s: DayStats): number {
   return n
 }
 
+/**
+ * 止念条（规格 v2 §4.2 轴一「止念」层）：知这一环最容易停在纸上。
+ *
+ * 判据：今天**产出过东西**（卡片 / 省察作答）却一次「我用上了」都没有 ——
+ * 此时不再劝人多写，而是建议"停笔，去实践"。
+ *
+ * **知大厅与止大厅共用这一条判定，别各写一份** —— 口径分叉会让同一天两页说法不一样。
+ * 产出为 0 时返回空串：那会让「知」还没开始就被劝退。
+ */
+export function stopPenTip(): string {
+  const day = fmtKey(new Date())
+  const st = dayStats(day)
+  const produced = st.cards + (st.answered ? 1 : 0)
+  if (produced <= 0) return ''
+  const used = useTraceStore().ofDay(day).some((t) => t.kind === 'reflect.apply')
+  if (used) return ''
+  return `今天写了 ${produced} 条，一条都还没用上 —— 用过的才算你的。`
+}
+
 /** 日期工具：本地自然日（calendar 页使用） */
 export function fmtKey(d: Date): string {
   const m = `${d.getMonth() + 1}`.padStart(2, '0')

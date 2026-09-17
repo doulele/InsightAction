@@ -12,8 +12,9 @@
  *  3. **计划收束（节点全完成）记 action.challenge(20)**，并可留一句回望进【知】（可跳过）；
  *  4. **today 型搁置满 3 天自动归档** —— 今日事过了两天缓冲就收走，待办池不会越滚越脏（不打扰、不惩罚）。
  *
- * 上限：同时在走的 long 计划 ≤ 3 个（文案对齐习惯的「别贪多，先守住这 N 个」）；
- * today 型（今天的步子）**不设硬上限**，只在超过一个舒适线时提示，不拦截。
+ * 上限：同时在走的路 ≤ 3 个（**短期 / 中期 / 长期三档合计**，不是每档各 3）。
+ *  分档只是为了让人看清"这一步要多久"，不是给人开三条并行队列 —— 能同时走完的路，
+ *  从来不会因为分了档就变多。today 型（今天的步子）**不设硬上限**，只在超过一个舒适线时提示，不拦截。
  */
 import { defineStore } from 'pinia'
 import { computed, ref } from 'vue'
@@ -27,6 +28,20 @@ export type PlanKind = 'long' | 'today'
 export type PlanStatus = 'active' | 'done' | 'archived'
 /** 挑战三型（对齐规格 §4.4；普通计划可不填） */
 export type ChallengeType = 'abstain' | 'try' | 'cog'
+
+/**
+ * 期限档：一条路要走多久（「今日」之外的三档）。
+ *
+ * 为什么是**在计划上存一档**，而不是按「离目标日还剩几天」实时算：
+ *  按剩余天数算，一条路会随日子流逝自己从「长期」滑到「中期」再到「短期」——
+ *  它没变，位置却变了，用户会觉得是自己记错了。期限是立路时的一句话承诺，
+ *  该跟着这条路固定下来。目标日只用来提醒，不用来重新分类。
+ */
+export type PlanHorizon = 'short' | 'mid' | 'long'
+/** 短期上限：一周内走得完 */
+export const SHORT_SPAN_DAYS = 7
+/** 中期上限：一个月内走得完（超过即长期） */
+export const MID_SPAN_DAYS = 30
 
 /** 挑战三型 → 知识卡标签（收束回望写卡时用） */
 const CHALLENGE_TAG: Record<ChallengeType, string> = {
@@ -53,6 +68,8 @@ export interface Plan {
   /** 计划内容：为什么做 / 做成什么样 */
   note?: string
   kind: PlanKind
+  /** 期限档：短期 / 中期 / 长期（老数据没有这一项，按 horizonOf 推） */
+  horizon?: PlanHorizon
   nodes: PlanNode[]
   challenge?: ChallengeType
   /** YYYY-MM-DD */
@@ -108,6 +125,20 @@ function diffDays(a: string, b: string): number {
   return Math.round((tb - ta) / 86400000)
 }
 
+/**
+ * 按「起日 → 目标日」的跨度判档：没定日子的一律算长期。
+ *
+ * 只用于两处：新建时用户没手动选档的兜底、以及**老数据**（分档之前立的路）的推算。
+ * 一旦存了 horizon，就以存的那档为准 —— 见 PlanHorizon 的注释。
+ */
+export function horizonBySpan(startDay: string, dueDay?: string): PlanHorizon {
+  if (!dueDay) return 'long'
+  const span = diffDays(startDay, dueDay)
+  if (span <= SHORT_SPAN_DAYS) return 'short'
+  if (span <= MID_SPAN_DAYS) return 'mid'
+  return 'long'
+}
+
 export const usePlanStore = defineStore(
   'plan',
   () => {
@@ -123,6 +154,23 @@ export const usePlanStore = defineStore(
 
     function byId(id: number): Plan | undefined {
       return plans.value.find((p) => p.id === id)
+    }
+
+    /** 一条路的期限档：优先用它自己标的那档，老数据按起止跨度推 */
+    function horizonOf(p: Plan): PlanHorizon {
+      return p.horizon ?? horizonBySpan(p.startDay, p.dueDay)
+    }
+
+    /** 某一档的路（进行中在前，已收束 / 已归档在后）—— 与 longPlans 同序 */
+    function horizonPlans(h: PlanHorizon): Plan[] {
+      return plans.value
+        .filter((p) => p.kind === 'long' && horizonOf(p) === h)
+        .sort((a, b) => Number(a.status !== 'active') - Number(b.status !== 'active') || b.updatedAt - a.updatedAt)
+    }
+
+    /** 某一档还在走的路条数（tab 徽标用） */
+    function horizonActiveCount(h: PlanHorizon): number {
+      return horizonPlans(h).filter((p) => p.status === 'active').length
     }
 
     /** 进度口径：done / (nodes.length || 1)；无节点视为单节点整体完成 */
@@ -273,6 +321,8 @@ export const usePlanStore = defineStore(
       kind: PlanKind
       challenge?: ChallengeType
       dueDay?: string
+      /** 期限档（不传就按目标日的跨度推） */
+      horizon?: PlanHorizon
       /** 建计划时一并立下的节点（可选） */
       nodes?: Array<{ title: string; note?: string; dueDay?: string }>
     }): Plan | null {
@@ -299,6 +349,7 @@ export const usePlanStore = defineStore(
             dueDay: n.dueDay,
           })),
         challenge: input.challenge,
+        horizon: input.horizon ?? horizonBySpan(day, input.dueDay),
         startDay: day,
         dueDay: input.dueDay,
         status: 'active',
@@ -310,7 +361,7 @@ export const usePlanStore = defineStore(
 
     function updatePlan(
       id: number,
-      patch: Partial<Pick<Plan, 'title' | 'note' | 'challenge' | 'dueDay'>>,
+      patch: Partial<Pick<Plan, 'title' | 'note' | 'challenge' | 'dueDay' | 'horizon'>>,
     ): boolean {
       const plan = byId(id)
       if (!plan) return false
@@ -321,6 +372,7 @@ export const usePlanStore = defineStore(
       }
       if (patch.note !== undefined) plan.note = patch.note.trim() || undefined
       if (patch.challenge !== undefined) plan.challenge = patch.challenge
+      if (patch.horizon !== undefined) plan.horizon = patch.horizon
       if (patch.dueDay !== undefined) plan.dueDay = patch.dueDay || undefined
       touch(plan)
       return true
@@ -550,6 +602,9 @@ export const usePlanStore = defineStore(
       staleLong,
       sweep,
       byId,
+      horizonOf,
+      horizonPlans,
+      horizonActiveCount,
       progressOf,
       nextNodeOf,
       remainDaysOf,

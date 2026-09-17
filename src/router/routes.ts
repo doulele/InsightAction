@@ -79,8 +79,10 @@ export const ROUTES = {
   pauseInterrupt: '/subpkg-pause/interrupt/index',
   /** 止 · 立约（当日档：触发条件 + 承诺 + 替代动作，分包 subpkg-pause） */
   pauseVow: '/subpkg-pause/vow/index',
-  /** 止 · 冲动记录 + 触发点地图 + 冷却期（分包 subpkg-pause，可带 ?tab=map） */
+  /** 止欲 · 冲动记录 + 触发点地图 + 冷却期（分包 subpkg-pause，可带 ?tab=map） */
   pauseUrge: '/subpkg-pause/urge/index',
+  /** 止念 · 止念一刻：写下反复想的那件事，判它现在有没有解（分包 subpkg-pause） */
+  pauseThought: '/subpkg-pause/thought/index',
   /** m7 · 行：愿望清单（修为兑换现实奖励，分包 subpkg-action） */
   actionWishes: '/subpkg-action/wishes/index',
   /** 行 · 计划列表：今天 / 长期两个视图（分包 subpkg-action） */

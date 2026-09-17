@@ -23,11 +23,15 @@ export function compareVersion(a: string, b: string): number {
 }
 
 /**
- * 当前运行的小程序版本号。
+ * 当前运行的小程序版本号（**判断"我手上这个包是不是旧的"只看它**）。
+ *
+ * 来源：「上传」时在开发者工具弹窗里填的版本号 —— 微信**不读** manifest.json / package.json，
+ * 仓库里也管不到它，所以发版时只需要在开发者工具填一次即可，代码侧无需同步任何版本号。
+ * 它才是 `getAccountInfoSync().miniProgram.version` 返回、也是后端 latestVersion 要比对的那个。
  *
  * 微信官方行为：**只有正式版能取到线上版本号**，开发版与体验版取不到（返回空串）。
- * 这个版本号来自「上传」时在开发者工具弹窗里填的版本号，与 manifest.json 的 versionName 无关。
- * 空串 = 无法比较 → 调用方必须跳过版本判断（否则会把开发/体验版误判成"旧版"）。
+ * 空串 = 无法比较 → 调用方必须跳过版本判断（否则会把开发/体验版误判成"旧版"），
+ * 展示场景可退回 stores/app.ts 的 APP_VERSION（仅作开发/体验版兜底显示，发版不用改）。
  */
 export function getRunningVersion(): string {
   try {

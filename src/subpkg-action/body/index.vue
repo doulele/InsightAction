@@ -19,7 +19,7 @@
       <view class="bat__num">
         <text class="bat__value">{{ body.hasToday ? body.todayStep : '—' }}</text>
         <text class="bat__unit">步</text>
-        <text class="bat__goal">/ 目标 {{ body.goal }}</text>
+        <text class="bat__goal">/ 目标 {{ goalText }}</text>
       </view>
 
       <view class="bat__cell">
@@ -32,9 +32,15 @@
       </text>
     </view>
 
-    <!-- 目标 -->
+    <!--
+      目标：四档预设 + 自定义。
+      一行要放五个选项，四位数的「10000」会把这一行挤爆，所以统一写短：k = 千、w = 万。
+    -->
     <view class="goals">
-      <text class="goals__label">今日目标</text>
+      <view class="goals__top">
+        <text class="goals__label">今日目标</text>
+        <text class="goals__now">当前 {{ goalText }} 步</text>
+      </view>
       <view class="goals__list">
         <view
           v-for="g in GOALS"
@@ -44,8 +50,23 @@
           hover-class="gz-hover"
           @click="body.goal = g"
         >
-          {{ g }}
+          {{ goalTextOf(g) }}
         </view>
+        <view class="goal" :class="{ 'is-on': isCustom }" hover-class="gz-hover" @click="toggleCustom">
+          {{ isCustom ? goalText : '自定义' }}
+        </view>
+      </view>
+      <view v-if="customOpen" class="goals__custom">
+        <input
+          v-model="customGoal"
+          class="goals__input"
+          type="number"
+          placeholder="步数：1000 ~ 100000"
+          placeholder-class="goals__ph"
+          confirm-type="done"
+          @confirm="applyCustom"
+        />
+        <view class="goals__ok" hover-class="gz-hover" @click="applyCustom">定为今日目标</view>
       </view>
     </view>
 
@@ -60,7 +81,7 @@
           <view class="col__track">
             <view class="col__bar" :style="{ height: barHeight(d) }" />
           </view>
-          <text class="col__n">{{ d.step === null ? '—' : d.step }}</text>
+          <text class="col__n">{{ stepText(d.step) }}</text>
           <text class="col__d">{{ d.label }}</text>
         </view>
       </view>
@@ -99,7 +120,7 @@
  */
 import { computed, ref } from 'vue'
 import { useSkinClass } from '@/composables/useSkin'
-import { useBodyStore } from '@/stores/body'
+import { useBodyStore, GOAL_PRESETS, GOAL_MIN, GOAL_MAX, formatGoal } from '@/stores/body'
 import type { BodyBar } from '@/stores/body'
 import { WerunError, openWeRunSetting, readWeRun } from '@/utils/werun'
 
@@ -107,8 +128,39 @@ const skinClass = useSkinClass()
 const body = useBodyStore()
 const syncing = ref(false)
 
-/** 可选目标：4000 起手、6000 常规、8000 有余 */
-const GOALS = [4000, 6000, 8000] as const
+/** 可选目标：4k 起手、6k 常规、8k 有余、1w 有余力时 */
+const GOALS = GOAL_PRESETS
+
+/** 当前目标的短写法（k / w） */
+const goalText = computed(() => formatGoal(body.goal))
+function goalTextOf(n: number): string {
+  return formatGoal(n)
+}
+
+/** 当前目标不在预设四档里 = 用户自己定的 */
+const isCustom = computed(() => !GOALS.some((g) => g === body.goal))
+
+const customOpen = ref(false)
+const customGoal = ref('')
+
+function toggleCustom(): void {
+  customOpen.value = !customOpen.value
+  if (customOpen.value) customGoal.value = String(body.goal)
+}
+
+function applyCustom(): void {
+  const raw = Number(customGoal.value)
+  if (!raw || !Number.isFinite(raw)) {
+    uni.showToast({ title: '先填一个步数', icon: 'none' })
+    return
+  }
+  if (body.setGoal(raw)) {
+    customOpen.value = false
+    uni.showToast({ title: `今日目标 ${formatGoal(body.goal)} 步`, icon: 'none' })
+    return
+  }
+  uni.showToast({ title: `填 ${GOAL_MIN} ~ ${GOAL_MAX} 之间的步数`, icon: 'none', duration: 2400 })
+}
 
 /** 页面上的一句话：按电量分档，语气平实，不外挂鸡血 */
 const word = computed<string>(() => {
@@ -131,6 +183,15 @@ const syncText = computed<string>(() => {
   const mm = String(d.getMinutes()).padStart(2, '0')
   return `上次 ${hh}:${mm}`
 })
+
+/**
+ * 柱子上方的数字：七列并排，四位数会把那一列撑破，所以满一千也用 k / w 写短。
+ * 不足一千的照写原数 —— 650 步写成 0.7k 反而看不懂。
+ */
+function stepText(n: number | null): string {
+  if (n === null) return '—'
+  return n < 1000 ? String(n) : formatGoal(n)
+}
 
 /** 柱高：没有数据就彻底空着（见注释「诚实标空」） */
 function barHeight(d: BodyBar): string {

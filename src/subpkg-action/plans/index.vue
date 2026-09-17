@@ -8,7 +8,7 @@
       <view class="nav__side" />
     </view>
 
-    <!-- 今天 / 长期 -->
+    <!-- 今日 / 短期 / 中期 / 长期 -->
     <view class="tabs">
       <view
         v-for="t in TABS"
@@ -20,7 +20,7 @@
       >
         {{ t.label }}
         <text v-if="t.id === 'today' && todaySteps.length" class="tab__n">{{ doneSteps }}/{{ todaySteps.length }}</text>
-        <text v-else-if="t.id === 'long' && plan.activeLongCount" class="tab__n">{{ plan.activeLongCount }}</text>
+        <text v-else-if="t.id !== 'today' && horizonCount(t.id)" class="tab__n">{{ horizonCount(t.id) }}</text>
       </view>
     </view>
 
@@ -72,8 +72,10 @@
       </view>
     </template>
 
-    <!-- 长期 -->
+    <!-- 短期 / 中期 / 长期：同一套列表，只是按期限档筛过 -->
     <template v-else>
+      <text v-if="horizonNote" class="horizon-note">{{ horizonNote }}</text>
+
       <view v-if="staleList.length" class="stale">
         <text class="stale__text">{{ w.stale }}</text>
       </view>
@@ -97,13 +99,13 @@
         </view>
       </view>
 
-      <view v-if="!longList.length" class="empty">
+      <view v-if="!horizonList.length" class="empty">
         <view class="empty__seal">划</view>
-        <text class="empty__text">{{ w.emptyLong }}</text>
+        <text class="empty__text">{{ emptyText }}</text>
       </view>
 
       <view
-        v-for="p in longList"
+        v-for="p in horizonList"
         :key="p.id"
         class="plan"
         :class="{ 'is-off': p.status !== 'active' }"
@@ -126,19 +128,33 @@
         <text v-if="dueText(p)" class="plan__due">{{ dueText(p) }}</text>
       </view>
 
-      <view class="add" hover-class="gz-hover" @click="newOpen = true">
+      <view class="add" hover-class="gz-hover" @click="openNew">
         <text class="add__mark">＋</text>
-        <text class="add__text">{{ w.newLong }}</text>
+        <text class="add__text">{{ newLabel }}</text>
       </view>
-      <text class="add__cap">同时在走的长路上限 {{ MAX_LONG_ACTIVE }} 条 —— {{ w.cap }}</text>
+      <text class="add__cap">三档合计上限 {{ MAX_LONG_ACTIVE }} 条 —— {{ w.cap }}</text>
     </template>
 
     <!-- 新建长路 -->
     <view v-if="newOpen" class="overlay" @touchmove.stop.prevent @click="newOpen = false">
       <view class="sheet" @click.stop>
-        <text class="sheet__title">{{ w.newLong }}</text>
+        <text class="sheet__title">{{ newLabel }}</text>
         <input v-model="newTitle" class="sheet__input" placeholder="这条路叫什么" placeholder-class="quick__ph" :maxlength="20" />
         <input v-model="newNote" class="sheet__input" placeholder="为什么走它 / 走成什么样（选填）" placeholder-class="quick__ph" :maxlength="40" />
+        <text class="sheet__label">期限档</text>
+        <view class="chips">
+          <view
+            v-for="h in HORIZONS"
+            :key="h.id"
+            class="chip"
+            :class="{ 'is-on': newHorizon === h.id }"
+            hover-class="gz-hover"
+            @click="newHorizon = h.id"
+          >
+            {{ h.label }}
+          </view>
+        </view>
+        <text class="sheet__hint">{{ HORIZON_DESC[newHorizon] }}</text>
         <text class="sheet__label">挑战类型（选填）</text>
         <view class="chips">
           <view
@@ -166,10 +182,11 @@
 
 <script setup lang="ts">
 /**
- * 行 · 计划列表（分包 subpkg-action）—— 今天 / 长期两个视图。
+ * 行 · 计划列表（分包 subpkg-action）—— 今日 / 短期 / 中期 / 长期四个视图。
  *
- * 「今天」= 三件事之外的步子：派到今天的节点 + 只活今天的一件事 + 待办池；
- * 「长期」= 在走的长路（进度 n/m、下一节点、状态）。
+ * 「今日」= 三件事之外的步子：派到今天的节点 + 只活今天的一件事 + 待办池；
+ * 其余三档 = 在走的路按**期限**分开看：短期一周内、中期一个月内、长期更久或不定日子。
+ * 期限存 Plan.horizon（立路时定下，不随日子流逝自己换档，见 stores/plan.ts 的注释）。
  * 计分与收束规则全部在 stores/plan.ts 里闭环，本页只负责展示与转发。
  * 样式外置在 plans/index.scss（超过 100 行，按项目约定拆出）。
  */
@@ -182,8 +199,9 @@ import {
   type Plan,
   type StepItem,
   type ChallengeType,
+  type PlanHorizon,
 } from '@/stores/plan'
-import { CHALLENGE_DESC, CHALLENGE_LABEL, planWords } from '@/config/lexicon'
+import { CHALLENGE_DESC, CHALLENGE_LABEL, HORIZON_DESC, HORIZON_LABEL, planWords } from '@/config/lexicon'
 import { useModeStore } from '@/stores/mode'
 import { useSkinClass } from '@/composables/useSkin'
 import { todayKey } from '@/stores/daily'
@@ -194,15 +212,23 @@ const mode = useModeStore()
 const skinClass = useSkinClass()
 const w = computed(() => planWords(mode.id))
 
-const TABS = [
-  { id: 'today' as const, label: '今天' },
-  { id: 'long' as const, label: '长期' },
+/** 今日之外按期限分三档；tab 的 id 直接复用 PlanHorizon，省一层映射 */
+type TabId = 'today' | PlanHorizon
+
+const TABS: ReadonlyArray<{ id: TabId; label: string }> = [
+  { id: 'today', label: '今日' },
+  { id: 'short', label: HORIZON_LABEL.short },
+  { id: 'mid', label: HORIZON_LABEL.mid },
+  { id: 'long', label: HORIZON_LABEL.long },
 ]
+const HORIZONS: ReadonlyArray<{ id: PlanHorizon; label: string }> = (
+  ['short', 'mid', 'long'] as PlanHorizon[]
+).map((id) => ({ id, label: HORIZON_LABEL[id] }))
 const CHALLENGES: Array<{ id: ChallengeType; label: string }> = (
   ['abstain', 'try', 'cog'] as ChallengeType[]
 ).map((id) => ({ id, label: CHALLENGE_LABEL[id] }))
 
-const tab = ref<'today' | 'long'>('today')
+const tab = ref<TabId>('today')
 
 onShow(() => {
   // 搁置满 3 天的 today 型计划自动收走（静默，不打扰）
@@ -264,9 +290,33 @@ function dropStep(item: StepItem): void {
   })
 }
 
-/* ---------------- 长期 ---------------- */
-const longList = computed(() => plan.longPlans)
-const staleList = computed(() => plan.staleLong())
+/* ---------------- 短期 / 中期 / 长期 ---------------- */
+/** 当前这一档的路（进行中在前，已收束 / 已收起在后） */
+const horizonList = computed<Plan[]>(() =>
+  tab.value === 'today' ? [] : plan.horizonPlans(tab.value),
+)
+
+/** 当前这一档还在走几条（tab 徽标；「今日」档走的是步子数，不在这里算） */
+function horizonCount(h: TabId): number {
+  return h === 'today' ? 0 : plan.horizonActiveCount(h)
+}
+
+/** 当前这一档的一句话说明（放在列表最上面，说清这一档是什么） */
+const horizonNote = computed<string>(() =>
+  tab.value === 'today' ? '' : HORIZON_DESC[tab.value as PlanHorizon],
+)
+
+/** 空态：长期沿用原来的话，另两档按档名生成 */
+const emptyText = computed<string>(() =>
+  tab.value === 'long' ? w.value.emptyLong : w.value.emptyHorizon(HORIZON_LABEL[tab.value as PlanHorizon]),
+)
+
+/** 「立一条…」按钮与弹层标题：长期用原话，另两档带上档名 */
+const newLabel = computed<string>(() =>
+  tab.value === 'long' ? w.value.newLong : `立一条${HORIZON_LABEL[tab.value as PlanHorizon]}的路`,
+)
+
+const staleList = computed(() => plan.staleLong().filter((p) => plan.horizonOf(p) === tab.value))
 
 function challengeLabel(p: Plan): string {
   return p.challenge ? CHALLENGE_LABEL[p.challenge] : ''
@@ -300,6 +350,16 @@ const newOpen = ref(false)
 const newTitle = ref('')
 const newNote = ref('')
 const newChallenge = ref<ChallengeType | undefined>(undefined)
+const newHorizon = ref<PlanHorizon>('long')
+
+/**
+ * 打开新建弹层：在哪一档点的「＋」，期限档就默认那一档 ——
+ * 让用户在「短期」页立路时不用再回头选一次。今日页没有档，默认长期。
+ */
+function openNew(): void {
+  newHorizon.value = tab.value === 'today' ? 'long' : tab.value
+  newOpen.value = true
+}
 
 function toggleChallenge(id: ChallengeType): void {
   newChallenge.value = newChallenge.value === id ? undefined : id
@@ -315,31 +375,40 @@ function channelDesc(id: ChallengeType): string {
  * 只预填、不代立：点了把它填进新建表单（标题 / 缘由 / 挑战类型），
  * 用户自己看过、改过、亲手按「立下」—— 代用户立下的路，走不远。
  */
-const STARTER_CHALLENGES: ReadonlyArray<{ id: ChallengeType; title: string; note: string }> = [
+const STARTER_CHALLENGES: ReadonlyArray<{
+  id: ChallengeType
+  title: string
+  note: string
+  horizon: PlanHorizon
+}> = [
   {
     id: 'abstain',
     title: '七天睡前不刷手机',
     note: '不靠忍，靠放远：睡前把它放到够不着的地方',
+    horizon: 'short',
   },
   {
     id: 'try',
     title: '七天，每天出门走 20 分钟',
     note: '不求快，只求出门。走成什么样，七天后回来收束回望',
+    horizon: 'short',
   },
   {
     id: 'cog',
     title: '推翻一个「我一直这么认为」',
     note: '挑一个你从不怀疑的说法，认真替它找反例',
+    horizon: 'short',
   },
 ]
 
 /** 从没立过长路（含已收束）才算入门 —— 立过第一条，路就该是他自己的了 */
 const isStarter = computed(() => !plan.plans.some((p) => p.kind === 'long'))
 
-function startChallenge(c: { id: ChallengeType; title: string; note: string }): void {
+function startChallenge(c: { id: ChallengeType; title: string; note: string; horizon: PlanHorizon }): void {
   newTitle.value = c.title
   newNote.value = c.note
   newChallenge.value = c.id
+  newHorizon.value = c.horizon
   newOpen.value = true
 }
 
@@ -349,6 +418,7 @@ function savePlan(): void {
     note: newNote.value,
     kind: 'long',
     challenge: newChallenge.value,
+    horizon: newHorizon.value,
   })
   if (!created) {
     if (!newTitle.value.trim()) uni.showToast({ title: '先给它起个名字', icon: 'none' })
@@ -357,6 +427,7 @@ function savePlan(): void {
   newTitle.value = ''
   newNote.value = ''
   newChallenge.value = undefined
+  newHorizon.value = 'long'
   newOpen.value = false
   uni.showToast({ title: '已立下 · 去拆成几步吧', icon: 'none' })
   navigateTo(ROUTES.actionPlanDetail, { id: created.id })

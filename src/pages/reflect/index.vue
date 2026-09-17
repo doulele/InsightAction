@@ -190,10 +190,9 @@ import { DWELL_MS, dwellTip, poke } from '@/composables/useBuddy'
 import { logTrace } from '@/utils/traceLog'
 import { useSkinClass } from '@/composables/useSkin'
 import { syncTabBar } from '@/utils/skin'
-import { dayStats } from '@/utils/growth'
+import { stopPenTip } from '@/utils/growth'
 import { buildProfile } from '@/utils/profile'
 import { refOfCard } from '@/utils/refSource'
-import { todayKey } from '@/stores/daily'
 import { navigateTo, ROUTES } from '@/router/routes'
 import type { RouteParams, RoutePath } from '@/router/routes'
 import type { EntryBadge } from '@/components/EntryItem/EntryItem.vue'
@@ -233,21 +232,13 @@ function armDwell(): void {
 }
 
 /**
- * 止念触发条件：今天产出过东西（卡片 / 拷问作答）但一次「我用上了」都还没有。
- * 刻意不在产出为 0 时出现 —— 那会让「知」还没开始就被劝退。
+ * 止念条（规格 v2 §4.2 轴一「止念」层）：判据在 `utils/growth.stopPenTip()`，
+ * **止大厅与知大厅共用同一份** —— 同一天两页说法必须一致，不在这里复制一遍。
  */
 /* 自我画像：派生数据，不入库、不持久化 —— 每次进场按当前脊椎重算一遍 */
 const profile = computed(() => buildProfile())
 
-const stopPen = computed(() => {
-  const k = todayKey()
-  const st = dayStats(k)
-  const produced = st.cards + (st.answered ? 1 : 0)
-  if (produced <= 0) return ''
-  const used = trace.ofDay(k).some((t) => t.kind === 'reflect.apply')
-  if (used) return ''
-  return `今天写了 ${produced} 条，一条都还没用上 —— 用过的才算你的。`
-})
+const stopPen = computed(() => stopPenTip())
 
 function goAction(): void {
   navigateTo(ROUTES.tabAction)

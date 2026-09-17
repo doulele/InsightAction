@@ -177,6 +177,23 @@ export const CHALLENGE_REFLECT: Record<PlanChallenge, string> = {
   cog: '原来的判断错在哪？现在怎么看？',
 }
 
+/** 期限三档（与 stores/plan.ts 的 PlanHorizon 同构，两处字面量一致即可互相赋值） */
+export type PlanHorizonKey = 'short' | 'mid' | 'long'
+
+/** 期限三档的中文名：三档是产品定义，不做三套说法 */
+export const HORIZON_LABEL: Record<PlanHorizonKey, string> = {
+  short: '短期',
+  mid: '中期',
+  long: '长期',
+}
+
+/** 期限三档一句话说明（新建 / 编辑时选档用） */
+export const HORIZON_DESC: Record<PlanHorizonKey, string> = {
+  short: '一周内走得完 —— 一件事、一个开头',
+  mid: '一个月内走得完 —— 要拆成几步才到',
+  long: '一个月以上，或者干脆不定日子',
+}
+
 /** 未标挑战类型的普通计划，收束时的通用回望提问 */
 export const PLAN_REFLECT_DEFAULT = '这段路走完，最想留下的一句话是什么？'
 
@@ -199,6 +216,8 @@ export interface PlanWords {
   shelf: (days: number) => string
   /** 长期空态 */
   emptyLong: string
+  /** 某一档（短期 / 中期）的空态；长期仍用 emptyLong */
+  emptyHorizon: (label: string) => string
   /** 今日空态 */
   emptyToday: string
   /** 长期计划上限提示（文案对齐习惯的「别贪多」） */
@@ -228,6 +247,7 @@ const LOCAL_PLAN_WORDS: Record<ModeId, PlanWords> = {
     progress: (done, total) => `走了 ${done}/${total} 步`,
     shelf: (days) => `已搁置 ${days} 天`,
     emptyLong: '还没有在走的长路。\n立一条，把「想做的事」变成一个能走完的东西。',
+    emptyHorizon: (label) => `${label}这一档还没有路。\n想清楚这一档要什么，再立一条。`,
     emptyToday: '今天还没有额外的步子。\n三件事之外还想做点什么，就写一条。',
     cap: '别贪多，先走完手上的 3 条长路',
     newLong: '立一条长路',
@@ -248,6 +268,7 @@ const LOCAL_PLAN_WORDS: Record<ModeId, PlanWords> = {
     progress: (done, total) => `进度 ${done}/${total}`,
     shelf: (days) => `积压 ${days} 天`,
     emptyLong: '暂无进行中的计划。\n建立一条，把一个模糊目标拆成可验证的里程碑。',
+    emptyHorizon: (label) => `${label}暂无进行中的计划。\n建立一条，把该档期的目标拆成里程碑。`,
     emptyToday: '今日无额外任务。\n除三项主任务外仍需推进的，在此登记。',
     cap: '并发上限 3，先收敛手上的计划',
     newLong: '新建计划',
@@ -268,6 +289,7 @@ const LOCAL_PLAN_WORDS: Record<ModeId, PlanWords> = {
     progress: (done, total) => `已过 ${done}/${total} 关`,
     shelf: (days) => `搁置 ${days} 日`,
     emptyLong: '尚无在行之大愿。\n立下一桩，把心之所向化作可过之关。',
+    emptyHorizon: (label) => `${label}尚无在行之愿。\n量力而立，一档一桩足矣。`,
     emptyToday: '今日无额外功课。\n三事之外尚有所求者，记于此。',
     cap: '大愿不宜多，先了结手上的三桩',
     newLong: '立一桩大愿',

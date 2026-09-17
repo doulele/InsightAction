@@ -26,9 +26,26 @@ export const useSettingsStore = defineStore(
      */
     const lowNoise = ref(false)
 
-    return { eveningRemind, streakRemind, lowNoise }
+    /**
+     * 静修声音总开关（2026-09-17）。
+     * 关掉后沙漏 / 茶室 / 呼吸干预一律静音 —— 声音是**加分项不是必需项**，
+     * 开会、通勤、深夜在床边静修时需要一键静下来，而不是先去按手机音量键。
+     * 开着时也只保证「亮屏前台有声音」：切后台微信会挂起普通音频（平台限制，见 utils/audio.ts）。
+     */
+    const soundOn = ref(true)
+
+    /**
+     * 沙漏走时声偏好（none / tick / pink / leaves，见 config/audio.ts）。
+     * 默认「静」：沙漏的语义就是安静，环境音是可选，不是默认。
+     */
+    const sandglassAmbient = ref('none')
+
+    return { eveningRemind, streakRemind, lowNoise, soundOn, sandglassAmbient }
   },
   {
-    persist: { key: 'settings', paths: ['eveningRemind', 'streakRemind', 'lowNoise'] },
+    persist: {
+      key: 'settings',
+      paths: ['eveningRemind', 'streakRemind', 'lowNoise', 'soundOn', 'sandglassAmbient'],
+    },
   },
 )

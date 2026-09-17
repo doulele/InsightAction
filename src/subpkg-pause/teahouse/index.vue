@@ -36,7 +36,7 @@
         </view>
       </view>
 
-      <text class="foot">一盏 5 分钟 · 走完全程入账今日定力</text>
+      <text class="foot">一盏 5 分钟 · 每盏自带一种声音 · 走完全程入账今日定力</text>
     </template>
 
     <!-- 静守中 -->
@@ -155,6 +155,8 @@ import { computed, ref } from 'vue'
 import { onHide, onLoad, onShow, onUnload, onBackPress } from '@dcloudio/uni-app'
 import { useFocusStore } from '@/stores/focus'
 import { useSkinClass } from '@/composables/useSkin'
+import { TEA_AMBIENTS } from '@/config/audio'
+import { playCue, prefetchCue, startAmbient, stopAmbient, teardownAudio } from '@/utils/audio'
 import { ROUTES } from '@/router/routes'
 
 const focus = useFocusStore()
@@ -253,6 +255,8 @@ function clearTicker(): void {
 
 /** 从大厅点某一模式进来：query 带 room 则直接开这一盏 */
 onLoad((query) => {
+  /* 一记提示音先预热：从大厅带 room 进来时马上就会用到 */
+  prefetchCue('open')
   const room = query?.room
   if (typeof room === 'string' && TEA.some((t) => t.id === room)) {
     activeId.value = room as Tea['id']
@@ -269,6 +273,15 @@ function start(id: Tea['id']): void {
   uni.setKeepScreenOn({ keepScreenOn: true })
   clearTicker()
   ticker = setInterval(tick, 250)
+  /* 一记开局（素材没到位就静默，不影响这一盏） */
+  playCue('open')
+  /*
+   * 这一盏的声音：五盏各不相同（焚香壁炉 / 扫尘叶声 / 听潮海浪 / 观云微风 / 煮雪篝火，
+   * 见 config/audio.ts）。用户是随手点的一盏，来不及预热 —— 传 immediate 先出声，
+   * 同时把文件缓存好留给下一次（只多耗首次那一份流量）。
+   */
+  const track = TEA_AMBIENTS[id]
+  if (track) startAmbient(track.files, track.volume, { immediate: true })
 }
 
 /** 跑满结算：全程唯一的入账点 */
@@ -278,6 +291,9 @@ function settle(): void {
   uni.setKeepScreenOn({ keepScreenOn: false })
   phase.value = 'done'
   uni.vibrateShort({ type: 'medium' })
+  /* 一记收盏：声音收尾 + 一次震动（沙漏同理，两处口径一致） */
+  stopAmbient()
+  playCue('close')
 }
 
 function openLeave(): void {
@@ -290,6 +306,7 @@ function leaveFor(cause: string): void {
   clearTicker()
   uni.setKeepScreenOn({ keepScreenOn: false })
   phase.value = 'pick'
+  stopAmbient()
   uni.showToast({ title: `${cause} · 这一盏未计入`, icon: 'none' })
 }
 
@@ -338,6 +355,8 @@ onHide(() => {
 onUnload(() => {
   clearTicker()
   uni.setKeepScreenOn({ keepScreenOn: false })
+  /* 离页立即收干净（不等淡出），免得回到大厅还有一盏在响 */
+  teardownAudio()
 })
 
 /* 物理返回 / 侧滑：静守中拦截为作答层 */

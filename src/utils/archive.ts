@@ -20,6 +20,7 @@ import { usePlanStore } from '@/stores/plan'
 import { SOURCE_LABEL, useProverbStore } from '@/stores/proverb'
 import { useQuestionStore } from '@/stores/question'
 import { PROBE_SCENE_LABEL, useProbeStore } from '@/stores/probe'
+import { useThoughtStore } from '@/stores/thought'
 import { useTraceStore } from '@/stores/trace'
 import { useUrgeStore } from '@/stores/urge'
 import { useVowStore } from '@/stores/vow'
@@ -95,6 +96,7 @@ export function buildArchive(now = new Date()): ArchiveResult {
   const observe = useObserveStore()
   const vow = useVowStore()
   const urge = useUrgeStore()
+  const thought = useThoughtStore()
   const knowledge = useKnowledgeStore()
   const question = useQuestionStore()
   const probe = useProbeStore()
@@ -203,6 +205,23 @@ export function buildArchive(now = new Date()): ArchiveResult {
       L.push(
         `- ${r.day} ${r.hour} 点 · ${r.trigger} · 强度 ${r.intensity} · ${r.acted ? '做了' : '没做'}${
           r.alternative ? ` · 改做：${oneLine(r.alternative)}` : ''
+        }`,
+      )
+    }
+  }
+  L.push('')
+
+  const thoughts = thought.records
+  const canDo = thoughts.filter((t) => t.answer === 'act').length
+  L.push(`### 止念（累计 ${thoughts.length} 次 · 其中"能做点什么"的 ${canDo} 次）`)
+  L.push('')
+  if (!thoughts.length) {
+    L.push('（还没有记过止念）')
+  } else {
+    for (const t of [...thoughts].sort((a, b) => b.at - a.at).slice(0, DETAIL_CAP)) {
+      L.push(
+        `- ${t.day} · ${oneLine(t.text)} · ${t.answer === 'act' ? '能做' : '先放下'}${
+          t.action ? `：${oneLine(t.action)}` : ''
         }`,
       )
     }

@@ -6,7 +6,7 @@
  * 修为不再由各页面手动「+N」，而是随 trace 的 value 入账（见 utils/traceLog.ts），
  * 所以「加一个新行为要加多少分」只需要改这张表。
  *
- * 19 种事件（观 5 / 止 6 / 知 3 / 行 5），hall 由 kind 前缀推导，不重复写。
+ * 20 种事件（观 5 / 止 7 / 知 3 / 行 5），hall 由 kind 前缀推导，不重复写。
  */
 import type { HallId } from '@/config/lexicon'
 
@@ -17,13 +17,14 @@ export type TraceKind =
   | 'observe.theory'
   | 'observe.mother'
   | 'observe.clean'
-  // 止 · 6
+  // 止 · 7
   | 'pause.interrupt'
   | 'pause.vow'
   | 'pause.vow.keep'
   | 'pause.vow.break'
   | 'pause.cooldown'
   | 'pause.urge'
+  | 'pause.thought'
   // 知 · 3
   | 'reflect.note'
   | 'reflect.apply'
@@ -58,6 +59,7 @@ export const TRACE_META: Record<TraceKind, TraceMeta> = {
   'pause.vow.break': { hall: 'pause', value: 5, label: '破誓' },
   'pause.cooldown': { hall: 'pause', value: 3, label: '冷却期' },
   'pause.urge': { hall: 'pause', value: 2, label: '冲动记录' },
+  'pause.thought': { hall: 'pause', value: 5, label: '止念' },
   // 知
   'reflect.note': { hall: 'reflect', value: 5, label: '记笔记' },
   'reflect.apply': { hall: 'reflect', value: 15, label: '用上了' },
@@ -85,6 +87,7 @@ export const TRACE_KINDS = Object.keys(TRACE_META) as TraceKind[]
  */
 export const DAY_CAP: Partial<Record<TraceKind, number>> = {
   'pause.urge': 5,
+  'pause.thought': 3,
   'observe.clean': 5,
   'reflect.note': 5,
   'reflect.apply': 3,

@@ -94,7 +94,29 @@
       </view>
     </view>
 
-    <!-- 3 · 数据 -->
+    <!-- 3 · 静修声音：一记提示音 + 环境音（本机播放；素材按需从服务器取，仅在你开着时请求） -->
+    <view class="section">
+      <view class="section__head">
+        <text class="section__title">静修声音</text>
+        <text class="section__hint">亮屏时才有声 · 跟随系统静音</text>
+      </view>
+      <view class="cards">
+        <view class="row">
+          <view class="row__body">
+            <text class="row__title">静修声音</text>
+            <text class="row__sub">{{ soundSub }}</text>
+          </view>
+          <switch
+            class="row__switch"
+            :checked="settings.soundOn"
+            :color="modeMeta.accent"
+            @change="onSoundToggle"
+          />
+        </view>
+      </view>
+    </view>
+
+    <!-- 4 · 数据 -->
     <view class="section">
       <view class="section__head">
         <text class="section__title">数据</text>
@@ -146,7 +168,7 @@
       </view>
     </view>
 
-    <!-- 4 · 云备份：默认关闭；开启后才与服务器交互用户数据（微信标识匿名） -->
+    <!-- 5 · 云备份：默认关闭；开启后才与服务器交互用户数据（微信标识匿名） -->
     <view class="section">
       <view class="section__head">
         <text class="section__title">云备份</text>
@@ -199,7 +221,7 @@
       </view>
     </view>
 
-    <!-- 5 · AI 授权：默认关闭。撤回后 AI 一律走基础规则，内容不再离开手机 -->
+    <!-- 6 · AI 授权：默认关闭。撤回后 AI 一律走基础规则，内容不再离开手机 -->
     <view class="section">
       <view class="section__head">
         <text class="section__title">AI 授权</text>
@@ -221,7 +243,7 @@
       </view>
     </view>
 
-    <!-- 4 · 关于 -->
+    <!-- 7 · 关于 -->
     <view class="section">
       <view class="section__head">
         <text class="section__title">关于</text>
@@ -235,6 +257,13 @@
           <text class="about__desc">
             数字修行：观 · 止 · 知 · 行。一套底层逻辑，三种表达语言——普通像树、科技如实验室、修仙成道场。
           </text>
+        </view>
+        <view class="row" hover-class="gz-hover" @click="checkUpdate">
+          <view class="row__body">
+            <text class="row__title">检查更新</text>
+            <text class="row__sub">{{ updateSub }}</text>
+          </view>
+          <text class="row__arrow">{{ checking ? '…' : '→' }}</text>
         </view>
       </view>
     </view>
@@ -306,6 +335,22 @@
       @confirm="applyRestore"
     />
 
+    <!--
+      检查更新结果：只有「新包已下载好」这一种结局带可执行动作（重启生效），
+      其余都是说明类，因此关掉横幅、按 canApply 决定要不要给「稍后」这个出口。
+    -->
+    <GzDialog
+      :show="!!updateResult"
+      :title="updateResult?.title || ''"
+      :content="updateResult?.content || ''"
+      :note="updateResult?.note || ''"
+      :confirm-text="updateResult?.canApply ? '立即重启' : '好'"
+      :show-cancel="updateResult?.canApply === true"
+      :banner="false"
+      @cancel="updateResult = null"
+      @confirm="onUpdateConfirm"
+    />
+
     <!-- 隐私授权拦截弹窗：复制 / 选备份文件这类接口在用户同意前会被微信拦下 -->
     <PrivacyGate />
   </view>
@@ -319,7 +364,7 @@
  *    （晚间窗晚课提醒 / 傍晚断连守护），小程序无法后台推送，需打开 App 才能弹；
  *  - 数据：导出今日概览（真实可用）/ 重置今日（二次确认）/ 重置全部修行数据。
  */
-import { computed, ref } from 'vue'
+import { computed, ref, watch } from 'vue'
 import { onShow } from '@dcloudio/uni-app'
 import { MODES, getModeMeta } from '@/config/modes'
 import type { ModeId } from '@/config/modes'
@@ -330,12 +375,16 @@ import { useDailyStore, freshTodos, todayKey } from '@/stores/daily'
 import { useXpStore } from '@/stores/xp'
 import { useSkinClass } from '@/composables/useSkin'
 import { applySkin } from '@/utils/skin'
+import { playCue, setSoundEnabled } from '@/utils/audio'
 import { dayStats } from '@/utils/growth'
 import { resetPracticeData } from '@/utils/localReset'
 import { levelIndexFromXp } from '@/config/levels'
 import { ROUTES } from '@/router/routes'
 import { useContentStore } from '@/stores/content'
 import { useAccountStore } from '@/stores/account'
+import { useRemoteStore } from '@/stores/remote'
+import { applyUpdateNow, updateCheckState, updateReady, updateSupported } from '@/utils/update'
+import { compareVersion, getRunningVersion } from '@/utils/version'
 import type { PhraseKey } from '@/config/phrases'
 import { useDimLabel } from '@/composables/usePhrase'
 import {
@@ -359,6 +408,7 @@ const xp = useXpStore()
 const skinClass = useSkinClass()
 const contentStore = useContentStore()
 const account = useAccountStore()
+const remote = useRemoteStore()
 const modeMeta = computed(() => modeStore.meta)
 
 /** 主题化取词：远端运营位优先、内置兜底（与页面皮肤同一套词） */
@@ -639,6 +689,26 @@ function onRemind(key: RemindKey, e: Event & { detail?: { value?: boolean } }): 
   settings[key] = e.detail?.value ?? false
 }
 
+/** 静修声音的状态说明（开着/静音两种口径写清楚"计时照常"） */
+const soundSub = computed(() =>
+  settings.soundOn
+    ? '开始与结束的一记提示音 · 沙漏与茶室的环境音（只在亮屏时响）'
+    : '已静音 · 静修不放任何声音，计时与入账照常',
+)
+
+/**
+ * 静修声音开关：**当场播一记让用户听到效果**（比任何文案都直观）。
+ * 先手动 setSoundEnabled 再播 —— 不然这一刻播放器里的开关可能还是旧值，
+ * 开了却听不到声音（App.vue 的 watch 是同一批更新，不保证先后）。
+ */
+function onSoundToggle(e: Event & { detail?: { value?: boolean } }): void {
+  const on = !!e.detail?.value
+  settings.soundOn = on
+  setSoundEnabled(on)
+  if (on) playCue('open')
+  uni.showToast({ title: on ? '已开启' : '已静音', icon: 'none' })
+}
+
 /** 导出今日概览：读真实 store 汇总今日观止知行，拼纯文本到剪贴板 */
 function exportToday(): void {
   const k = todayKey()
@@ -662,6 +732,180 @@ function exportToday(): void {
     success: () => uni.showToast({ title: p('toast.copied'), icon: 'none' }),
   })
 }
+
+/* ---------------- 检查更新（手动核对；纯下行，不上报任何东西） ---------------- */
+
+/** 检查结果弹框的文案（canApply = 主按钮能真的执行「重启生效」） */
+interface UpdateResult {
+  title: string
+  content: string
+  note: string
+  canApply: boolean
+}
+
+const checking = ref(false)
+const updateResult = ref<UpdateResult | null>(null)
+/** 本页会话内最近一次检查时间（不持久化：下次进来重新问一次更省心） */
+const lastCheckedAt = ref('')
+
+/**
+ * 版本口径：正式版取微信线上版本号（权威 —— 它决定你手上的包新旧），
+ * 开发版 / 体验版取不到（返回空串），退回代码里的包版本号 appStore.versionName。
+ */
+const shownVersion = computed(() => getRunningVersion() || appStore.versionName)
+
+const updateSub = computed(() => {
+  if (checking.value) return '正在核对…'
+  if (updateReady.value) return '新版本已下载好 · 点一下重启生效'
+  if (lastCheckedAt.value) return `上次检查 ${lastCheckedAt.value} · 当前 v${shownVersion.value}`
+  return `当前 v${shownVersion.value} · 点一下核对有没有新版本`
+})
+
+/** 弹框底部那行版本说明：开发/体验版要讲清"为什么版本号是本机包版本" */
+const versionNote = computed(() =>
+  getRunningVersion()
+    ? `当前 v${shownVersion.value}`
+    : `当前 v${shownVersion.value}（开发版 / 体验版取不到微信线上版本号，显示的是本机包版本）`,
+)
+
+function hhmm(): string {
+  const d = new Date()
+  return `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`
+}
+
+/**
+ * 手动检查更新。
+ *
+ * ⚠️ 能力边界（文案与实际行为都必须守住，别写成"点一下强制拉新版"）：
+ *   1. 微信**没有**主动触发检查的接口 —— 它只在小程序冷启动时自动查一次，
+ *      结论由 onCheckForUpdate（有无新版）/ onUpdateReady（新版下没下完）回调给出，
+ *      这里读的就是那两个回调的状态（见 utils/update.ts）；
+ *   2. 服务器侧的 /app/config 会下发 latestVersion（运营手工填，现在线上是空的），
+ *      再拉一次即可比对 —— 这是"服务器记录"，不等于微信已放量；
+ *   3. 真正能完成的"升级"只有一个动作：新包已下载就绪时 applyUpdate() 重启生效。
+ *   所以判断顺序是「就绪 → 微信说有新版 → 微信说没新版 → 网络 → 环境 → 服务器比对 → 说不清」，
+ *   最后那条如实告诉用户"微信只在冷启动查，重开一次即可"，不装作查过了。
+ */
+async function checkUpdate(): Promise<void> {
+  if (checking.value) return
+  checking.value = true
+  uni.showLoading({ title: '正在核对…', mask: true })
+
+  let ok = false
+  try {
+    ok = await remote.load()
+  } finally {
+    checking.value = false
+    uni.hideLoading()
+  }
+  lastCheckedAt.value = hhmm()
+
+  const running = getRunningVersion()
+  const latest = remote.appInfo?.latestVersion || ''
+  const note = versionNote.value
+
+  // ① 新包已经躺在手机上了 —— 唯一能真的"升级"的结局
+  if (updateReady.value) {
+    updateResult.value = {
+      title: '新版本已就绪',
+      content: '新版本已经下载到本机，重启一下就能用上。',
+      note,
+      canApply: true,
+    }
+    return
+  }
+
+  // ② 微信本次启动已确认有新版本，正在后台静默下载
+  if (updateCheckState.value === 'has') {
+    updateResult.value = {
+      title: '发现新版本',
+      content: '微信正在后台下载新版本。等一会儿再点一次「检查更新」，或下次打开小程序时自动生效。',
+      note,
+      canApply: false,
+    }
+    return
+  }
+
+  // ③ 微信侧确认无更新 —— 以它为准（它才是决定放量的那一方）
+  if (updateCheckState.value === 'none') {
+    updateResult.value = {
+      title: '已是最新版本',
+      content: '微信侧没有可用的新版本，你用的就是最新的。',
+      note,
+      canApply: false,
+    }
+    return
+  }
+
+  // ④ 连服务器也失败：明确说"没查到"，不能说成"已是最新"
+  if (!ok) {
+    updateResult.value = {
+      title: '检查失败',
+      content: '没能连上服务器核对版本信息，请检查网络后再试一次。本机数据不受影响。',
+      note,
+      canApply: false,
+    }
+    return
+  }
+
+  // ⑤ 当前环境根本没有 UpdateManager（H5 预览等）
+  if (!updateSupported.value) {
+    updateResult.value = {
+      title: '当前环境无法核对',
+      content: '版本核对要用微信小程序自己的更新能力，浏览器预览里取不到。',
+      note,
+      canApply: false,
+    }
+    return
+  }
+
+  // ⑥ 服务器记录的版本比你手上的新（微信还没把新包推给你）
+  if (running && latest && compareVersion(running, latest) < 0) {
+    updateResult.value = {
+      title: '服务器上已有新版本',
+      content: `服务器记录的版本是 v${latest}，比你正用的 v${running} 新。微信还没把新包推给你 —— 关掉小程序再重新打开，通常就能拿到。`,
+      note,
+      canApply: false,
+    }
+    return
+  }
+
+  // ⑦ 都没有结论：如实说明微信的检查时机，给出唯一可执行的动作
+  updateResult.value = {
+    title: '暂时核对不了',
+    content:
+      '微信只在打开小程序的那一刻自动检查更新，手动点这里不会让它再查一次。若你刚收到发版通知，关掉小程序重新打开即可拿到新版本。',
+    note: latest ? `${note} · 服务器记录的最新版 v${latest}` : note,
+    canApply: false,
+  }
+}
+
+function onUpdateConfirm(): void {
+  const r = updateResult.value
+  updateResult.value = null
+  if (!r?.canApply) return
+  // applyUpdate 会立即重启小程序，成功就不必再管界面
+  if (applyUpdateNow()) return
+  uni.showModal({
+    title: '重启失败',
+    content: '没能应用新版本，请关掉小程序后重新进入。',
+    showCancel: false,
+  })
+}
+
+/**
+ * 手动检查时新包正好下载完 → 把「正在下载」就地升级成「可以重启」，
+ * 用户不用再点一次「检查更新」。（只在结果弹框已开着时升级，不做无端弹窗。）
+ */
+watch(updateReady, (v) => {
+  if (!v || !updateResult.value || updateResult.value.canApply) return
+  updateResult.value = {
+    title: '新版本已就绪',
+    content: '新版本已经下载到本机，重启一下就能用上。',
+    note: versionNote.value,
+    canApply: true,
+  }
+})
 
 /** 重置全部修行数据：二次确认后清空所有修行/档案记录，语言与提醒偏好保留 */
 </script>

@@ -19,6 +19,7 @@
       <view class="head">
         <view class="head__row">
           <text class="head__title">{{ item.title }}</text>
+          <text v-if="item.kind === 'long'" class="head__tag">{{ horizonLabel }}</text>
           <text v-if="item.challenge" class="head__tag">{{ challengeLabel }}</text>
           <text class="head__status">{{ statusLabel }}</text>
         </view>
@@ -96,6 +97,19 @@
         <text class="sheet__title">编辑</text>
         <input v-model="editTitle" class="sheet__input" placeholder="标题" placeholder-class="quick__ph" :maxlength="20" />
         <input v-model="editNote" class="sheet__input" placeholder="为什么做 / 做成什么样（选填）" placeholder-class="quick__ph" :maxlength="60" />
+        <text class="sheet__label">期限档</text>
+        <view class="chips">
+          <view
+            v-for="h in HORIZONS"
+            :key="h.id"
+            class="chip"
+            :class="{ 'is-on': editHorizon === h.id }"
+            hover-class="gz-hover"
+            @click="editHorizon = h.id"
+          >
+            {{ h.label }}
+          </view>
+        </view>
         <text class="sheet__label">挑战类型</text>
         <view class="chips">
           <view
@@ -137,10 +151,11 @@ import {
   usePlanStore,
   LONG_STALE_DAYS,
   type ChallengeType,
+  type PlanHorizon,
   type Plan,
   type StepItem,
 } from '@/stores/plan'
-import { CHALLENGE_LABEL, planWords } from '@/config/lexicon'
+import { CHALLENGE_LABEL, HORIZON_LABEL, planWords } from '@/config/lexicon'
 import { useModeStore } from '@/stores/mode'
 import { useSkinClass } from '@/composables/useSkin'
 import { todayKey } from '@/stores/daily'
@@ -162,7 +177,14 @@ const item = computed<Plan | undefined>(() => plan.byId(id.value))
 const progress = computed(() => (item.value ? plan.progressOf(item.value) : { done: 0, total: 0, pct: 0 }))
 const nextTitle = computed(() => (item.value ? plan.nextNodeOf(item.value)?.title ?? '' : ''))
 const challengeLabel = computed(() => (item.value?.challenge ? CHALLENGE_LABEL[item.value.challenge] : ''))
+/** 期限档：老数据没有存档，按目标日的跨度推（store 里同一个口径） */
+const horizonLabel = computed(() =>
+  item.value ? HORIZON_LABEL[plan.horizonOf(item.value)] : '',
+)
 
+const HORIZONS: ReadonlyArray<{ id: PlanHorizon; label: string }> = (
+  ['short', 'mid', 'long'] as PlanHorizon[]
+).map((h) => ({ id: h, label: HORIZON_LABEL[h] }))
 const CHALLENGES: Array<{ id: ChallengeType; label: string }> = (
   ['abstain', 'try', 'cog'] as ChallengeType[]
 ).map((c) => ({ id: c, label: CHALLENGE_LABEL[c] }))
@@ -274,6 +296,7 @@ const editOpen = ref(false)
 const editTitle = ref('')
 const editNote = ref('')
 const editChallenge = ref<ChallengeType | undefined>(undefined)
+const editHorizon = ref<PlanHorizon>('long')
 const editDue = ref('')
 
 watch(editOpen, (v) => {
@@ -282,6 +305,7 @@ watch(editOpen, (v) => {
   editTitle.value = p.title
   editNote.value = p.note ?? ''
   editChallenge.value = p.challenge
+  editHorizon.value = plan.horizonOf(p)
   editDue.value = p.dueDay ?? ''
 })
 
@@ -296,6 +320,7 @@ function saveEdit(): void {
     title: editTitle.value,
     note: editNote.value,
     challenge: editChallenge.value,
+    horizon: editHorizon.value,
     dueDay: editDue.value,
   })
   if (!ok) {

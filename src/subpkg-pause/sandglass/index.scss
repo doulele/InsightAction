@@ -136,6 +136,37 @@
   font-weight: 600;
 }
 
+/* ---- 走时声（计时中循环播放的背景音，可选） ---- */
+.pills__head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  margin: 0 0 14rpx;
+}
+
+.pills__title {
+  font-size: $gz-fs-caption;
+  letter-spacing: 0.1em;
+  color: $gz-ink-3;
+}
+
+.pills__hint {
+  font-size: $gz-fs-caption;
+  color: $gz-ink-3;
+}
+
+/* 走时声那排比时长小一号：它是可选项，不该和时长抢注意力 */
+.pills--sound .pill {
+  padding: 14rpx 0;
+  font-size: $gz-fs-caption;
+}
+
+/* 计时中的切换入口：收窄居中，随手能点（嫌吵时就地按「静」） */
+.pills--runtime {
+  width: 480rpx;
+  margin: 34rpx auto 0;
+}
+
 .cta {
   width: 100%;
   padding: 28rpx 0;

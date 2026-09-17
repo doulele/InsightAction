@@ -6,9 +6,11 @@
  * 攒够十几次之后，「触发点地图」会把它们按「触发点」和「时段」聚合出来，
  * 于是「你这周有 3 次想下单，都发生在 22:00 之后」这句话才有依据。
  *
- * 冷却期：冲动来袭时先不决策，给自己 10 分钟。
- * 期间页面显示倒计时与替代动作；走完记 pause.cooldown(3)。
- * 不阻止任何事 —— 只是把「立刻做」变成「十分钟后还想做吗」。
+ * 冷却期（两档）：冲动来袭时先不决策 ——
+ *   10 分钟：当下一口气（多数冲动撑不过这一段）
+ *   48 小时：想买、想做的大决定（放两天再看还想不想）
+ * 期间页面显示倒计时与替代动作；走完记 pause.cooldown。
+ * 不阻止任何事 —— 只是把「立刻做」变成「过一会儿还想做吗」。
  */
 import { defineStore } from 'pinia'
 import { computed, ref } from 'vue'
@@ -37,8 +39,46 @@ export interface UrgeRecord {
   alternative?: string
 }
 
-/** 冷却期默认 10 分钟 */
+/** 冷却期档位：quick = 当下一口气（10 分钟）/ long = 大决定先放两天（48 小时） */
+export type CooldownKind = 'quick' | 'long'
+
+/** 快档：10 分钟 */
 export const COOLDOWN_MIN = 10
+/** 长档：48 小时（规格 §4.2 长期档口径） */
+export const COOLDOWN_LONG_MIN = 48 * 60
+
+/** 快档文案 */
+const QUICK_META = {
+  id: 'quick' as const,
+  label: '10 分钟',
+  note: '当下一口气 —— 撑过这一段，多数冲动已经退了',
+}
+/** 长档文案 */
+const LONG_META = {
+  id: 'long' as const,
+  label: '48 小时',
+  note: '想买、想做的大决定 —— 放两天再看还想不想',
+}
+
+/** 档位表（页面文案的唯一来源，别在页面里写死这两串字） */
+export const COOLDOWN_KINDS = [QUICK_META, LONG_META] as const
+
+export interface CooldownMeta {
+  id: CooldownKind
+  label: string
+  note: string
+}
+
+/** 取某一档的文案（查不到时回落快档 —— 老数据没有 cooldownKind 字段） */
+export function cooldownKindMeta(kind: CooldownKind): CooldownMeta {
+  return kind === 'long' ? LONG_META : QUICK_META
+}
+
+/** 档位对应的分钟数 */
+export function cooldownMinutesOf(kind: CooldownKind): number {
+  return kind === 'long' ? COOLDOWN_LONG_MIN : COOLDOWN_MIN
+}
+
 /** 记录留存上限 */
 const CAP = 400
 
@@ -71,6 +111,8 @@ export const useUrgeStore = defineStore(
     const records = ref<UrgeRecord[]>([])
     /** 冷却期截止时刻（0 = 无） */
     const cooldownUntil = ref(0)
+    /** 当前这段冷却的档位（决定倒计时怎么显示、走完怎么写这一笔） */
+    const cooldownKind = ref<CooldownKind>('quick')
 
     function add(input: {
       trigger: string
@@ -111,8 +153,23 @@ export const useUrgeStore = defineStore(
       return Math.max(0, Math.ceil((cooldownUntil.value - now) / 1000))
     }
 
-    function startCooldown(minutes = COOLDOWN_MIN): void {
-      cooldownUntil.value = Date.now() + minutes * 60 * 1000
+    /** 倒计时显示：快档走 MM:SS，长档走「N 天 N 小时」（48 小时按秒读没人看得下去） */
+    function cooldownText(now = Date.now()): string {
+      const s = cooldownRemain(now)
+      if (s <= 0) return ''
+      if (cooldownKind.value === 'quick') {
+        const m = Math.floor(s / 60)
+        const sec = s % 60
+        return `${String(m).padStart(2, '0')}:${String(sec).padStart(2, '0')}`
+      }
+      const hours = Math.floor(s / 3600)
+      const days = Math.floor(hours / 24)
+      return days > 0 ? `${days} 天 ${hours % 24} 小时` : `${hours} 小时`
+    }
+
+    function startCooldown(kind: CooldownKind = 'quick'): void {
+      cooldownKind.value = kind
+      cooldownUntil.value = Date.now() + cooldownMinutesOf(kind) * 60 * 1000
     }
 
     function clearCooldown(): void {
@@ -121,8 +178,12 @@ export const useUrgeStore = defineStore(
 
     function finishCooldown(): void {
       if (!cooldownUntil.value) return
+      const kind = cooldownKind.value
       clearCooldown()
-      logTrace({ kind: 'pause.cooldown', text: '走完一段冷却' })
+      logTrace({
+        kind: 'pause.cooldown',
+        text: kind === 'long' ? '撑过 48 小时冷却' : '走完一段冷却',
+      })
     }
 
     /* ---------------- 触发点地图 ---------------- */
@@ -178,9 +239,11 @@ export const useUrgeStore = defineStore(
     return {
       records,
       cooldownUntil,
+      cooldownKind,
       add,
       remove,
       cooldownRemain,
+      cooldownText,
       startCooldown,
       clearCooldown,
       finishCooldown,
@@ -191,6 +254,6 @@ export const useUrgeStore = defineStore(
     }
   },
   {
-    persist: { key: 'urge', paths: ['records', 'cooldownUntil'] },
+    persist: { key: 'urge', paths: ['records', 'cooldownUntil', 'cooldownKind'] },
   },
 )

@@ -38,6 +38,7 @@ import { useRemoteStore } from '@/stores/remote'
 import { useReminderStore } from '@/stores/reminder'
 import { useSeedStore } from '@/stores/seed'
 import { useSettingsStore } from '@/stores/settings'
+import { useThoughtStore } from '@/stores/thought'
 import { useTraceStore } from '@/stores/trace'
 import { useUrgeStore } from '@/stores/urge'
 import { useVowStore } from '@/stores/vow'
@@ -119,6 +120,7 @@ const HYDRATORS: Array<{ key: string; use: () => Patchable }> = [
   { key: 'reminder', use: () => useReminderStore() },
   { key: 'seed', use: () => useSeedStore() },
   { key: 'settings', use: () => useSettingsStore() },
+  { key: 'thought', use: () => useThoughtStore() },
   { key: 'trace', use: () => useTraceStore() },
   { key: 'urge', use: () => useUrgeStore() },
   { key: 'vow', use: () => useVowStore() },

@@ -15,6 +15,7 @@
       <text class="intro__text">
         管住「手先于脑」的时刻：选一个总想打开的开关，陪自己做完一段呼吸，
         把冲动摁回去——这一步比憋一整天更有用。
+        每一段都有一声轻响领着你：吸 · 屏 · 呼（可在「设置 → 静修声音」里关掉）。
       </text>
       <view class="cards">
         <view class="card">
@@ -117,14 +118,15 @@
  * 针对「想打开某开关」的冲动时刻，提供 1-3 分钟呼吸暂停；
  * 走完全程记一次守住（+修为），中途退出只诚实计数不惩罚。数据本地（stores/interrupt.ts）。
  */
-import { computed, ref } from 'vue'
+import { computed, onUnmounted, ref, watch } from 'vue'
 import GzDialog from '@/components/GzDialog/GzDialog.vue'
-import { onUnmounted } from 'vue'
 import { useInterruptStore, PRESET_SCENARIOS } from '@/stores/interrupt'
 import { logTrace } from '@/utils/traceLog'
 import { useSkinClass } from '@/composables/useSkin'
 import { todayKey } from '@/stores/daily'
 import { ROUTES } from '@/router/routes'
+import type { CueKind } from '@/config/audio'
+import { playCue, prefetchCue, teardownAudio } from '@/utils/audio'
 
 const store = useInterruptStore()
 const skinClass = useSkinClass()
@@ -187,6 +189,29 @@ const phaseText = computed(
     })[phase.value],
 )
 
+/**
+ * 呼吸引导音（2026-09-17）：4-7-8 的每一段起手都给一声轻响。
+ * 之前只有文字 + 倒计时，闭着眼根本不知道此刻该吸还是该呼。
+ * 素材见 config/audio.ts —— 短音还没上传时回落颂钵的变速截取，所以现在就已经有声；
+ * 音量与总开关由 utils/audio.ts 统一管（设置页的「静修声音」）。
+ */
+let lastCued = ''
+
+/** 相位真的变了才发声（开始时已显式放过一声，避免同一相位连响两次） */
+function cuePhase(p: 'in' | 'hold' | 'out', force = false): void {
+  if (!running.value) return
+  if (!force && p === lastCued) return
+  lastCued = p
+  playCue(p as CueKind)
+}
+
+watch(phase, (p) => cuePhase(p))
+
+/* 进页面就把三声备好（都是极短的音；缺素材时静默，不影响任何计时） */
+prefetchCue('in')
+prefetchCue('hold')
+prefetchCue('out')
+
 function clearTimer(): void {
   if (timer !== null) {
     clearInterval(timer)
@@ -198,6 +223,12 @@ function start(): void {
   running.value = true
   remain.value = minutes.value * 60
   clearTimer()
+  /*
+   * 一声「吸」起手：显式放，不靠 watch ——
+   * 1 分钟档（60 秒）的起手相位和上一轮的落点可能恰好相同，watch 就不会触发。
+   */
+  lastCued = ''
+  cuePhase('in', true)
   timer = setInterval(() => {
     remain.value -= 1
     if (remain.value <= 0) {
@@ -215,6 +246,8 @@ function settle(held: boolean): void {
     // 守住誓愿：走事件流入账（原 +5 不变，显式指定以对齐旧口径）
     logTrace({ kind: 'pause.vow.keep', text: `守住了一次「${selected.value.name}」`, value: 5 })
     uni.showToast({ title: `守住了一次「${selected.value.name}」 · +5 修为`, icon: 'none' })
+    /* 一记收功；中途放弃则静默 —— 不为放弃庆祝，但也不惩罚 */
+    playCue('close')
   } else {
     uni.showToast({ title: '没有关系，再来一次', icon: 'none' })
   }
@@ -237,7 +270,11 @@ function abort(): void {
   })
 }
 
-onUnmounted(clearTimer)
+onUnmounted(() => {
+  clearTimer()
+  /* 离页收干净：呼吸引导音不该跟着回到大厅还在响 */
+  teardownAudio()
+})
 
 function goBack(): void {
   const pages = getCurrentPages()

@@ -51,8 +51,12 @@ export const useRemoteStore = defineStore(
       return features.value[key] !== false
     }
 
-    /** 启动时拉一次（失败静默） */
-    async function load(): Promise<void> {
+    /**
+     * 拉一次远端配置：启动时调用（失败静默），也供设置页的「手动检查更新」再拉一次。
+     * 返回值 = 是否真的拿到了配置 —— 手动检查要靠它区分「服务器没新版本」与「根本没连上」，
+     * 否则网络一断会把"查不到"说成"已是最新"。
+     */
+    async function load(): Promise<boolean> {
       try {
         const cfg = await fetchAppConfig()
 
@@ -72,8 +76,10 @@ export const useRemoteStore = defineStore(
         }
 
         loaded.value = true
+        return true
       } catch {
         // 忽略：远端配置不可用时保持本地默认（功能全开、无公告）
+        return false
       }
     }
 

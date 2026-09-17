@@ -61,6 +61,7 @@ const VERB: Record<TraceKind, string> = {
   'pause.vow.break': '破约',
   'pause.cooldown': '静修',
   'pause.urge': '记下',
+  'pause.thought': '止念',
   'reflect.note': '写下',
   'reflect.apply': '用上',
   'reflect.probe': '自省',
@@ -205,6 +206,7 @@ function buildHalls(traces: Trace[], from: string, to: string): Record<HallId, s
     minutes > 0 ? `静修 ${minutes} 分钟` : '',
     vowN ? `立约 ${vowN} 次守住 ${n('pause.vow.keep')} 次${breakN ? `（破了 ${breakN} 次，你写下了原因）` : ''}` : '',
     n('pause.urge') ? `冲动 ${n('pause.urge')} 次` : '',
+    n('pause.thought') ? `止念 ${n('pause.thought')} 次` : '',
   ])
 
   const lv3 = newCards.filter((c) => c.depth === 3).length

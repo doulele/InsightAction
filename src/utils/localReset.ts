@@ -22,6 +22,7 @@ import { useObserveStore } from '@/stores/observe'
 import { useComposeDraftStore } from '@/stores/composeDraft'
 import { useBodyStore } from '@/stores/body'
 import { usePlanStore } from '@/stores/plan'
+import { useThoughtStore } from '@/stores/thought'
 import { useUrgeStore } from '@/stores/urge'
 import { useVowStore } from '@/stores/vow'
 import { useInterruptStore } from '@/stores/interrupt'
@@ -57,7 +58,8 @@ export function resetPracticeData(): void {
    * 会发现计划还在、冲动记录还在 —— 那句话就成了假的。
    */
   usePlanStore().$patch({ plans: [] })
-  useUrgeStore().$patch({ records: [], cooldownUntil: 0 })
+  useThoughtStore().$patch({ records: [] })
+  useUrgeStore().$patch({ records: [], cooldownUntil: 0, cooldownKind: 'quick' })
   useVowStore().$patch({ current: null, history: [] })
   useInterruptStore().$patch({ custom: [], records: [] })
   useProbeStore().$patch({ records: [], skipped: {} })

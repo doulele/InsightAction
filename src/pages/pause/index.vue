@@ -1,7 +1,7 @@
 <template>
   <view class="page" :class="skinClass">
     <!-- 大厅头（五页共用组件：主题艺术画作背景 + 印章 + 定位 + 状态） -->
-    <HallHead mark="止" en="HOLD · 止刷 → 止行 → 止念" :line="headLine" :stats="headStats" />
+    <HallHead mark="止" en="HOLD · 止行 → 止念 → 止欲" :line="headLine" :stats="headStats" />
 
     <!-- 第一周解锁引导：今天的主角在这里才挂出 -->
     <WeekGuide for="pause" />
@@ -21,58 +21,114 @@
       <view class="today__streak" hover-class="gz-hover" @click="toStreak">{{ streakText }}</view>
     </view>
 
-    <!-- 禅定沙漏 -->
-    <view class="section">
-      <view class="section__head">
-        <text class="section__title">禅定沙漏</text>
-        <text class="section__hint">翻转手机触发 · 中途退出需作答</text>
+    <!-- ================= 层一 · 止行（含原「止刷」）================= -->
+    <!-- 止的是"你正在做的那个动作"：把时间收回来 → 把今天守住 → 长期守护 -->
+    <view class="layer">
+      <view class="layer__head">
+        <text class="layer__name">止行</text>
+        <text class="layer__desc">手在动的时候，先让它停下来</text>
       </view>
-      <view class="pills">
-        <view
-          v-for="d in durations"
-          :key="d"
-          class="pill"
-          :class="{ 'is-on': d === chosenDur }"
-          @click="chosenDur = d"
-        >
-          {{ d }} 分
+
+      <!-- 静心茶室（受远端功能开关控制：features.teahouse = false 时整块隐藏） -->
+      <view v-if="remote.feature('teahouse')" class="section">
+        <view class="section__head">
+          <text class="section__title">静心茶室</text>
+          <text class="section__hint">五种方式 · 每次 5 分钟</text>
+        </view>
+        <!-- 五盏一行放下：只留「色点 + 名」（原 3+2 两行带意境句，占掉近一半屏高）
+             —— 意境句在茶室页说得更全（选盏页的 mood、场景里的那一行），大厅不重复讲 -->
+        <view class="tea">
+          <view v-for="room in teaRooms" :key="room.id" class="tea__room" hover-class="gz-hover" @click="onTea(room.id)">
+            <view class="tea__dot" :style="{ background: room.accent }" />
+            <text class="tea__name">{{ room.name }}</text>
+          </view>
         </view>
       </view>
-      <button class="cta cta--ghost" hover-class="gz-hover" @click="onStartSandglass">
-        开始一段静修
-      </button>
-    </view>
 
-    <!-- 静心茶室（受远端功能开关控制：features.teahouse = false 时整块隐藏） -->
-    <view v-if="remote.feature('teahouse')" class="section">
-      <view class="section__head">
-        <text class="section__title">静心茶室</text>
-        <text class="section__hint">五种方式 · 每次 5 分钟</text>
+      <!-- 禅定沙漏（文案与实现对齐：实际是点按钮开始，没有陀螺仪监听） -->
+      <view class="section">
+        <view class="section__head">
+          <text class="section__title">禅定沙漏</text>
+          <text class="section__hint">走完全程才入账 · 中途退出需作答</text>
+        </view>
+        <view class="pills">
+          <view
+            v-for="d in durations"
+            :key="d"
+            class="pill"
+            :class="{ 'is-on': d === chosenDur }"
+            @click="chosenDur = d"
+          >
+            {{ d }} 分
+          </view>
+        </view>
+        <button class="cta cta--ghost" hover-class="gz-hover" @click="onStartSandglass">
+          开始一段静修
+        </button>
       </view>
-      <view class="tea">
-        <view v-for="room in teaRooms" :key="room.id" class="tea__room" hover-class="gz-hover" @click="onTea(room.id)">
-          <view class="tea__dot" :style="{ background: room.accent }" />
-          <text class="tea__name">{{ room.name }}</text>
-          <text class="tea__desc">{{ room.desc }}</text>
+
+      <view class="section">
+        <view class="entries">
+          <EntryItem
+            v-for="item in holdEntries"
+            :key="item.title"
+            :title="item.title"
+            :subtitle="item.subtitle"
+            :mark="item.mark"
+            :badge="item.badge"
+            :url="item.url"
+          />
         </view>
       </view>
     </view>
 
-    <!-- 更深入口 -->
-    <view class="section">
-      <view class="section__head">
-        <text class="section__title">养成定力</text>
+    <!-- ================= 层二 · 止念 ================= -->
+    <!-- 止的是"脑子里反复转的念头"：落到纸上，判它现在有没有解 -->
+    <view class="layer">
+      <view class="layer__head">
+        <text class="layer__name">止念</text>
+        <text class="layer__desc">脑子在转的时候，把念头落到纸上</text>
       </view>
+
       <view class="entries">
         <EntryItem
-          v-for="item in moreEntries"
+          v-for="item in thinkEntries"
           :key="item.title"
           :title="item.title"
           :subtitle="item.subtitle"
           :mark="item.mark"
           :badge="item.badge"
           :url="item.url"
-          :disabled="item.disabled"
+        />
+      </view>
+
+      <!-- 止念条：今天写得多却一条没用上 → 停笔去实践（与知大厅同一份判定） -->
+      <view v-if="stopPen" class="stoppen" hover-class="gz-hover" @click="goAction">
+        <view class="stoppen__body">
+          <text class="stoppen__title">停笔，去实践</text>
+          <text class="stoppen__text">{{ stopPen }}</text>
+        </view>
+        <text class="stoppen__go">去行厅 ›</text>
+      </view>
+    </view>
+
+    <!-- ================= 层三 · 止欲 ================= -->
+    <!-- 止的是"心里那点想要"：记下来看清形状，先不决策 -->
+    <view class="layer">
+      <view class="layer__head">
+        <text class="layer__name">止欲</text>
+        <text class="layer__desc">心里痒的时候，先不决策</text>
+      </view>
+
+      <view class="entries">
+        <EntryItem
+          v-for="item in wantEntries"
+          :key="item.title"
+          :title="item.title"
+          :subtitle="item.subtitle"
+          :mark="item.mark"
+          :badge="item.badge"
+          :url="item.url"
         />
       </view>
     </view>
@@ -87,8 +143,13 @@
 
 <script setup lang="ts">
 /**
- * 止 · 静修大厅：训练中断默认模式（止刷/止行/止念）。
- * 批次 A：定力展示 + 时长选择视觉；批次 B：禅定沙漏 / 静心茶室均为真实子页（分包），计时走完全程写入今日定力。
+ * 止 · 静修大厅：训练中断默认模式。
+ *
+ * 三层按「被止掉的对象」分（规格 v2 §4.2 轴一，2026-09-17 定案）：
+ *   止行 —— 手在动的那个动作（含原「止刷」，不再单列一层）
+ *   止念 —— 脑子里反复转的念头
+ *   止欲 —— 心里那点「想要」
+ * 页面按这三层分组渲染：层是"止什么"，组内的即时 / 当日 / 长期是"管多久"（轴二）。
  */
 import { computed, ref } from 'vue'
 import HallHead from '@/components/HallHead/HallHead.vue'
@@ -99,7 +160,8 @@ import { useRemoteStore } from '@/stores/remote'
 import { useFocusStore } from '@/stores/focus'
 import { useReminderStore } from '@/stores/reminder'
 import { useInterruptStore } from '@/stores/interrupt'
-import { useUrgeStore } from '@/stores/urge'
+import { useUrgeStore, cooldownKindMeta } from '@/stores/urge'
+import { useThoughtStore } from '@/stores/thought'
 import { useVowStore } from '@/stores/vow'
 import { todayKey } from '@/stores/daily'
 import { useDimLabel } from '@/composables/usePhrase'
@@ -107,6 +169,7 @@ import { poke } from '@/composables/useBuddy'
 import { useSkinClass } from '@/composables/useSkin'
 import { syncTabBar } from '@/utils/skin'
 import { hallLine } from '@/config/lexicon'
+import { stopPenTip } from '@/utils/growth'
 import { navigateTo, ROUTES } from '@/router/routes'
 import type { RoutePath } from '@/router/routes'
 import type { EntryBadge } from '@/components/EntryItem/EntryItem.vue'
@@ -118,9 +181,11 @@ const skinClass = useSkinClass()
 const focus = useFocusStore()
 const reminder = useReminderStore()
 const interrupt = useInterruptStore()
-/** 立约（当日档）与冲动记录（长期档）——规格 v2 §4.2 的两个新增件 */
+/** 立约（止行 · 当日档）与冲动记录（止欲）——规格 v2 §4.2 */
 const vow = useVowStore()
 const urge = useUrgeStore()
+/** 止念（止念层）：今天已止几念 */
+const thought = useThoughtStore()
 
 /** 立约入口徽标：今天的状态一眼可见（未立 / 待回看 / 守住 / 破了） */
 const vowBadge = computed<EntryBadge>(() => {
@@ -188,17 +253,21 @@ interface TeaRoom {
   /** 对应静心茶室子页的 room 场景 id */
   id: string
   name: string
-  desc: string
   accent: string
 }
 
-/** 茶室五色：取「暗底也清晰」的一档，三套皮肤下都能辨认 */
+/**
+ * 茶室五色：取「暗底也清晰」的一档，三套皮肤下都能辨认。
+ * 这里**刻意不写意境句**（原先每条带一句，如「看烟起，什么都不做」）：
+ * 大厅这一排只负责"选一盏"；意境在茶室页说得更全（选盏页的 mood、场景里那行 ink 句），
+ * 而且那五句本身就是它的近义重复 —— 摆在这里既占两行高度，又把同一句话说两遍。
+ */
 const teaRooms: TeaRoom[] = [
-  { id: 'xiang', name: '焚香', desc: '看烟起，什么都不做', accent: '#C4602E' },
-  { id: 'sao', name: '扫尘', desc: '风过处，落叶自去', accent: '#84A268' },
-  { id: 'ting', name: '听潮', desc: '潮来潮往，你是岸边', accent: '#4E8FD4' },
-  { id: 'yun', name: '观云', desc: '看云聚散，不着于相', accent: '#9C8AC4' },
-  { id: 'zhu', name: '煮雪', desc: '守着炉火，候雪水开', accent: '#7AA0B2' },
+  { id: 'xiang', name: '焚香', accent: '#C4602E' },
+  { id: 'sao', name: '扫尘', accent: '#84A268' },
+  { id: 'ting', name: '听潮', accent: '#4E8FD4' },
+  { id: 'yun', name: '观云', accent: '#9C8AC4' },
+  { id: 'zhu', name: '煮雪', accent: '#7AA0B2' },
 ]
 
 /** 禅定沙漏已是真实子页：进分包选时计时，走完全程写入今日定力 */
@@ -224,7 +293,26 @@ interface MoreEntry {
 
 const activeReminders = computed(() => reminder.reminders.filter((r) => r.enabled).length)
 
-const moreEntries = computed<MoreEntry[]>(() => [
+/**
+ * 三层各自的入口（层内的先后即使用顺序）。
+ *
+ * 止行的分界是「你主动安排的动作」：沙漏 / 茶室（把时间收回来）、立约（当日守住）、
+ * 统计 / 定时 / 目标与连胜（长期守护）—— 原「止刷」六项整组都在这里，刷是动作的一种。
+ * 止念只有一件：把念头落到纸上（止念条是条件出现的提醒，不算入口）。
+ * 止欲的分界是「冲动来袭时」：摁住 → 看清 → 先不决策，是同一件事的三个时间尺度
+ * （2026-09-17 二次修正：触发干预卡片由止行改归止欲 —— 它的五个预设场景全是冲动型，
+ * 与冲动记录、冷却期本就是一伙）。
+ */
+
+/** 止行 · 列表型入口（沙漏与茶室在页面里是两个 section，不在这里） */
+const holdEntries = computed<MoreEntry[]>(() => [
+  {
+    mark: '约',
+    title: '立约 · 当日一条',
+    subtitle: '触发条件 + 我承诺 + 替代动作 —— 只立今天，晚上回看一次',
+    badge: vowBadge.value,
+    url: ROUTES.pauseVow,
+  },
   {
     mark: '统',
     title: '专注统计',
@@ -251,25 +339,40 @@ const moreEntries = computed<MoreEntry[]>(() => [
         : { text: '设定目标', tone: 'muted' },
     url: ROUTES.pauseStreak,
   },
-  {
-    mark: '约',
-    title: '立约 · 当日一条',
-    subtitle: '触发条件 + 我承诺 + 替代动作 —— 只立今天，晚上回看一次',
-    badge: vowBadge.value,
-    url: ROUTES.pauseVow,
-  },
-  {
-    mark: '动',
-    title: '冲动记录 · 触发点地图',
-    subtitle: '想刷 / 嘴馋 / 想下单时记一笔，攒够十几次就看出形状了',
-    badge:
-      urgeToday.value > 0
-        ? { text: `今日 ${urgeToday.value} 次`, tone: 'accent' }
-        : urge.records.length > 0
-          ? { text: `累计 ${urge.records.length} 次`, tone: 'muted' }
-          : { text: '记第一笔', tone: 'muted' },
-    url: ROUTES.pauseUrge,
-  },
+])
+
+/** 止念 · 把念头落到纸上（"能做"的转成「行」里的一件事） */
+const thinkEntries = computed<MoreEntry[]>(() => {
+  const n = thought.ofDay().length
+  return [
+    {
+      mark: '念',
+      title: '止念一刻',
+      subtitle: '把反复想的那件事写下来，判它现在有没有解',
+      badge:
+        n > 0 ? { text: `今日 ${n} 念`, tone: 'accent' } : { text: '写一句就够', tone: 'muted' },
+      url: ROUTES.pauseThought,
+    },
+  ]
+})
+
+/** 止念条：今天写得多却一条没用上 —— 与知大厅共用同一份判定（utils/growth） */
+const stopPen = computed(() => stopPenTip())
+
+function goAction(): void {
+  navigateTo(ROUTES.tabAction)
+}
+
+/** 冷却期的状态徽标：起没起、哪一档（倒计时在冲动记录页里看） */
+const coolBadge = computed<EntryBadge>(() => {
+  const meta = cooldownKindMeta(urge.cooldownKind)
+  return urge.cooldownRemain() > 0
+    ? { text: `冷却中 · ${meta.label}`, tone: 'accent' }
+    : { text: '10 分钟 / 48 小时', tone: 'muted' }
+})
+
+/** 止欲 · 冲动来袭时的三件：摁住（即时）→ 看清（长期）→ 先不决策（分钟~两天） */
+const wantEntries = computed<MoreEntry[]>(() => [
   {
     mark: '停',
     title: '触发干预卡片',
@@ -279,6 +382,25 @@ const moreEntries = computed<MoreEntry[]>(() => [
         ? { text: `今日守住 ${heldToday.value} 次`, tone: 'accent' }
         : { text: '1-3 分钟', tone: 'muted' },
     url: ROUTES.pauseInterrupt,
+  },
+  {
+    mark: '冷',
+    title: '冷静脉冲 · 先不决策',
+    subtitle: '10 分钟当下一口气 / 48 小时给大决定 —— 过一会儿还想做吗',
+    badge: coolBadge.value,
+    url: ROUTES.pauseUrge,
+  },
+  {
+    mark: '录',
+    title: '冲动记录 · 触发点地图',
+    subtitle: '想刷 / 嘴馋 / 想下单时记一笔，攒够十几次就看出形状了',
+    badge:
+      urgeToday.value > 0
+        ? { text: `今日 ${urgeToday.value} 次`, tone: 'accent' }
+        : urge.records.length > 0
+          ? { text: `累计 ${urge.records.length} 次`, tone: 'muted' }
+          : { text: '记第一笔', tone: 'muted' },
+    url: ROUTES.pauseUrge,
   },
 ])
 </script>
