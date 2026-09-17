@@ -99,6 +99,7 @@
           :mark="item.mark"
           :badge="item.badge"
           :url="item.url"
+          :params="item.params"
         />
       </view>
 
@@ -161,7 +162,7 @@ import { useFocusStore } from '@/stores/focus'
 import { useReminderStore } from '@/stores/reminder'
 import { useInterruptStore } from '@/stores/interrupt'
 import { useUrgeStore, cooldownKindMeta } from '@/stores/urge'
-import { useThoughtStore } from '@/stores/thought'
+import { MAP_NEED, useThoughtStore } from '@/stores/thought'
 import { useVowStore } from '@/stores/vow'
 import { todayKey } from '@/stores/daily'
 import { useDimLabel } from '@/composables/usePhrase'
@@ -171,7 +172,7 @@ import { syncTabBar } from '@/utils/skin'
 import { hallLine } from '@/config/lexicon'
 import { stopPenTip } from '@/utils/growth'
 import { navigateTo, ROUTES } from '@/router/routes'
-import type { RoutePath } from '@/router/routes'
+import type { RouteParams, RoutePath } from '@/router/routes'
 import type { EntryBadge } from '@/components/EntryItem/EntryItem.vue'
 
 const modeStore = useModeStore()
@@ -287,6 +288,8 @@ interface MoreEntry {
   badge?: EntryBadge
   /** 已落地的子页跳转目标；缺省不跳 */
   url?: RoutePath
+  /** 跳转参数（拼到 url 后面）——止念三张卡就是靠它直达 `?tab=map` / `?tab=shelf` */
+  params?: RouteParams
   /** 筹备中入口置灰；缺省即可点 */
   disabled?: boolean
 }
@@ -344,25 +347,52 @@ const holdEntries = computed<MoreEntry[]>(() => [
 /**
  * 止念 · 把念头落到纸上（"能做"的转成「行」里的一件事）。
  *
- * 徽标**优先报到点的**：搁置窗口是纯派生（computed），只有走进止念页才会被算出来 ——
- * 不把"到点了"带到大厅这个入口上，「到期轻问」就等于没人问（用户不去那页就永远看不到）。
- * 不做定时器、不做推送，只改这一个徽标。
+ * 2026-09-17「止念分三面」：按**动作**拆成三张卡（写一笔 / 看形状 / 处理悬着的事），
+ * 与止念页的三个 tab 一一对应（`params` 直达 `?tab=…`），也与止欲的三张卡同构。
+ * 拆的依据：「到点了」原是混在地图（陈述）里的**待处理事项**，两种性质混装会让形状那一面变脏。
+ *
+ * 徽标口径：到点条数挂「候着的」那张卡上 —— 搁置窗口是纯派生（computed），
+ * 只有走进止念页才算得出来，不带到入口上「到期轻问」就等于没人问。
+ * 不加定时器、不加推送，只改这一个徽标。
  */
 const thinkEntries = computed<MoreEntry[]>(() => {
   const n = thought.ofDay().length
+  const totalN = thought.records.length
   const dueN = thought.dueCount
+  const pendN = thought.pendingCount
   return [
     {
       mark: '念',
       title: '止念一刻',
       subtitle: '把反复想的那件事写下来，判它现在有没有解',
       badge:
+        n > 0 ? { text: `今日 ${n} 念`, tone: 'accent' } : { text: '写一句就够', tone: 'muted' },
+      url: ROUTES.pauseThought,
+    },
+    {
+      mark: '图',
+      title: '念头地图',
+      subtitle: '能做 / 先放下、常出现的时段、跨天回来的那几件',
+      /* 门槛与地图页一致（MAP_NEED.band），不在这里另写一个数 */
+      badge:
+        totalN >= MAP_NEED.band
+          ? { text: `累计 ${totalN} 念`, tone: 'accent' }
+          : { text: '还不够看', tone: 'muted' },
+      url: ROUTES.pauseThought,
+      params: { tab: 'map' },
+    },
+    {
+      mark: '候',
+      title: '候着的',
+      subtitle: '当时说要看一眼的，到点在这儿问一句',
+      badge:
         dueN > 0
           ? { text: `${dueN} 条到点了`, tone: 'accent' }
-          : n > 0
-            ? { text: `今日 ${n} 念`, tone: 'accent' }
-            : { text: '写一句就够', tone: 'muted' },
+          : pendN > 0
+            ? { text: `候着 ${pendN} 条`, tone: 'muted' }
+            : { text: '没有悬着的', tone: 'muted' },
       url: ROUTES.pauseThought,
+      params: { tab: 'shelf' },
     },
   ]
 })

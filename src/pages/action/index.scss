@@ -7,10 +7,14 @@
   padding: 24rpx $gz-page-pad 60rpx;
 }
 
+/*
+ * 2026-09-17 排版收紧：三件事是行大厅的主角，但它曾在首屏占掉近半屏 ——
+ * 减的是留白与重复信息，不减内容：三条一样全在，出处一样能挂。
+ */
 .today {
   position: relative;
   overflow: hidden;
-  padding: 34rpx 30rpx 30rpx;
+  padding: 24rpx 26rpx 18rpx;
   background: $gz-surface;
   border: 1rpx solid $gz-line;
   border-radius: $gz-radius-lg;
@@ -31,29 +35,32 @@
   display: flex;
   align-items: baseline;
   justify-content: space-between;
+  padding: 0 4rpx;
 }
 
 .today__label {
-  font-size: 32rpx;
+  font-size: 30rpx;
   font-weight: 700;
   color: $gz-ink;
 }
 
 .today__count {
-  font-size: 44rpx;
+  font-size: 34rpx;
   font-weight: 800;
   color: $gz-accent;
 }
 
+/* 一行一件事：勾选框 + 输入 + 出处药丸（出处不再另占一行） */
 .todo {
   display: flex;
-  align-items: flex-start;
-  gap: 20rpx;
-  padding: 22rpx 0;
+  align-items: center;
+  gap: 16rpx;
+  padding: 16rpx 0;
   border-bottom: 1rpx solid $gz-line-soft;
 }
 
 .todo:last-child {
+  padding-bottom: 0;
   border-bottom: none;
 }
 
@@ -84,6 +91,7 @@
 .todo__input {
   flex: 1;
   min-width: 0;
+  height: 48rpx;
   font-size: $gz-fs-body;
   color: $gz-ink;
 }
@@ -97,38 +105,43 @@
   color: $gz-ink-3;
 }
 
-/* 出处行（§4.4）：挂在输入下面，不抢主行的注意力 */
-.todo__body {
-  flex: 1;
-  min-width: 0;
-}
-
+/*
+ * 出处药丸（§4.4）：与输入同一行的小胶囊，点开仍是完整的选择面板。
+ * 有出处时是浅底 + 品类色，无出处时是描边灰 —— 一眼能看出"挂没挂上"。
+ * 正文过长就地省略（面板里看得全），不为了显示全句再撑高一行。
+ */
 .todo__src {
+  flex: none;
   display: flex;
   align-items: center;
-  gap: 10rpx;
-  margin-top: 8rpx;
+  gap: 8rpx;
+  box-sizing: border-box;
+  max-width: 45%;
+  height: 48rpx;
+  padding: 0 18rpx;
+  border-radius: 999rpx;
+  background: rgba($gz-accent, 0.1);
+}
+
+.todo__src.is-none {
+  background: transparent;
+  border: 1rpx solid $gz-line;
 }
 
 .todo__src-tag {
   flex: none;
-  padding: 2rpx 10rpx;
-  border-radius: 999rpx;
-  background: rgba($gz-accent, 0.1);
   font-size: 20rpx;
   color: $gz-accent;
 }
 
-.todo__src-tag.is-none {
-  background: transparent;
-  border: 1rpx solid $gz-line;
+.todo__src.is-none .todo__src-tag {
   color: $gz-ink-3;
 }
 
 .todo__src-text {
-  flex: 1;
+  flex: 1 1 auto;
   min-width: 0;
-  font-size: 22rpx;
+  font-size: 20rpx;
   color: $gz-ink-3;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -137,14 +150,14 @@
 
 .todo__src-x {
   flex: none;
-  padding: 0 6rpx;
+  padding: 0 4rpx;
   font-size: 20rpx;
   color: $gz-ink-3;
 }
 
 .today__done {
-  margin-top: 24rpx;
-  padding: 22rpx 0 6rpx;
+  margin-top: 14rpx;
+  padding: 10rpx 0 4rpx;
   text-align: center;
 }
 

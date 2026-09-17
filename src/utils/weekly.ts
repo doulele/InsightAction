@@ -74,6 +74,7 @@ const VERB: Record<TraceKind, string> = {
   'reflect.probe': '自省',
   'reflect.echo': '重看',
   'reflect.capsule': '拆开',
+  'reflect.thread': '认出',
   'action.todo': '做成',
   'action.habit': '打卡',
   'action.box': '开盒',

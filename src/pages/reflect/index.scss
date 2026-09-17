@@ -383,44 +383,89 @@
 }
 
 /* ---- 自我画像（§9.4）：只摆形状，所以版式也压到最轻 ---- */
+/* 一张白卡托住整块 —— 之前直接铺在纸底上，和上面的卡片不搭，看着像没做完 */
 .pf {
-  margin-top: 8rpx;
+  padding: 6rpx 28rpx 26rpx;
+  background: $gz-surface;
+  border: 1rpx solid $gz-line;
+  border-radius: $gz-radius-lg;
+}
+
+/* head 右侧的「0/5 成形」：做成小药丸，全成形时才转成强调色 */
+.pf__badge {
+  padding: 6rpx 18rpx;
+  border-radius: 999rpx;
+  background: var(--gz-line-soft);
+  color: $gz-ink-3;
+}
+
+.pf__badge.is-all {
+  background: $gz-accent-soft;
+  color: $gz-accent;
 }
 
 .pf__row {
+  padding: 24rpx 0;
+}
+
+.pf__row + .pf__row {
+  border-top: 1rpx solid $gz-line-soft;
+}
+
+.pf__top {
   display: flex;
-  align-items: flex-start;
-  padding: 18rpx 0;
-  border-bottom: 1rpx solid $gz-line-soft;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 16rpx;
 }
 
-.pf__row:last-child {
-  border-bottom: none;
-}
-
-.pf__side {
-  display: flex;
-  flex-direction: column;
-  flex: 0 0 168rpx;
-}
-
+/* 小标（哪一环 · 看的什么）比正文低一级；成形后提到正文色 */
 .pf__label {
   font-size: $gz-fs-small;
-  color: $gz-ink;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  color: $gz-ink-3;
+}
+
+.pf__row.is-ready .pf__label {
+  color: $gz-ink-2;
 }
 
 .pf__n {
-  margin-top: 4rpx;
+  flex: none;
   font-size: $gz-fs-caption;
   color: $gz-ink-3;
 }
 
-.pf__n.is-on {
+.pf__row.is-ready .pf__n {
   color: $gz-accent;
 }
 
+/* 样本进度：6rpx 细条，只作暗示 —— 未成形是灰的（在攒），成形才是品牌色 */
+.pf__track {
+  margin-top: 14rpx;
+  height: 6rpx;
+  border-radius: 999rpx;
+  background: var(--gz-line-soft);
+  overflow: hidden;
+}
+
+.pf__fill {
+  height: 100%;
+  border-radius: 999rpx;
+  background: $gz-ink-3;
+  opacity: 0.45;
+  transition: width 0.4s ease;
+}
+
+.pf__row.is-ready .pf__fill {
+  background: linear-gradient(90deg, $gz-accent, $gz-grad-to);
+  opacity: 1;
+}
+
 .pf__text {
-  flex: 1;
+  display: block;
+  margin-top: 14rpx;
   font-size: $gz-fs-body;
   line-height: 1.65;
   color: $gz-ink-2;
@@ -432,18 +477,30 @@
   color: $gz-ink-3;
 }
 
+/* 脚注区：与上面的「条」拉开，说明这是读法而不是又一条画像 */
 .pf__summary {
   display: block;
-  margin-top: 18rpx;
+  margin-top: 20rpx;
+  padding-top: 20rpx;
+  border-top: 1rpx solid $gz-line-soft;
   font-size: $gz-fs-small;
-  line-height: 1.6;
+  line-height: 1.7;
   color: $gz-ink-3;
 }
 
 .pf__note {
   display: block;
-  margin-top: 10rpx;
+  margin-top: 20rpx;
+  padding-top: 20rpx;
+  border-top: 1rpx solid $gz-line-soft;
   font-size: $gz-fs-caption;
-  line-height: 1.6;
+  line-height: 1.7;
   color: $gz-ink-3;
+}
+
+/* summary 在时，note 不重复画第二条线 */
+.pf__summary + .pf__note {
+  margin-top: 10rpx;
+  padding-top: 0;
+  border-top: none;
 }

@@ -243,6 +243,20 @@
   color: $gz-ink-3;
 }
 
+.log__acts {
+  display: flex;
+  align-items: center;
+  gap: 12rpx;
+}
+
+/* 「立成事」——判过"能做"的那条可以随时转成今日三件事（只预填） */
+.log__todo {
+  padding: 0 8rpx;
+  font-size: $gz-fs-caption;
+  font-weight: 600;
+  color: $gz-accent;
+}
+
 .log__del {
   padding: 0 8rpx;
   font-size: $gz-fs-caption;
@@ -517,4 +531,67 @@
   font-size: $gz-fs-caption;
   line-height: 1.7;
   color: $gz-ink-3;
+}
+
+/* 线索的「收下」动作 */
+.theme__adopt {
+  display: inline-block;
+  margin-top: 12rpx;
+  padding: 8rpx 22rpx;
+  border: 1rpx solid $gz-accent;
+  border-radius: 999rpx;
+  font-size: $gz-fs-caption;
+  color: $gz-accent;
+  font-weight: 600;
+}
+
+/* 段落下的说明行（与冲动记录页同名同义） */
+.section__note {
+  display: block;
+  margin-top: 12rpx;
+  font-size: $gz-fs-caption;
+  line-height: 1.8;
+  color: $gz-ink-3;
+}
+
+/* ---- ③ 候着的 ---- */
+.shelves {
+  padding: 6rpx 26rpx;
+  background: $gz-surface;
+  border: 1rpx solid $gz-line;
+  border-radius: $gz-radius-md;
+}
+
+.shelf {
+  display: flex;
+  align-items: center;
+  gap: 16rpx;
+  padding: 22rpx 0;
+  border-bottom: 1rpx solid $gz-line-soft;
+
+  &:last-child {
+    border-bottom: none;
+  }
+}
+
+.shelf__when {
+  flex: none;
+  width: 150rpx;
+  font-size: $gz-fs-caption;
+  color: $gz-ink-3;
+  font-variant-numeric: tabular-nums;
+}
+
+.shelf__text {
+  flex: 1;
+  min-width: 0;
+  font-size: $gz-fs-small;
+  line-height: 1.6;
+  color: $gz-ink;
+}
+
+.shelf__done {
+  flex: none;
+  font-size: $gz-fs-caption;
+  color: $gz-accent;
 }

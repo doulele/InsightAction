@@ -6,7 +6,7 @@
  * 修为不再由各页面手动「+N」，而是随 trace 的 value 入账（见 utils/traceLog.ts），
  * 所以「加一个新行为要加多少分」只需要改这张表。
  *
- * 25 种事件（观 5 / 止 7 / 知 5 / 行 8），hall 由 kind 前缀推导，不重复写。
+ * 26 种事件（观 5 / 止 7 / 知 6 / 行 8），hall 由 kind 前缀推导，不重复写。
  */
 import type { HallId } from '@/config/lexicon'
 
@@ -33,6 +33,12 @@ export type TraceKind =
   | 'reflect.echo'
   /** 拆开时间胶囊（2026-09-17）：到期的那句给未来的话，今天读到了 */
   | 'reflect.capsule'
+  /**
+   * 认领反刍线索（2026-09-17 止念分三面）：把「跨天反复回来的那件事」收下成一张卡。
+   * 分值为 0 —— 这是**回看**行为，给分会开出一条刷分路径（在反复列表里反复点）。
+   * 但它仍然留痕：时间轴与周报该看得到"你认出了自己在反复想什么"。
+   */
+  | 'reflect.thread'
   // 行 · 8
   | 'action.todo'
   | 'action.habit'
@@ -76,6 +82,8 @@ export const TRACE_META: Record<TraceKind, TraceMeta> = {
   'reflect.probe': { hall: 'reflect', value: 10, label: '自省' },
   'reflect.echo': { hall: 'reflect', value: 8, label: '旧卡重逢' },
   'reflect.capsule': { hall: 'reflect', value: 10, label: '拆开慢递' },
+  /* 值 0：只留痕不入账（见 TraceKind 里的说明） */
+  'reflect.thread': { hall: 'reflect', value: 0, label: '认领线索' },
   // 行
   'action.todo': { hall: 'action', value: 10, label: '完成一件事' },
   'action.habit': { hall: 'action', value: 6, label: '习惯打卡' },

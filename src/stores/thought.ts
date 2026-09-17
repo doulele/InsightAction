@@ -339,8 +339,14 @@ export const useThoughtStore = defineStore(
     /** 到点的条数（大厅入口徽标要用，避免在页面里再 filter 一遍） */
     const dueCount = computed(() => due.value.length)
 
+    /**
+     * 还候着的（未到点、未了结）——「候着的」tab 与大厅徽标共用。
+     * 与 `due` 分开：due 是"该处理了"，pending 是"还没到、但确实悬着"。
+     */
+    const pending = computed(() => records.value.filter((r) => shelfStateOf(r) === 'shelved'))
+
     /** 还候着的条数（档案导出用：现在还有几件事悬着） */
-    const pendingCount = computed(() => records.value.filter((r) => shelfStateOf(r) === 'shelved').length)
+    const pendingCount = computed(() => pending.value.length)
 
     return {
       records,
@@ -350,6 +356,7 @@ export const useThoughtStore = defineStore(
       matchPrior,
       due,
       dueCount,
+      pending,
       pendingCount,
       closeShelf,
       reshelve,

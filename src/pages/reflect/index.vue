@@ -77,23 +77,37 @@
           <text class="section__title">自我画像</text>
           <text class="section__hint">从你留下的痕迹里算出来的，不是你自己填的</text>
         </view>
-        <text class="section__badge">{{ profile.readyCount }}/{{ profile.items.length }} 成形</text>
+        <text
+          class="section__badge pf__badge"
+          :class="{ 'is-all': profile.items.length > 0 && profile.readyCount === profile.items.length }"
+        >
+          {{ profile.readyCount }}/{{ profile.items.length }} 成形
+        </text>
       </view>
       <view class="pf">
-        <view v-for="it in profile.items" :key="it.key" class="pf__row">
-          <view class="pf__side">
+        <view
+          v-for="it in profile.items"
+          :key="it.key"
+          class="pf__row"
+          :class="{ 'is-ready': it.samples >= it.need }"
+        >
+          <view class="pf__top">
             <text class="pf__label">{{ it.label }}</text>
-            <text class="pf__n" :class="{ 'is-on': it.samples >= it.need }">
+            <text class="pf__n">
               {{ it.samples >= it.need ? `${it.samples} 次` : `${it.samples}/${it.need}` }}
             </text>
+          </view>
+          <!-- 把「还差多少」画出来：成形前是灰条（在攒），成形后才是品牌色 -->
+          <view class="pf__track">
+            <view class="pf__fill" :style="{ width: fillOf(it) }"></view>
           </view>
           <text class="pf__text" :class="{ 'is-pend': it.samples < it.need }">
             {{ it.samples >= it.need ? it.text : it.pend }}
           </text>
         </view>
+        <text v-if="profile.summary" class="pf__summary">{{ profile.summary }}</text>
+        <text class="pf__note">只摆形状，不下结论 —— 攒够样本才出现，不够就如实说还差多少。</text>
       </view>
-      <text v-if="profile.summary" class="pf__summary">{{ profile.summary }}</text>
-      <text class="pf__note">只摆形状，不下结论 —— 攒够样本才出现，不够就如实说还差多少。</text>
     </view>
 
     <!-- 工具入口 -->
@@ -191,7 +205,7 @@ import { logTrace } from '@/utils/traceLog'
 import { useSkinClass } from '@/composables/useSkin'
 import { syncTabBar } from '@/utils/skin'
 import { stopPenTip } from '@/utils/growth'
-import { buildProfile } from '@/utils/profile'
+import { buildProfile, type ProfileItem } from '@/utils/profile'
 import { refOfCard } from '@/utils/refSource'
 import { navigateTo, ROUTES } from '@/router/routes'
 import type { RouteParams, RoutePath } from '@/router/routes'
@@ -237,6 +251,12 @@ function armDwell(): void {
  */
 /* 自我画像：派生数据，不入库、不持久化 —— 每次进场按当前脊椎重算一遍 */
 const profile = computed(() => buildProfile())
+
+/** 样本进度条宽度：封顶 100%（攒够了就是满格，多出来的样本不再画） */
+function fillOf(it: ProfileItem): string {
+  const pct = it.need > 0 ? Math.min(1, it.samples / it.need) : 0
+  return `${Math.round(pct * 100)}%`
+}
 
 const stopPen = computed(() => stopPenTip())
 

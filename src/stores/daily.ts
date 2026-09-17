@@ -10,13 +10,31 @@ import { computed, ref } from 'vue'
  * 三件事不再是凭空的待办清单，而是从观/知里回应出来的：
  * 它可以是「我立的某条理」「某张知识卡片」「某一次冲动记录」，也可以坦白说「无出处」。
  */
-export type TodoRefKind = 'theory' | 'card' | 'urge' | 'none'
+export type TodoRefKind = 'theory' | 'card' | 'urge' | 'thought' | 'none'
+
+/**
+ * 一次「跨 tab 预填」的交接内容（2026-09-17 加）。
+ *
+ * 场景：止念里判了"能做"的那一念，用户在止念页点「立成今日三件事」。
+ * 障碍：**tab 页不能带 query** —— `navigateTo` 对 tab 会走 `switchTab`，参数会丢；
+ * 所以参数只能走 store：止念页放一条 handoff → switchTab → 行大厅 onShow 取走落到表单里。
+ *
+ * 语义边界：**只预填、不代立**（规格 §4.2「不代建」）—— 落进输入框，用户自己改、自己勾。
+ */
+export interface TodoHandoff {
+  text: string
+  /** 回指对象的 id（如 thought-<id>），让周报的「一条路」能串上这条链 */
+  ref: string
+  refKind: TodoRefKind
+  /** 出处的一句话快照（原对象删了也读得懂） */
+  refText: string
+}
 
 export interface DailyTodo {
   id: number
   text: string
   done: boolean
-  /** 回指对象的 id（obs-xxx / card-xxx / urge-xxx）；空 = 无出处 */
+  /** 回指对象的 id（obs-xxx / card-xxx / urge-xxx / thought-xxx）；空 = 无出处 */
   ref?: string
   /** 来源类别（渲染标签用，省去每次反查） */
   refKind?: TodoRefKind
@@ -85,12 +103,59 @@ export const useDailyStore = defineStore(
       item.refText = undefined
     }
 
+    /* ---------------- 跨 tab 的预填交接（2026-09-17） ----------------
+     * 刻意**不持久化**（persist 只写 dateKey / todos）：它是一次交接，取走即清，
+     * 否则用户下次自己回大厅时会被同一条莫名其妙地再预填一次。
+     */
+    const handoff = ref<TodoHandoff | null>(null)
+
+    function setHandoff(h: TodoHandoff): void {
+      handoff.value = h
+    }
+
+    /** 取走并清空 */
+    function takeHandoff(): TodoHandoff | null {
+      const h = handoff.value
+      handoff.value = null
+      return h
+    }
+
+    /**
+     * 把交接落进**第一条还没写内容**的三件事（含出处与快照）。
+     * 三条都写满时返回 false —— 由调用方如实提示，不悄悄挤掉用户已经写好的一条。
+     */
+    function applyHandoff(h: TodoHandoff): boolean {
+      ensureToday()
+      const slot = todos.value.find((t) => !t.text.trim())
+      if (!slot) return false
+      slot.text = h.text
+      slot.ref = h.ref || undefined
+      slot.refKind = h.refKind
+      slot.refText = h.refText || undefined
+      return true
+    }
+
     /** 今日已完成数 / 已填计划数 */
     const doneCount = computed(() => todos.value.filter((t) => t.done).length)
     const planCount = computed(() => todos.value.filter((t) => t.text.trim()).length)
     const allDone = computed(() => planCount.value > 0 && doneCount.value === planCount.value)
 
-    return { dateKey, todos, ensureToday, toggle, updateText, setRef, clearRef, doneCount, planCount, allDone }
+    return {
+      dateKey,
+      todos,
+      ensureToday,
+      toggle,
+      updateText,
+      setRef,
+      clearRef,
+      handoff,
+      setHandoff,
+      takeHandoff,
+      applyHandoff,
+      doneCount,
+      planCount,
+      allDone,
+    }
   },
   {
     persist: { key: 'daily', paths: ['dateKey', 'todos'] },

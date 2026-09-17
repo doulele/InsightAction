@@ -24,29 +24,34 @@
       </view>
 
       <!--
-        每条三件事带一行「出处」（规格 §4.4 回应式行动）：
+        每条三件事的「出处」（规格 §4.4 回应式行动）：
         没有来源时诚实标「无出处」，挂错的理比不挂更糟 —— 它会污染脊椎的 ref。
+        2026-09-17 排版收紧：出处由"输入框下面一行"改成"同一行右侧的小药丸"，
+        三条三件事少掉整三行，首屏能多露出一块；出处正文过长时省略，点开仍看得全。
       -->
       <view v-for="todo in daily.todos" :key="todo.id" class="todo" :class="{ 'is-done': todo.done }">
         <view class="todo__check" :class="{ 'is-on': todo.done }" @click="onToggleTodo(todo)">
           <text v-if="todo.done" class="todo__tick">✓</text>
         </view>
-        <view class="todo__body">
-          <input
-            v-model="todo.text"
-            class="todo__input"
-            :class="{ 'is-done': todo.done }"
-            placeholder="写下一件今天要做成的事…"
-            placeholder-class="todo__ph"
-            :maxlength="40"
-            @blur="onEdited"
-          />
-          <view class="todo__src" hover-class="gz-hover" @click="openSource(todo)">
-            <text class="todo__src-tag" :class="{ 'is-none': !todo.ref }">{{ srcTag(todo) }}</text>
-            <text class="todo__src-text">{{ srcText(todo) }}</text>
-            <text v-if="todo.ref" class="todo__src-x" @click.stop="onClearRef(todo)">解</text>
-          </view>
+        <input
+          v-model="todo.text"
+          class="todo__input"
+          :class="{ 'is-done': todo.done }"
+          placeholder="写下一件今天要做成的事…"
+          placeholder-class="todo__ph"
+          :maxlength="40"
+          @blur="onEdited"
+        />
+        <view
+          class="todo__src"
+          :class="{ 'is-none': !todo.ref }"
+          hover-class="gz-hover"
+          @click="openSource(todo)"
+        >
+          <text class="todo__src-tag">{{ srcTag(todo) }}</text>
+          <text class="todo__src-text">{{ srcText(todo) }}</text>
         </view>
+        <text v-if="todo.ref" class="todo__src-x" @click.stop="onClearRef(todo)">解</text>
       </view>
 
       <view v-if="daily.allDone" class="today__done">
@@ -84,30 +89,6 @@
       </view>
       <text class="dailies__hint">{{ planW.dailyHint }}</text>
     </view>
-
-    <!-- 今日收功（2026-09-17）：一天结束前把它收个尾。安息日那天不出现 -->
-    <view v-if="!sabbath" class="closing">
-      <view class="closing__head">
-        <text class="closing__label">今日收功</text>
-        <text v-if="closing.todayClosed" class="closing__tag">已收</text>
-      </view>
-      <template v-if="closing.todayClosed">
-        <text class="closing__done">{{ closing.todayRecord?.text || '今天收了 —— 不留字也算。' }}</text>
-        <text class="closing__redo" hover-class="gz-hover" @click="closing.reopen()">还想再做点什么 · 撤销收功</text>
-      </template>
-      <template v-else>
-        <textarea
-          v-model="closeDraft"
-          class="closing__input"
-          maxlength="120"
-          auto-height
-          placeholder="今天最想留下的一句（可留空，直接收也行）"
-          placeholder-class="closing__ph"
-        />
-        <view class="closing__btn" hover-class="gz-hover" @click="doClose">收功</view>
-      </template>
-    </view>
-
     <!--
       今天要走的步子（2026-09-15 计划模块）：
       三件事是「今天最重要的三件」，这里是「三件之外还要往前挪的步子」——
@@ -163,6 +144,29 @@
           <text class="plan__next">{{ nextHint(p) }}</text>
         </view>
       </view>
+    </view>
+
+    <!-- 今日收功（2026-09-17）：一天结束前把它收个尾。安息日那天不出现 -->
+    <view v-if="!sabbath" class="closing">
+      <view class="closing__head">
+        <text class="closing__label">今日收功</text>
+        <text v-if="closing.todayClosed" class="closing__tag">已收</text>
+      </view>
+      <template v-if="closing.todayClosed">
+        <text class="closing__done">{{ closing.todayRecord?.text || '今天收了 —— 不留字也算。' }}</text>
+        <text class="closing__redo" hover-class="gz-hover" @click="closing.reopen()">还想再做点什么 · 撤销收功</text>
+      </template>
+      <template v-else>
+        <textarea
+          v-model="closeDraft"
+          class="closing__input"
+          maxlength="120"
+          auto-height
+          placeholder="今天最想留下的一句（可留空，直接收也行）"
+          placeholder-class="closing__ph"
+        />
+        <view class="closing__btn" hover-class="gz-hover" @click="doClose">收功</view>
+      </template>
     </view>
 
     <!-- 行动入口 -->
@@ -309,6 +313,21 @@ function onBreakDaily(d: DailyItem): void {
 
 onShow(() => {
   daily.ensureToday()
+  /*
+   * 跨 tab 交接的预填（2026-09-17）：止念里判了"能做"的那一念 → 止念页放一条 handoff
+   * 后 switchTab 过来（**tab 页带不了 query**，`navigateTo` 对 tab 走的是 `switchTab`，
+   * 参数会丢，所以只能走 store 交接）。
+   * 口径是**只预填、不代立**（§4.2）：只落进输入框，改不改、勾不勾都由用户定；
+   * 三条都写满时如实说一声，**不悄悄挤掉**用户已经写好的一条。
+   */
+  const handoff = daily.takeHandoff()
+  if (handoff) {
+    const ok = daily.applyHandoff(handoff)
+    uni.showToast({
+      title: ok ? '已放进三件事 · 自己改一改再算' : '三件事已经写满，先删一条再预填',
+      icon: 'none',
+    })
+  }
   /* 搁置满 3 天的「今天做的一件事」自动收走（静默，不打扰） */
   planStore.sweep()
   /* 批次 D · 小枢：评估到点激励 / 入定到点提醒 */
