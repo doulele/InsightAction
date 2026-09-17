@@ -42,6 +42,11 @@
         <text class="sum__k">修为入账</text>
         <text class="sum__v">+{{ report.xpGain }}（累计 {{ report.xpTotal }} · {{ report.level }}）</text>
       </view>
+      <!-- 安息日：把这天标出来，免得"空白"被读成"漏了"（见 utils/weekly.ts 的 sabbathDays） -->
+      <view v-if="report.sabbathDays.length" class="sum__row">
+        <text class="sum__k">安息日</text>
+        <text class="sum__v">{{ sabbathText }} · 那天不算缺口</text>
+      </view>
     </view>
 
     <!-- 一条路：只能由 trace 的 ref 生成；没有跨环关联就不编 -->
@@ -217,6 +222,9 @@ const weekAnchor = `weekly-${mondayKey}`
 
 /** 周报（规格 §14）：四环分布 / 一条路 / 四环各自 / 小枢一句话 */
 const report = computed(() => buildWeekly(mondayKey, todayK, mode.id))
+
+/** 安息日：显示成 9/16（周三）这种一眼能对上的写法，只列日期 */
+const sabbathText = computed(() => report.value.sabbathDays.map((d) => d.slice(5)).join(' / '))
 
 /** 「一条路」为空时的文案：空周与「没连成线」是两回事，分开说 */
 const pathEmpty = computed(() =>

@@ -65,6 +65,15 @@
         <text class="bf__suggest-text">{{ suggestion }}</text>
       </view>
 
+      <!--
+        递话（2026-09-17）：到期的胶囊 / 今天该重逢的旧卡，一次只递一条。
+        这是小枢替"收不到推送"这件事做的补偿：回来那一刻，先把该见的东西送到眼前。
+      -->
+      <view v-if="handoff" class="bf__hand" hover-class="gz-hover" @click="handoff.go()">
+        <text class="bf__hand-label">{{ handoff.label }}</text>
+        <text class="bf__hand-text">{{ handoff.text }}</text>
+      </view>
+
       <!-- 你记住的那句：点了去看全部（没有收藏就不出现） -->
       <view v-if="remembered" class="bf__prov" hover-class="gz-hover" @click="goProverbs">
         <text class="bf__prov-label">{{ rememberedLabel }}</text>
@@ -190,6 +199,7 @@ const {
   remembered,
   rememberedLabel,
   goProverbs,
+  handoff,
   settleOpen,
   settleData,
   closeSettle,

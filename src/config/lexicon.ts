@@ -234,6 +234,39 @@ export interface PlanWords {
   statusArchived: string
   /** 30 天无动作的轻问 */
   stale: string
+
+  /* ---------------- 日课（2026-09-17）：每天重复一次的那一类 ----------------
+   * 与"长路"同一套词表：日课也是计划的一种形态（cadence='daily'），
+   * 叫法该跟着模式走，不该在页面里写死中文。
+   */
+  /** 日课名词（tab 名 / 标签 / 区标题） */
+  daily: string
+  /** 日课 tab 的一句话说明 */
+  dailyNote: string
+  /** 日课空态 */
+  emptyDaily: string
+  /** 新建日课按钮 */
+  newDaily: string
+  /** 日课上限提示 */
+  dailyCap: string
+  /** 目标天数标签（新建弹层 / 详情页） */
+  targetLabel: string
+  /** 目标天数的选项文案（带上数字） */
+  days: (n: number) => string
+  /** 日课进度文案（守住几天 / 共几天）—— 刻意不给百分比 */
+  dailyProgress: (done: number, total: number) => string
+  /** 勾选按钮（今天做到了） */
+  keepAct: string
+  /** 已勾选（今天做到了） */
+  keptAct: string
+  /** 破了按钮（只有戒断型才有） */
+  breakAct: string
+  /** 已破了 */
+  brokenAct: string
+  /** 今天还没记（**刻意不写成"未完成"**：未记不是失败） */
+  notYet: string
+  /** 未记 / 破了的宽慰句 */
+  dailyHint: string
 }
 
 const LOCAL_PLAN_WORDS: Record<ModeId, PlanWords> = {
@@ -257,6 +290,20 @@ const LOCAL_PLAN_WORDS: Record<ModeId, PlanWords> = {
     statusDone: '已走完',
     statusArchived: '已收起',
     stale: '这条长路 30 天没动过了 —— 还继续吗？',
+    daily: '日课',
+    dailyNote: '不是「分几步走完」，而是每天重复一次。勾满目标天数就收束，中途随时能改。',
+    emptyDaily: '还没有在守的日课。\n把「每天做一次」的事立在这，一天一勾，勾满就收束。',
+    newDaily: '立一条日课',
+    dailyCap: '在守的日课上限 3 条 —— 与长路分开算',
+    targetLabel: '目标天数',
+    days: (n) => `${n} 天`,
+    dailyProgress: (done, total) => `守住 ${done} 天 / 共 ${total} 天`,
+    keepAct: '守住了',
+    keptAct: '✓ 今天守住了',
+    breakAct: '破了',
+    brokenAct: '今天破了',
+    notYet: '今天还没记',
+    dailyHint: '没勾不算破 —— 想不起来就空着，明天照常（破了也不会归零）。',
   },
   tech: {
     mark: '划',
@@ -278,6 +325,20 @@ const LOCAL_PLAN_WORDS: Record<ModeId, PlanWords> = {
     statusDone: '已完成',
     statusArchived: '已归档',
     stale: '该计划 30 天无更新 —— 继续或归档？',
+    daily: '每日任务',
+    dailyNote: '不是里程碑式拆分，而是每日重复执行。完成天数达到目标即关闭，中途可随时调整。',
+    emptyDaily: '暂无进行中的每日任务。\n把需要每天执行的事项登记在此，一天一勾，达到目标天数即关闭。',
+    newDaily: '新建每日任务',
+    dailyCap: '每日任务上限 3 条 —— 与计划分开计数',
+    targetLabel: '周期天数',
+    days: (n) => `${n} 天`,
+    dailyProgress: (done, total) => `已完成 ${done} / ${total} 天`,
+    keepAct: '完成',
+    keptAct: '✓ 今日完成',
+    breakAct: '未达成',
+    brokenAct: '今日未达成',
+    notYet: '今日未记录',
+    dailyHint: '未记录不等于失败 —— 漏记不影响累计，也不会清零。',
   },
   dao: {
     mark: '划',
@@ -299,6 +360,20 @@ const LOCAL_PLAN_WORDS: Record<ModeId, PlanWords> = {
     statusDone: '圆满',
     statusArchived: '封存',
     stale: '此愿三十日未曾提起 —— 仍要续行否？',
+    daily: '日行',
+    dailyNote: '非以步计，而是日复一日。守满即收，中途可改。',
+    emptyDaily: '尚无在守之日行。\n把每日必做之事立于此处，一日一勾，守满则收。',
+    newDaily: '立一条日行',
+    dailyCap: '在守日行上限三条 —— 与长路分计',
+    targetLabel: '期限',
+    days: (n) => `${n} 日`,
+    dailyProgress: (done, total) => `已守 ${done} 日 / 共 ${total} 日`,
+    keepAct: '守住了',
+    keptAct: '✓ 今日守住了',
+    breakAct: '破了',
+    brokenAct: '今日破了',
+    notYet: '今日未记',
+    dailyHint: '未记不作破 —— 想不起来便空着，明日照常（破了亦不归零）。',
   },
 }
 

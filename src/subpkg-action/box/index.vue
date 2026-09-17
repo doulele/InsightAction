@@ -45,6 +45,8 @@
       </view>
       <text class="ready__title">三事已成。开一只？</text>
       <text class="ready__desc">它会给你一个 3 分钟就能完成的线下小行动。\n跟手机无关，跟身体有关。</text>
+      <!-- 步数联动（2026-09-17）：今天走得太少时，先从走动类里出（只调权重，不新开池子） -->
+      <text v-if="moveFirst" class="ready__move">今天走得少 —— 先从离开座位的那几只里给你挑。</text>
       <button class="cta" hover-class="gz-hover" @click="openOnce">打开盲盒</button>
     </view>
 
@@ -76,13 +78,22 @@ import GzDialog from '@/components/GzDialog/GzDialog.vue'
 import { onShow } from '@dcloudio/uni-app'
 import { BOX_IDEAS, useBoxStore } from '@/stores/box'
 import { useDailyStore } from '@/stores/daily'
+import { useBodyStore } from '@/stores/body'
 import { logTrace } from '@/utils/traceLog'
 import { useSkinClass } from '@/composables/useSkin'
 import { navigateTo, ROUTES } from '@/router/routes'
 
 const box = useBoxStore()
 const daily = useDailyStore()
+/** 身体电量（2026-09-17）：步数明显不足时，盲盒优先出走动类 */
+const body = useBodyStore()
 const skinClass = useSkinClass()
+
+/**
+ * 今天走得够不够（步数没同步过就不干预 —— 不猜、不按 0 算）。
+ * 阈值取目标的 60%：低于它基本可以确定"今天坐太久了"。
+ */
+const moveFirst = computed(() => body.todayStep !== null && body.todayStep < body.goal * 0.6)
 
 onShow(() => {
   daily.ensureToday()
@@ -99,7 +110,7 @@ const stageHint = computed(() => {
 
 function openOnce(): void {
   if (!daily.allDone) return
-  box.draw(false)
+  box.draw(false, moveFirst.value)
   // 开盒不给分，达成才给（避免反复开关刷分）
   logTrace({ kind: 'action.box', text: '开启微行动盲盒', value: 0 })
 }
@@ -114,7 +125,7 @@ function redraw(): void {
 function doRedraw(): void {
   redrawOpen.value = false
   if (!current.value) return
-  box.draw(true)
+  box.draw(true, moveFirst.value)
 }
 
 function finish(): void {

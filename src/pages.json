@@ -209,6 +209,13 @@
             "navigationStyle": "custom",
             "navigationBarTitleText": "认知成长曲线"
           }
+        },
+        {
+          "path": "echo/index",
+          "style": {
+            "navigationStyle": "custom",
+            "navigationBarTitleText": "旧卡重逢"
+          }
         }
       ]
     },
@@ -309,6 +316,13 @@
           "style": {
             "navigationStyle": "custom",
             "navigationBarTitleText": "我的箴言"
+          }
+        },
+        {
+          "path": "capsule/index",
+          "style": {
+            "navigationStyle": "custom",
+            "navigationBarTitleText": "时间胶囊"
           }
         },
         {

@@ -94,6 +94,52 @@
       </view>
     </view>
 
+    <!--
+      2.5 · 安息日（2026-09-17）：每周留一天，什么都不必记。
+      与上面两个提醒开关**不是一类**：那是"什么时候叫你"，这是"什么时候不叫你"。
+      口径落在 utils/sabbath.ts：功能全开、只是不入账（痕迹仍完整）、且一律不催。
+    -->
+    <view class="section">
+      <view class="section__head">
+        <text class="section__title">安息日</text>
+        <text class="section__hint">每周一天 · 可以什么都不做</text>
+      </view>
+      <view class="cards">
+        <view class="row">
+          <view class="row__body">
+            <text class="row__title">留一天给自己</text>
+            <text class="row__sub">{{ sabbathSub }}</text>
+          </view>
+          <switch
+            class="row__switch"
+            :checked="settings.sabbathWeekday !== null"
+            :color="modeMeta.accent"
+            @change="onSabbathToggle"
+          />
+        </view>
+        <template v-if="settings.sabbathWeekday !== null">
+          <view class="row">
+            <view class="row__body">
+              <text class="row__title">定在哪一天</text>
+              <text class="row__sub">哪一天都行 —— 那天照常能进来，只是不算、也不催</text>
+            </view>
+          </view>
+          <view class="days">
+            <view
+              v-for="(d, i) in WEEKDAY_LABEL"
+              :key="d"
+              class="day"
+              :class="{ 'is-on': settings.sabbathWeekday === i }"
+              hover-class="gz-hover"
+              @click="settings.sabbathWeekday = i"
+            >
+              {{ d }}
+            </view>
+          </view>
+        </template>
+      </view>
+    </view>
+
     <!-- 3 · 静修声音：一记提示音 + 环境音（本机播放；素材按需从服务器取，仅在你开着时请求） -->
     <view class="section">
       <view class="section__head">
@@ -377,6 +423,7 @@ import { useSkinClass } from '@/composables/useSkin'
 import { applySkin } from '@/utils/skin'
 import { playCue, setSoundEnabled } from '@/utils/audio'
 import { dayStats } from '@/utils/growth'
+import { WEEKDAY_LABEL } from '@/utils/sabbath'
 import { resetPracticeData } from '@/utils/localReset'
 import { levelIndexFromXp } from '@/config/levels'
 import { ROUTES } from '@/router/routes'
@@ -688,6 +735,20 @@ type RemindKey = 'eveningRemind' | 'streakRemind'
 function onRemind(key: RemindKey, e: Event & { detail?: { value?: boolean } }): void {
   settings[key] = e.detail?.value ?? false
 }
+
+/* ---------------- 安息日（2026-09-17） ---------------- */
+/** 开 = 默认落在周日（哪一天都能改）；关 = null，不替用户安排休息 */
+function onSabbathToggle(e: Event & { detail?: { value?: boolean } }): void {
+  const on = !!e.detail?.value
+  settings.sabbathWeekday = on ? 0 : null
+  uni.showToast({ title: on ? `已设为${WEEKDAY_LABEL[settings.sabbathWeekday ?? 0]} —— 那天不必记` : '已取消安息日', icon: 'none' })
+}
+
+const sabbathSub = computed(() =>
+  settings.sabbathWeekday === null
+    ? '开一天：那天照常能进来，一切都不计分、不提醒 —— 想做什么都可以，什么都不做也可以'
+    : `${WEEKDAY_LABEL[settings.sabbathWeekday]}那天：不入账、不提醒、不算连胜；痕迹照记，只是不付钱`,
+)
 
 /** 静修声音的状态说明（开着/静音两种口径写清楚"计时照常"） */
 const soundSub = computed(() =>

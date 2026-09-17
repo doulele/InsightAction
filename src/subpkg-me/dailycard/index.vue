@@ -68,6 +68,18 @@
         <text v-if="proverbLine.from" class="prov__from">—— {{ proverbLine.from }}</text>
       </view>
 
+      <!-- 今日收功的那一句：收了才出现（没写字也算） -->
+      <view v-if="closingLine" class="prov">
+        <text class="prov__label">今日收功</text>
+        <text class="prov__text">{{ closingLine }}</text>
+      </view>
+
+      <!-- 今天该重看的旧卡：把「内化的检验」也摆在日课卡上（2026-09-17） -->
+      <view v-if="echoCard" class="prov">
+        <text class="prov__label">今天该重看的一张卡</text>
+        <text class="prov__text">「{{ echoCard.title }}」</text>
+      </view>
+
       <view class="card__foot">
         <text class="card__foot-text">观止知行 · 数字修行 · 每一天都有迹可循</text>
       </view>
@@ -103,6 +115,8 @@ import { useModeStore } from '@/stores/mode'
 import { useDailyStore, todayKey } from '@/stores/daily'
 import { useXpStore } from '@/stores/xp'
 import { REVIEW_DAYS, useProverbStore, type ProverbItem } from '@/stores/proverb'
+import { useClosingStore } from '@/stores/closing'
+import { useKnowledgeStore } from '@/stores/knowledge'
 import { dayStats } from '@/utils/growth'
 import { levelIndexFromXp, levelProgress, levelName, LEVEL_NAMES, LEVEL_THRESHOLDS } from '@/config/levels'
 import { useSkinClass } from '@/composables/useSkin'
@@ -233,6 +247,15 @@ const proverbLabel = computed(() => {
   return due ? `今日回响 · 第 ${Math.min(due.reviewCount + 1, REVIEW_DAYS.length)} 次见面` : '你记住的这句'
 })
 
+/* —— 今日收功 / 今天该重看的旧卡（2026-09-17）：卡上有"今天真的发生了什么" —— */
+const closing = useClosingStore()
+const knowledge = useKnowledgeStore()
+
+const closingLine = computed(() =>
+  closing.todayClosed ? closing.todayRecord?.text || '今天收了 —— 不留字也算。' : '',
+)
+const echoCard = computed(() => knowledge.dueEcho)
+
 /* —— 分享与复制 —— */
 const shareTitle = computed(() => `今日日课卡 · ${dateLabel.value} —— ${modeStore.meta.growthName} ${lvName.value}`)
 
@@ -256,6 +279,8 @@ const textCard = computed(() => {
           }`,
         ]
       : []),
+    ...(closingLine.value ? [`今日收功：${closingLine.value}`] : []),
+    ...(echoCard.value ? [`今天该重看的一张卡：「${echoCard.value.title}」`] : []),
     '—— 观止知行 · 数据属于你自己',
   ]
   return lines.join('\n')

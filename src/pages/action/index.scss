@@ -345,3 +345,177 @@
   flex-direction: column;
   gap: 18rpx;
 }
+
+/* ---- 安息日（2026-09-17）：一行话，不带任何计数 ---- */
+.sabbath {
+  margin-bottom: 24rpx;
+  padding: 26rpx 30rpx;
+  background: $gz-surface-2;
+  border-left: 6rpx solid $gz-accent;
+  border-radius: $gz-radius-md;
+}
+
+.sabbath__text {
+  font-size: $gz-fs-small;
+  line-height: 1.7;
+  color: $gz-ink-2;
+}
+
+/* ---- 今天要守的日课 ---- */
+.dailies {
+  margin-top: 30rpx;
+}
+
+.dailies__head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  margin-bottom: 14rpx;
+}
+
+.dailies__label {
+  font-size: $gz-fs-caption;
+  letter-spacing: $gz-ls-wide;
+  color: $gz-ink-3;
+}
+
+.dailies__n {
+  font-size: $gz-fs-caption;
+  color: $gz-accent;
+  font-variant-numeric: tabular-nums;
+}
+
+.dailies__hint {
+  display: block;
+  margin-top: 12rpx;
+  font-size: $gz-fs-caption;
+  color: $gz-ink-3;
+}
+
+.daily {
+  display: flex;
+  align-items: center;
+  gap: 14rpx;
+  padding: 22rpx 26rpx;
+  margin-bottom: 14rpx;
+  background: $gz-surface;
+  border: 1rpx solid $gz-line;
+  border-radius: $gz-radius-md;
+}
+
+.daily.is-kept {
+  border-color: $gz-accent;
+}
+
+.daily.is-broken {
+  opacity: 0.72;
+}
+
+.daily__main {
+  flex: 1;
+  min-width: 0;
+}
+
+.daily__title {
+  display: block;
+  font-size: $gz-fs-body;
+  color: $gz-ink;
+}
+
+.daily__meta {
+  display: block;
+  margin-top: 6rpx;
+  font-size: $gz-fs-caption;
+  color: $gz-ink-3;
+}
+
+.daily__act {
+  flex-shrink: 0;
+  padding: 12rpx 24rpx;
+  font-size: $gz-fs-small;
+  color: $gz-on-cta;
+  background: $gz-cta-bg;
+  border-radius: 999rpx;
+}
+
+.daily.is-kept .daily__act {
+  color: $gz-accent;
+  background: transparent;
+  border: 1rpx solid $gz-accent;
+}
+
+.daily__break {
+  flex-shrink: 0;
+  padding: 12rpx 16rpx;
+  font-size: $gz-fs-caption;
+  color: $gz-ink-3;
+}
+
+/* ---- 今日收功 ---- */
+.closing {
+  margin-top: 30rpx;
+  padding: 28rpx 30rpx;
+  background: $gz-surface;
+  border: 1rpx solid $gz-line;
+  border-radius: $gz-radius-lg;
+}
+
+.closing__head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 16rpx;
+}
+
+.closing__label {
+  font-size: $gz-fs-caption;
+  letter-spacing: $gz-ls-wide;
+  color: $gz-ink-3;
+}
+
+.closing__tag {
+  font-size: $gz-fs-caption;
+  color: $gz-accent;
+}
+
+.closing__input {
+  width: 100%;
+  min-height: 120rpx;
+  padding: 18rpx 20rpx;
+  box-sizing: border-box;
+  font-size: $gz-fs-small;
+  line-height: 1.7;
+  color: $gz-ink;
+  background: $gz-input-bg;
+  border: 1rpx solid $gz-line;
+  border-radius: $gz-radius-md;
+}
+
+.closing__ph {
+  color: $gz-ink-3;
+}
+
+.closing__btn {
+  height: 76rpx;
+  margin-top: 18rpx;
+  font-size: $gz-fs-small;
+  line-height: 76rpx;
+  text-align: center;
+  color: $gz-on-cta;
+  background: $gz-cta-bg;
+  border-radius: $gz-radius-md;
+}
+
+.closing__done {
+  display: block;
+  font-size: $gz-fs-body;
+  line-height: 1.75;
+  color: $gz-ink-2;
+}
+
+.closing__redo {
+  display: block;
+  margin-top: 14rpx;
+  font-size: $gz-fs-caption;
+  color: $gz-ink-3;
+}

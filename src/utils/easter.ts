@@ -1,5 +1,5 @@
 /**
- * 彩蛋体系 —— 6 个单人彩蛋的**可判定**版本（规格 §12.5）。
+ * 彩蛋体系 —— 9 个单人彩蛋的**可判定**版本（规格 §12.5，2026-09-17 接入三项新行为）。
  *
  * 设计原则（与徽章一致）：**只用本地真实数据判定，不为了凑数写一条永远返回 false 的规则**。
  * 因此有两条与清单原文的偏差被显式记录在这里：
@@ -11,9 +11,15 @@
  *
  * 其余四条与原文一致。
  * 「今天」不满足时从昨天起算 —— 一天的修行还没做完不该被判为断掉（与 focus 连胜同一口径）。
+ *
+ * 2026-09-17 新增三条：**日课连续守住 30 天**（守得住）、**拆开过时间胶囊**（时空之约）、
+ * **重逢时推翻过自己的旧卡**（温故知新）。三条都严格贴合"意外惊喜"的定义：
+ * 它们是"某件不常发生的事真的发生过"，不是"攒够多少条" —— 攒数量那类归徽章。
  */
+import { useCapsuleStore } from '@/stores/capsule'
 import { useFocusStore } from '@/stores/focus'
 import { useKnowledgeStore } from '@/stores/knowledge'
+import { usePlanStore } from '@/stores/plan'
 import { useTraceStore } from '@/stores/trace'
 import type { HallId } from '@/config/lexicon'
 import type { TraceKind } from '@/config/trace'
@@ -40,6 +46,13 @@ export interface EggContext {
   deepNoteOn: (day: string) => boolean
   /** 某日静修分钟 */
   focusMinOn: (day: string) => number
+  /* ↓ 2026-09-17 新增三维（日课 / 时间胶囊 / 旧卡重逢） */
+  /** 在守日课里最长的「连续守住」天数 */
+  dailyStreakMax: number
+  /** 拆开过至少一条时间胶囊 */
+  capsuleOpened: boolean
+  /** 重逢时推翻过至少一张自己的旧卡（卡上有 changedAt） */
+  cardChanged: boolean
 }
 
 /** 自然日键平移 */
@@ -108,6 +121,28 @@ export const EGG_RULES: readonly EggRule[] = [
     reward: '生成「个人修行箴言」',
     hit: (c) => c.streak((d) => c.deepNoteOn(d)) >= 7,
   },
+  /* ---------------- 2026-09-17 新增三条 ---------------- */
+  {
+    id: 'hold',
+    name: '守得住',
+    desc: '同一件事，连续守住 30 天',
+    reward: '称号「守夜人」+ 沙漏玻璃纹',
+    hit: (c) => c.dailyStreakMax >= 30,
+  },
+  {
+    id: 'capsule',
+    name: '时空之约',
+    desc: '拆开一封你写给未来的自己的胶囊',
+    reward: '箴言墙「时间胶囊」专属边框',
+    hit: (c) => c.capsuleOpened,
+  },
+  {
+    id: 'overturn',
+    name: '温故知新',
+    desc: '重看旧卡时发现「现在不这么想了」—— 亲手推翻过自己一次',
+    reward: '称号「自新者」+ 知厅一笔改写动效',
+    hit: (c) => c.cardChanged,
+  },
 ]
 
 export interface EggResult {
@@ -120,6 +155,9 @@ export function evaluateEggs(): EggResult[] {
   const trace = useTraceStore()
   const knowledge = useKnowledgeStore()
   const focus = useFocusStore()
+  /* 2026-09-17 新增：日课（连续守住天数）/ 时间胶囊（拆开过）/ 旧卡重逢（推翻过） */
+  const plan = usePlanStore()
+  const capsule = useCapsuleStore()
   const today = new Date()
 
   const keys: string[] = []
@@ -145,6 +183,9 @@ export function evaluateEggs(): EggResult[] {
         return k === day && c.content.trim().length >= 50
       }),
     focusMinOn: (day) => focus.minutesOn(day),
+    dailyStreakMax: plan.dailyPlans.reduce((max, p) => Math.max(max, plan.dailyStreak(p)), 0),
+    capsuleOpened: capsule.opened.length > 0,
+    cardChanged: knowledge.cards.some((c) => Boolean(c.changedAt)),
   }
 
   return EGG_RULES.map((rule) => ({ rule, unlocked: rule.hit(ctx) }))

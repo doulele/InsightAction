@@ -6,7 +6,9 @@
  * 单卡可被「加深一层」升级深度；满 7 天沉淀后的种子收成等素材可导入。
  */
 import { defineStore } from 'pinia'
-import { ref } from 'vue'
+import { computed, ref } from 'vue'
+import { todayKey } from '@/stores/daily'
+import { logTrace } from '@/utils/traceLog'
 
 /** 深度等级：Lv.1 转述 / Lv.2 重构 / Lv.3 内化 */
 export type CardDepth = 1 | 2 | 3
@@ -43,7 +45,21 @@ export interface KnowledgeCard {
   depth: CardDepth
   /** 来源描述（如「拷问 · 2026-09-09」） */
   src: string
+  /**
+   * 重逢次数（2026-09-17）：隔一段时间再看一次这张卡，仍认同就 +1。
+   * 「内化」的检验只有这一条路 —— 写下来当天觉得对，不算数。
+   */
+  echoCount?: number
+  /** 上次重逢时刻（决定下次什么时候轮到你） */
+  lastEchoAt?: number
+  /** 重逢时发现「现在不这么想了」的时刻；有值 = 这张卡已被自己推翻过 */
+  changedAt?: number
 }
+
+/** 重逢的最小年龄：写下来 30 天以后才值得再问一次（当天写的自己还记得） */
+export const ECHO_MIN_AGE_DAYS = 30
+
+const DAY_MS = 86_400_000
 
 export const DEPTH_LABEL: Record<CardDepth, string> = {
   1: 'Lv.1 转述',
@@ -158,6 +174,76 @@ export const useKnowledgeStore = defineStore(
       }).length
     }
 
+    /* ---------------- 旧卡重逢（2026-09-17） ----------------
+     * 为什么要有：这张库里已经有「深度分级」，但深度是**写的时候自己打的**，
+     * 而"内化"这件事的本质是**过一段时间还认不认**。重逢就是那个检验：
+     * 仍认同 → 它站住了；想法变了 → 派生一张新卡（"我曾经以为…现在我认为…"），
+     * 后者比前者值钱 —— 它是认知真的动过的证据。
+     *
+     * 三条口径：
+     *  1. **一天只一条**：多了就成了任务，不是重逢（echoDay 记在本 store，跨天自动解禁）；
+     *  2. **30 天以后才问**：当天写的东西自己还记得，问了没意义；
+     *  3. **被推翻过的不再问**：changedAt 有值的卡已经完成了它的使命，反复问等于不认账。
+     */
+
+    /** 今天已经重逢过的那一天（跨天自动失效） */
+    const echoDay = ref('')
+
+    /** 有资格重逢的卡（早该重逢的排前面：从没重逢过的按创建时间排） */
+    function echable(now = Date.now()): KnowledgeCard[] {
+      const deadline = now - ECHO_MIN_AGE_DAYS * DAY_MS
+      return cards.value
+        .filter((c) => c.createdAt <= deadline && !c.changedAt && c.content.trim())
+        .sort((a, b) => (a.lastEchoAt || a.createdAt) - (b.lastEchoAt || b.createdAt))
+    }
+
+    /** 今天该重逢的那一条（今天已重逢过 / 没有够格的 → null） */
+    const dueEcho = computed<KnowledgeCard | null>(() => {
+      if (echoDay.value === todayKey()) return null
+      return echable()[0] ?? null
+    })
+
+    /** 够格重逢的卡总数（入口文案用） */
+    const echableCount = computed(() => echable().length)
+
+    /**
+     * 重逢一次。
+     * @param result 'agree' = 现在还这么想；'changed' = 想法变了（会派生一张新卡）
+     * @param note   'changed' 时写下的"现在怎么看"（可空，空则用一句如实记录的兜底文案）
+     * @returns 是否记下了本次重逢
+     */
+    function echo(createdAt: number, result: 'agree' | 'changed', note = ''): boolean {
+      const c = byId(createdAt)
+      if (!c) return false
+      c.echoCount = (c.echoCount ?? 0) + 1
+      c.lastEchoAt = Date.now()
+      echoDay.value = todayKey()
+      const title = c.title.length > 14 ? `${c.title.slice(0, 14)}…` : c.title
+      logTrace({
+        kind: 'reflect.echo',
+        text: result === 'agree' ? `重看「${title}」· 仍这么想` : `重看「${title}」· 想法变了`,
+        ref: `card-${c.createdAt}`,
+      })
+      if (result === 'changed') {
+        c.changedAt = Date.now()
+        const body = note.trim() || '现在不这么看了。'
+        add({
+          kind: 'note',
+          title: `曾经我以为：${c.title}`,
+          content: `原来：「${c.content.slice(0, 60)}」\n现在：${body}`,
+          tags: [...new Set([...c.tags, '重逢', '省察'])],
+          depth: 2,
+          src: '知 · 旧卡重逢',
+        })
+      }
+      return true
+    }
+
+    /** 手动跳过一次（今天不再出现，明天它还在队首）—— 不写痕迹、不给分，也不记为"已推翻" */
+    function skipEcho(): void {
+      echoDay.value = todayKey()
+    }
+
     return {
       cards,
       add,
@@ -170,9 +256,15 @@ export const useKnowledgeStore = defineStore(
       importSeedHarvest,
       importProverb,
       isSeedImported,
+      echoDay,
+      dueEcho,
+      echableCount,
+      echable,
+      echo,
+      skipEcho,
     }
   },
   {
-    persist: { key: 'knowledge', paths: ['cards', 'seedImported'] },
+    persist: { key: 'knowledge', paths: ['cards', 'seedImported', 'echoDay'] },
   },
 )

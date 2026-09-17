@@ -25,6 +25,7 @@ import { useXpStore } from '@/stores/xp'
 import { HOUR_BAND_LABEL, bandOf, useUrgeStore } from '@/stores/urge'
 import type { HourBand } from '@/stores/urge'
 import { refTitle } from '@/utils/refSource'
+import { isSabbathDay } from '@/utils/sabbath'
 
 export const HALLS: readonly HallId[] = ['observe', 'pause', 'reflect', 'action']
 
@@ -46,6 +47,12 @@ export interface WeeklyReport {
   buddy: string
   /** 本周没有任何痕迹 */
   empty: boolean
+  /**
+   * 本周的安息日（2026-09-17）。
+   * 刻意单独列出来：那天"没有痕迹"是**休**，不是缺口 —— 周报必须把它标出来，
+   * 否则用户会以为自己漏了几天（那就又变回打卡焦虑了）。
+   */
+  sabbathDays: string[]
 }
 
 /** 事件 → 动词（「你在 9/3 立下「X」」的第一处） */
@@ -65,11 +72,16 @@ const VERB: Record<TraceKind, string> = {
   'reflect.note': '写下',
   'reflect.apply': '用上',
   'reflect.probe': '自省',
+  'reflect.echo': '重看',
+  'reflect.capsule': '拆开',
   'action.todo': '做成',
   'action.habit': '打卡',
   'action.box': '开盒',
   'action.challenge': '走完',
   'action.body': '记下',
+  'action.daily': '守住',
+  'action.daily.break': '记下',
+  'action.closing': '收功',
 }
 
 /**
@@ -219,7 +231,11 @@ function buildHalls(traces: Trace[], from: string, to: string): Record<HallId, s
   const action = joinNonEmpty([
     n('action.todo') ? `完成 ${n('action.todo')} 件` : '',
     plan.activeLongCount ? `${plan.activeLongCount} 条长路在走` : '',
+    /* 日课（2026-09-17）：守住的天数单列 —— 它与"完成了几件事"不是同一个量 */
+    n('action.daily') ? `守住日课 ${n('action.daily')} 天` : '',
+    plan.activeDailyCount ? `${plan.activeDailyCount} 条日课在守` : '',
     n('action.box') ? `盲盒 ${n('action.box')} 次` : '',
+    n('action.closing') ? `收功 ${n('action.closing')} 次` : '',
   ])
 
   return { observe, pause, reflect, action }
@@ -260,5 +276,21 @@ export function buildWeekly(from: string, to: string, mode: ModeId): WeeklyRepor
     halls: buildHalls(traces, from, to),
     buddy,
     empty: traces.length === 0,
+    sabbathDays: sabbathIn(from, to),
   }
+}
+
+/** 区间内的安息日（含首尾） */
+function sabbathIn(from: string, to: string): string[] {
+  const out: string[] = []
+  const end = new Date(`${to}T12:00:00`).getTime()
+  let cur = new Date(`${from}T12:00:00`)
+  let guard = 0
+  while (cur.getTime() <= end && guard < 400) {
+    const k = todayKey(cur)
+    if (isSabbathDay(k)) out.push(k)
+    cur = new Date(cur.getTime() + 86_400_000)
+    guard += 1
+  }
+  return out
 }

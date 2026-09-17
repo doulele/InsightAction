@@ -19,7 +19,9 @@
       <view class="head">
         <view class="head__row">
           <text class="head__title">{{ item.title }}</text>
-          <text v-if="item.kind === 'long'" class="head__tag">{{ horizonLabel }}</text>
+          <!-- 日课不报期限档：它的期限就是"守住 N 天" -->
+          <text v-if="isDaily" class="head__tag">{{ w.daily }}</text>
+          <text v-else-if="item.kind === 'long'" class="head__tag">{{ horizonLabel }}</text>
           <text v-if="item.challenge" class="head__tag">{{ challengeLabel }}</text>
           <text class="head__status">{{ statusLabel }}</text>
         </view>
@@ -43,6 +45,79 @@
             <text v-if="item.status === 'done'" class="single__tick">✓</text>
           </view>
           <text class="single__text">{{ item.status === 'done' ? '已完成' : '完成这件事' }}</text>
+        </view>
+      </view>
+
+      <!--
+        daily 型（2026-09-17）：每天重复一次的事（早睡 / 锻炼 / 戒色）。
+        三态是「守住 / 破了 / 没记」—— 没记只是空白，不是破了；
+        "破了"只有戒断型才有，且不归零、不扣分，可写一句为什么（进【知】的省察）。
+      -->
+      <view v-else-if="isDaily" class="card">
+        <view class="card__head">
+          <text class="card__title">{{ w.daily }}</text>
+          <text class="card__n">{{ progress.done }}/{{ progress.total }}</text>
+        </view>
+        <text class="card__sub">
+          {{ w.dailyProgress(progress.done, progress.total) }}{{ streak > 1 ? ` · 连续 ${streak} 天` : '' }}
+        </text>
+
+        <view class="dact">
+          <view
+            class="dact__btn"
+            :class="{ 'is-on': todayState === 'kept' }"
+            hover-class="gz-hover"
+            @click="checkToday"
+          >
+            {{ todayState === 'kept' ? w.keptAct : w.keepAct }}
+          </view>
+          <view
+            v-if="item.challenge === 'abstain'"
+            class="dact__break"
+            :class="{ 'is-on': todayState === 'broken' }"
+            hover-class="gz-hover"
+            @click="breakToday"
+          >
+            {{ todayState === 'broken' ? w.brokenAct : w.breakAct }}
+          </view>
+        </view>
+        <text class="dact__hint">{{ w.dailyHint }}</text>
+
+        <!-- 近 14 天点阵：一眼看出哪几天守住了、哪几天是空白 -->
+        <view class="dots">
+          <view v-for="d in dotDays" :key="d.day" class="dots__cell" :class="d.cls" />
+        </view>
+        <!-- 刻意用模式中立的话：三模式下"守住 / 完成 / 守"不是一个词，而这一句只是解释点阵 -->
+        <text class="dots__note">最近 14 天 · 点阵只分「记上了」与「空着」（空着可能是没记，也可能是还没到）</text>
+
+        <text class="sheet__label">{{ w.targetLabel }}</text>
+        <view class="chips">
+          <view
+            v-for="n in DAILY_PRESETS"
+            :key="n"
+            class="chip"
+            :class="{ 'is-on': !customOn && progress.total === n }"
+            hover-class="gz-hover"
+            @click="setTarget(n)"
+          >
+            {{ w.days(n) }}
+          </view>
+          <!-- 自定义天数（2026-09-17）：3 ~ 365 天。点了「改」才落地，不边打边生效 -->
+          <view class="chip" :class="{ 'is-on': customOn }" hover-class="gz-hover" @click="toggleCustom">自定义</view>
+        </view>
+        <view v-if="customOn" class="custom">
+          <input
+            v-model="customDays"
+            class="custom__input"
+            type="number"
+            :maxlength="3"
+            :placeholder="`${DAILY_MIN_DAYS} ~ ${DAILY_MAX_DAYS}`"
+            placeholder-class="quick__ph"
+            confirm-type="done"
+            @confirm="applyCustom"
+          />
+          <text class="custom__unit">天</text>
+          <view class="custom__btn" hover-class="gz-hover" @click="applyCustom">改</view>
         </view>
       </view>
 
@@ -150,6 +225,9 @@ import { onLoad } from '@dcloudio/uni-app'
 import {
   usePlanStore,
   LONG_STALE_DAYS,
+  DAILY_PRESETS,
+  DAILY_MIN_DAYS,
+  DAILY_MAX_DAYS,
   type ChallengeType,
   type PlanHorizon,
   type Plan,
@@ -214,13 +292,117 @@ const datesText = computed(() => {
   return parts.join(' · ')
 })
 
-/** 30 天无动作的轻问（只提示，不自动处理） */
+/** 30 天无动作的轻问（只提示，不自动处理）；日课不问 —— 它天天在勾，问"还继续吗"就是催 */
 const stale = computed(() => {
   const p = item.value
-  if (!p || p.status !== 'active') return false
+  if (!p || p.status !== 'active' || plan.isDaily(p)) return false
   const days = Math.round((Date.parse(`${todayK}T12:00:00`) - p.updatedAt) / 86400000)
   return days >= LONG_STALE_DAYS
 })
+
+/* ---------------- 日课（2026-09-17） ---------------- */
+const isDaily = computed(() => Boolean(item.value && plan.isDaily(item.value)))
+
+const todayState = computed<'' | 'kept' | 'broken'>(() => {
+  const p = item.value
+  return p ? (plan.checkOf(p)?.state ?? '') : ''
+})
+
+const streak = computed(() => (item.value ? plan.dailyStreak(item.value) : 0))
+
+/** 最近 14 天点阵：守住 / 破了 / 空白（空白不等于破，见 stores/plan.ts 的口径） */
+const dotDays = computed<Array<{ day: string; cls: string }>>(() => {
+  const p = item.value
+  if (!p) return []
+  const out: Array<{ day: string; cls: string }> = []
+  for (let i = 13; i >= 0; i--) {
+    const d = new Date()
+    d.setDate(d.getDate() - i)
+    const k = todayKey(d)
+    const st = plan.checkOf(p, k)?.state
+    out.push({
+      day: k,
+      cls: st === 'kept' ? 'is-on' : st === 'broken' ? 'is-broken' : k === todayK ? 'is-today' : '',
+    })
+  }
+  return out
+})
+
+function checkToday(): void {
+  const p = item.value
+  if (!p) return
+  const res = plan.checkDaily(p.id)
+  if (res.closed) {
+    reflectOn.value = p
+    return
+  }
+  uni.showToast({ title: res.done ? w.value.keptAct : '已退回今天这一笔', icon: 'none' })
+}
+
+/** 破了：不归零、不扣分，可写一句为什么（那一句会进【知】的省察） */
+function breakToday(): void {
+  const p = item.value
+  if (!p) return
+  uni.showModal({
+    title: w.value.brokenAct,
+    content: '',
+    editable: true,
+    placeholderText: '写一句为什么（可留空）—— 知道原因比没破更有用',
+    confirmText: '记下',
+    cancelText: '算了',
+    success: (res) => {
+      if (!res.confirm) return
+      plan.markDailyBroken(p.id, res.content ?? '')
+      uni.showToast({ title: '记下了 · 明天照常', icon: 'none' })
+    },
+  })
+}
+
+function setTarget(n: number): void {
+  const p = item.value
+  if (!p) return
+  customOn.value = false
+  if (!plan.setTargetDays(p.id, n)) {
+    uni.showToast({ title: `目标定在 ${DAILY_MIN_DAYS} ~ ${DAILY_MAX_DAYS} 天之间`, icon: 'none' })
+  }
+}
+
+/* ---------------- 自定义目标天数（2026-09-17） ----------------
+ * 这里与新建弹层不同：是**改一条已经在守的日课**，所以走"填好 → 点改"，
+ * 不在输入过程中就落地（否则输入 100 的过程中会先把目标改成 1、10、100，中途还可能收束）。
+ */
+const customOn = ref(false)
+const customDays = ref('')
+
+function toggleCustom(): void {
+  customOn.value = !customOn.value
+  if (customOn.value) customDays.value = String(progress.value.total)
+}
+
+function applyCustom(): void {
+  const p = item.value
+  if (!p) return
+  const raw = Number(customDays.value)
+  if (!Number.isFinite(raw) || raw <= 0) {
+    uni.showToast({ title: `填一个 ${DAILY_MIN_DAYS} ~ ${DAILY_MAX_DAYS} 之间的天数`, icon: 'none' })
+    return
+  }
+  const v = Math.round(raw)
+  const clamped = Math.min(DAILY_MAX_DAYS, Math.max(DAILY_MIN_DAYS, v))
+  const ok = plan.setTargetDays(p.id, clamped)
+  if (!ok) {
+    uni.showToast({ title: `填一个 ${DAILY_MIN_DAYS} ~ ${DAILY_MAX_DAYS} 之间的天数`, icon: 'none' })
+    return
+  }
+  customDays.value = String(clamped)
+  customOn.value = false
+  uni.showToast({
+    title: clamped !== v ? `超出范围，按 ${clamped} 天算` : `目标改为 ${clamped} 天`,
+    icon: 'none',
+  })
+  /* 改小到已达标时 setTargetDays 会顺手收束 —— 这里补一次回望的机会 */
+  if (item.value?.status === 'done') reflectOn.value = item.value
+}
 
 /* ---------------- 节点 ---------------- */
 const nodeSteps = computed<StepItem[]>(() => {

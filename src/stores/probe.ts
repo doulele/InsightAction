@@ -24,8 +24,12 @@ import { useKnowledgeStore } from '@/stores/knowledge'
 import { useTraceStore } from '@/stores/trace'
 import { logTrace } from '@/utils/traceLog'
 
-/** 三个触发情境（§11：情境省察 3 个 —— 冲动后 / 违约后 / 周报后） */
-export type ProbeScene = 'urge' | 'vow' | 'weekly'
+/**
+ * 触发情境（§11：原 3 个 —— 冲动后 / 违约后 / 周报后）。
+ * 2026-09-17（四）加第 4 个 `thought`（反刍后）：止念写下"做不了、但还惦记"的那一念之后，
+ * 就地反问一句"它还在你脑子里打转吗" —— 这是「放下了还惦记」这个信号唯一的自陈渠道。
+ */
+export type ProbeScene = 'urge' | 'vow' | 'weekly' | 'thought'
 
 export interface ProbeRecord {
   /** 溯源锚点：urge-<id> / vow-<ts> / weekly-<周一>，与 trace.ref 同名同值 */
@@ -41,6 +45,7 @@ export const PROBE_SCENE_LABEL: Record<ProbeScene, string> = {
   urge: '冲动后',
   vow: '违约后',
   weekly: '周报后',
+  thought: '止念后',
 }
 
 /**
@@ -63,6 +68,16 @@ const SCENE_Q: Record<ProbeScene, Record<ModeId, string>> = {
     normal: '这一周，有什么是你一直在绕开的？',
     tech: '这一周，有一条你始终没跑的循环吗？',
     dao: '这一周，有一件事你一直绕着走吗？',
+  },
+  /**
+   * 反刍后：那一念已经写到纸上、也判了"现在做不了"。
+   * 这一问只关心一件事 —— 它是不是又回去了（放下 ≠ 停止）。
+   * 不写「你怎么还在想」，不问「为什么放不下」。
+   */
+  thought: {
+    normal: '记下这一念之后，它还在你脑子里打转吗？',
+    tech: '这一念落到纸上之后，它回来过吗？大概隔了多久？',
+    dao: '落笔之后，此念可曾去而复返？',
   },
 }
 

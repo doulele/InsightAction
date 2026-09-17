@@ -415,3 +415,33 @@
   line-height: 1.8;
   color: $gz-ink-3;
 }
+
+/* 步数联动（2026-09-17）：忍住之后给身体一个出口 */
+.walk {
+  margin-top: 22rpx;
+  padding: 22rpx 24rpx;
+  background: $gz-surface-2;
+  border-left: 6rpx solid $gz-accent;
+  border-radius: $gz-radius-md;
+}
+
+.walk__title {
+  display: block;
+  font-size: $gz-fs-small;
+  font-weight: 600;
+  color: $gz-ink;
+}
+
+.walk__text {
+  display: block;
+  margin-top: 8rpx;
+  font-size: $gz-fs-caption;
+  line-height: 1.8;
+  color: $gz-ink-2;
+}
+
+.walk__btn {
+  margin-top: 14rpx;
+  font-size: $gz-fs-caption;
+  color: $gz-accent;
+}

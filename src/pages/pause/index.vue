@@ -341,16 +341,27 @@ const holdEntries = computed<MoreEntry[]>(() => [
   },
 ])
 
-/** 止念 · 把念头落到纸上（"能做"的转成「行」里的一件事） */
+/**
+ * 止念 · 把念头落到纸上（"能做"的转成「行」里的一件事）。
+ *
+ * 徽标**优先报到点的**：搁置窗口是纯派生（computed），只有走进止念页才会被算出来 ——
+ * 不把"到点了"带到大厅这个入口上，「到期轻问」就等于没人问（用户不去那页就永远看不到）。
+ * 不做定时器、不做推送，只改这一个徽标。
+ */
 const thinkEntries = computed<MoreEntry[]>(() => {
   const n = thought.ofDay().length
+  const dueN = thought.dueCount
   return [
     {
       mark: '念',
       title: '止念一刻',
       subtitle: '把反复想的那件事写下来，判它现在有没有解',
       badge:
-        n > 0 ? { text: `今日 ${n} 念`, tone: 'accent' } : { text: '写一句就够', tone: 'muted' },
+        dueN > 0
+          ? { text: `${dueN} 条到点了`, tone: 'accent' }
+          : n > 0
+            ? { text: `今日 ${n} 念`, tone: 'accent' }
+            : { text: '写一句就够', tone: 'muted' },
       url: ROUTES.pauseThought,
     },
   ]

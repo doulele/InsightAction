@@ -122,6 +122,17 @@
           只在记完这一笔之后出现，且当天说过「先不写」就不再问。
         -->
         <SceneProbe scene="urge" :anchor="lastAnchor" />
+
+        <!--
+          步数联动（2026-09-17）：忍住之后给身体一个出口。
+          那点冲动不会因为"没做"就消散 —— 出门走二十分钟是最省事的置换。
+          没同步过步数就只给建议、不给数字（不猜、不补零）。
+        -->
+        <view v-if="walkTip" class="walk">
+          <text class="walk__title">忍住了 · 走一走把它散掉</text>
+          <text class="walk__text">{{ walkTip }}</text>
+          <view class="walk__btn" hover-class="gz-hover" @click="goBody">看今天的身体电量 ›</view>
+        </view>
       </view>
     </template>
 
@@ -193,9 +204,10 @@ import {
   useUrgeStore,
 } from '@/stores/urge'
 import type { CooldownKind } from '@/stores/urge'
+import { useBodyStore } from '@/stores/body'
 import { useSkinClass } from '@/composables/useSkin'
 import SceneProbe from '@/components/SceneProbe/SceneProbe.vue'
-import { ROUTES } from '@/router/routes'
+import { navigateTo, ROUTES } from '@/router/routes'
 
 const urge = useUrgeStore()
 const skinClass = useSkinClass()
@@ -306,6 +318,32 @@ function save(): void {
   intensity.value = 3
   lastAnchor.value = `urge-${rec.id}`
   uni.showToast({ title: '记下了 · 2 点修为', icon: 'none' })
+}
+
+/* ---------------- 步数联动（2026-09-17） ----------------
+ * 身体电量是全项目唯一来自真实世界的自动数据，而冲动与"坐久了"高度相关：
+ * 忍下来之后最省事的置换是离开原地走一段。所以在这一笔写完时就给出口，
+ * 而不是等他去身体电量页自己想起来。
+ */
+const body = useBodyStore()
+
+/** 刚记的这一笔是"忍住了"才给建议（做了的那笔不该被劝去散步，那是另一种说教） */
+const resistedJustNow = computed(() => {
+  if (!lastAnchor.value) return false
+  const top = urge.records[0]
+  return Boolean(top && !top.acted)
+})
+
+const walkTip = computed(() => {
+  if (!resistedJustNow.value) return ''
+  const step = body.todayStep
+  if (step === null) return '今天的步数还没同步过 —— 下楼走二十分钟，回来再看这一格。'
+  if (step < body.goal * 0.6) return `今天才 ${step} 步（目标 ${body.goal}）—— 下楼走二十分钟，正好接上。`
+  return `今天已经走了 ${step} 步 —— 那就当给这件事画个句号，别继续在脑子里想它。`
+})
+
+function goBody(): void {
+  navigateTo(ROUTES.actionBody)
 }
 
 /* ---------------- 地图 ---------------- */

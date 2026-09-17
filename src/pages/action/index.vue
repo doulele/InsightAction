@@ -3,6 +3,14 @@
     <!-- 大厅头（五页共用组件：主题艺术画作背景 + 印章 + 定位 + 状态） -->
     <HallHead mark="行" en="ACT · 验证 → 创造 → 痕迹" :line="headLine" :stats="headStats" />
 
+    <!--
+      安息日（2026-09-17）：每周留一天，什么都不必记。
+      它不是"今天不许写"，而是**不要求你写** —— 所有入口照常，只是不入账、也不催。
+    -->
+    <view v-if="sabbath" class="sabbath">
+      <text class="sabbath__text">{{ sabbathText }}</text>
+    </view>
+
     <!-- 第一周解锁引导：今天的主角在这里才挂出 -->
     <WeekGuide for="action" />
 
@@ -11,7 +19,8 @@
     <view id="today" class="today">
       <view class="today__head">
         <text class="today__label">今日三件事</text>
-        <text class="today__count">{{ daily.doneCount }}/{{ daily.planCount || 3 }}</text>
+        <!-- 安息日不报完成度：那天没有"还差几件"这回事 -->
+        <text class="today__count">{{ sabbath ? '—' : `${daily.doneCount}/${daily.planCount || 3}` }}</text>
       </view>
 
       <!--
@@ -46,6 +55,57 @@
           已完成已回写【知】 · 去开一只微行动盲盒 →
         </text>
       </view>
+    </view>
+
+    <!--
+      今天要守的日课（2026-09-17）：早睡 / 锻炼 / 戒色这类"每天重复一次"的事。
+      三态是「守住 / 破了 / 没记」—— 没记只是空白，不是破了（不自我审判）。
+      "破了"只有戒断型（abstain）才有这一颗按钮：锻炼没做不等于破戒。
+    -->
+    <view v-if="dailyItems.length" class="dailies">
+      <view class="dailies__head">
+        <text class="dailies__label">{{ planW.daily }} · 今天</text>
+        <text class="dailies__n">{{ dailyKept }}/{{ dailyItems.length }}</text>
+      </view>
+      <view
+        v-for="d in dailyItems"
+        :key="d.planId"
+        class="daily"
+        :class="{ 'is-kept': d.state === 'kept', 'is-broken': d.state === 'broken' }"
+      >
+        <view class="daily__main">
+          <text class="daily__title">{{ d.title }}</text>
+          <text class="daily__meta">守住 {{ d.kept }} 天 / 共 {{ d.target }} 天</text>
+        </view>
+        <view class="daily__act" hover-class="gz-hover" @click="onCheckDaily(d)">{{ dailyActText(d) }}</view>
+        <view v-if="d.challenge === 'abstain'" class="daily__break" hover-class="gz-hover" @click="onBreakDaily(d)">
+          破了
+        </view>
+      </view>
+      <text class="dailies__hint">{{ planW.dailyHint }}</text>
+    </view>
+
+    <!-- 今日收功（2026-09-17）：一天结束前把它收个尾。安息日那天不出现 -->
+    <view v-if="!sabbath" class="closing">
+      <view class="closing__head">
+        <text class="closing__label">今日收功</text>
+        <text v-if="closing.todayClosed" class="closing__tag">已收</text>
+      </view>
+      <template v-if="closing.todayClosed">
+        <text class="closing__done">{{ closing.todayRecord?.text || '今天收了 —— 不留字也算。' }}</text>
+        <text class="closing__redo" hover-class="gz-hover" @click="closing.reopen()">还想再做点什么 · 撤销收功</text>
+      </template>
+      <template v-else>
+        <textarea
+          v-model="closeDraft"
+          class="closing__input"
+          maxlength="120"
+          auto-height
+          placeholder="今天最想留下的一句（可留空，直接收也行）"
+          placeholder-class="closing__ph"
+        />
+        <view class="closing__btn" hover-class="gz-hover" @click="doClose">收功</view>
+      </template>
     </view>
 
     <!--
@@ -159,8 +219,10 @@ import { useSkinClass } from '@/composables/useSkin'
 import { useDailyStore, todayKey, type DailyTodo } from '@/stores/daily'
 import { useKnowledgeStore } from '@/stores/knowledge'
 import { useHabitStore } from '@/stores/habit'
-import { usePlanStore, TODAY_STEP_COMFORT, type Plan, type StepItem } from '@/stores/plan'
+import { usePlanStore, TODAY_STEP_COMFORT, type DailyItem, type Plan, type StepItem } from '@/stores/plan'
 import { useBodyStore } from '@/stores/body'
+import { useClosingStore } from '@/stores/closing'
+import { isSabbathToday, sabbathLine } from '@/utils/sabbath'
 import { logTrace } from '@/utils/traceLog'
 import { poke } from '@/composables/useBuddy'
 import { useXpStore } from '@/stores/xp'
@@ -185,7 +247,65 @@ const xpTotal = useXpStore()
 const planStore = usePlanStore()
 /** 身体电量（2026-09-15）：微信运动步数，只在本机留存 */
 const body = useBodyStore()
+/** 今日收功（2026-09-17）：一天结束前把它收个尾 */
+const closing = useClosingStore()
 const planW = computed(() => planWords(modeStore.id))
+
+/* ---------------- 安息日（2026-09-17） ----------------
+ * 一周留一天，什么都不必记：功能全开、只是不入账、也不催（见 utils/sabbath.ts）。
+ * 全页只需要两处判断：头部那句话换成安息语，三件事不报完成度。
+ */
+const sabbath = computed(() => isSabbathToday())
+const sabbathText = computed(() => sabbathLine(modeStore.id))
+
+/* ---------------- 今日收功 ---------------- */
+const closeDraft = ref('')
+
+function doClose(): void {
+  const first = closing.close(closeDraft.value)
+  closeDraft.value = ''
+  uni.showToast({ title: first ? '今天收了 · 记一笔痕迹' : '已更新这句', icon: 'none' })
+}
+
+/* ---------------- 今天要守的日课 ---------------- */
+const dailyItems = computed<DailyItem[]>(() => planStore.dailyToday())
+const dailyKept = computed(() => dailyItems.value.filter((d) => d.state === 'kept').length)
+
+function dailyActText(d: DailyItem): string {
+  if (d.state === 'kept') return planW.value.keptAct
+  if (d.state === 'broken') return planW.value.brokenAct
+  return planW.value.keepAct
+}
+
+function onCheckDaily(d: DailyItem): void {
+  const res = planStore.checkDaily(d.planId)
+  if (res.closed) {
+    const target = planStore.byId(d.planId)
+    if (target) reflectOn.value = target
+    return
+  }
+  uni.showToast({
+    title: res.done ? `「${d.title}」· ${planW.value.keptAct}` : '已退回今天这一笔',
+    icon: 'none',
+  })
+}
+
+/** 破了：不归零、不扣分 —— 可以写一句为什么，那一句会进【知】的省察 */
+function onBreakDaily(d: DailyItem): void {
+  uni.showModal({
+    title: `「${d.title}」· ${planW.value.brokenAct}`,
+    content: '',
+    editable: true,
+    placeholderText: '写一句为什么（可留空）—— 知道原因比没破更有用',
+    confirmText: '记下',
+    cancelText: '算了',
+    success: (res) => {
+      if (!res.confirm) return
+      planStore.markDailyBroken(d.planId, res.content ?? '')
+      uni.showToast({ title: '记下了 · 明天照常', icon: 'none' })
+    },
+  })
+}
 
 onShow(() => {
   daily.ensureToday()
@@ -280,7 +400,7 @@ function onReflectSkip(): void {
  * 一句走 lexicon.hallLine 的三模式措辞；数字给"今日三件事"与"累计修为" ——
  * 「做了事 → 涨修为」这条因果在行大厅最贴切，也让下面那份待办列表不必再报总数。
  */
-const headLine = computed(() => hallLine('action', modeStore.id))
+const headLine = computed(() => (sabbath.value ? sabbathText.value : hallLine('action', modeStore.id)))
 
 const headStats = computed(() => [
   { value: `${daily.doneCount}/${daily.planCount || 3}`, label: '今日三件事' },
@@ -377,10 +497,11 @@ const moreEntries = computed<MoreEntry[]>(() => {
     {
       mark: planW.value.mark,
       title: planW.value.plan,
-      subtitle: '跨天的目标拆成一步步走 · 按短期 / 中期 / 长期分开看',
+      /* 长路与日课是两条账（各 3 条）：入口把两边都报出来，别让人以为日课不算 */
+      subtitle: '跨天的目标拆成一步步走 · 每天重复的事走「日课」',
       badge:
-        longTop.value.length > 0 || stepTodo > 0
-          ? { text: `进行中 ${planStore.activeLongCount} 个`, tone: 'accent' }
+        longTop.value.length > 0 || stepTodo > 0 || planStore.activeDailyCount > 0
+          ? { text: `进行中 ${planStore.activeLongCount + planStore.activeDailyCount} 个`, tone: 'accent' }
           : poolN > 0
             ? { text: `${poolN} 条搁置`, tone: 'muted' }
             : { text: '立一条', tone: 'muted' },
@@ -389,7 +510,7 @@ const moreEntries = computed<MoreEntry[]>(() => {
     {
       mark: '惯',
       title: '习惯打卡',
-      subtitle: '自定义习惯列表，每日一勾，痕迹可回溯',
+      subtitle: '自定义习惯列表 · 每日一勾；想给它一个期限，用「立为日课」',
       badge:
         habitTotal > 0
           ? todayDone > 0

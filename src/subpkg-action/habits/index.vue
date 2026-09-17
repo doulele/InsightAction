@@ -66,12 +66,19 @@
         <view class="card__act" :class="{ 'is-on': h.doneToday }" hover-class="gz-hover" @click="toggle(h)">
           {{ h.doneToday ? '✓ 已打卡' : '打卡' }}
         </view>
+        <!--
+          「立为日课」（2026-09-17）：给这条习惯一个期限。
+          习惯是永不到期的打卡；日课是"守住 N 天就收束"，有目标、有回望、能进周报。
+          转走时把已有的打卡记录一起带过去（checks），然后删掉原习惯 —— 不留两份真相。
+        -->
+        <view class="card__to" hover-class="gz-hover" @click.stop="toDaily(h)">立为日课</view>
         <view class="card__del" hover-class="gz-hover" @click.stop="drop(h.id)">删</view>
       </view>
     </view>
 
     <view class="foot">
       <text class="foot__text">习惯是第二天性 · 你喂它什么，它会长成什么</text>
+      <text class="foot__text">想给它一个期限（守住 N 天就收束）？点「立为日课」，打卡记录会一并带过去。</text>
     </view>
 
     <!-- 删除确认：主题随当前模式，破坏性键语义红 -->
@@ -98,12 +105,15 @@ import { computed, ref } from 'vue'
 import GzDialog from '@/components/GzDialog/GzDialog.vue'
 import { onShow } from '@dcloudio/uni-app'
 import { useHabitStore, type Habit } from '@/stores/habit'
+import { DAILY_MAX_DAYS, DAILY_MIN_DAYS, usePlanStore } from '@/stores/plan'
 import { logTrace } from '@/utils/traceLog'
 import { todayKey } from '@/stores/daily'
 import { useSkinClass } from '@/composables/useSkin'
-import { ROUTES } from '@/router/routes'
+import { navigateTo, ROUTES } from '@/router/routes'
 
 const habit = useHabitStore()
+/** 日课：习惯的"有期限版"（见 stores/plan.ts 的 PlanCadence） */
+const plan = usePlanStore()
 const skinClass = useSkinClass()
 
 const SUGGESTS = ['喝水 2L', '早睡 23:30', '阅读 20 分钟', '散步 30 分钟', '复盘 3 行', '戒刷手机 1h'] as const
@@ -174,6 +184,84 @@ function toggle(row: Row): void {
     logTrace({ kind: 'action.habit', text: row.name })
     uni.showToast({ title: `「${row.name}」今日已打卡`, icon: 'none' })
   }
+}
+
+/* ---------------- 立为日课（2026-09-17） ----------------
+ * 习惯是"永不到期的打卡"，日课是"守住 N 天就收束"：
+ * 有目标天数、有进度、收束时能写回望、能进周报的「一条路」。
+ * 所以「每天重复一次」的事最终应该长在计划里；习惯页保留为最轻的入口。
+ */
+function toDaily(h: Row): void {
+  const presets = [7, 21, 30, 100]
+  const carried = habit.daysOf(h.id).length
+  uni.showActionSheet({
+    /* 文案写"总共"：已有的打卡天数会一并计入，不说清会让人以为要从零开始 */
+    itemList: [
+      ...presets.map((d) => (carried ? `总共守住 ${d} 天（已带 ${carried} 天）` : `总共守住 ${d} 天`)),
+      '自定义天数…',
+    ],
+    success: (res) => {
+      /* 自定义（2026-09-17）：与计划页的「自定义」同一区间 3 ~ 365 天 */
+      if (res.tapIndex === presets.length) {
+        toDailyCustom(h)
+        return
+      }
+      const target = presets[res.tapIndex]
+      if (!target) return
+      createDaily(h, target)
+    },
+  })
+}
+
+/** 自定义天数：showModal 的 editable 输入（小程序 2.17.1+），填了合法值才建 */
+function toDailyCustom(h: Row): void {
+  uni.showModal({
+    title: '总共守住多少天',
+    content: '',
+    editable: true,
+    placeholderText: `${DAILY_MIN_DAYS} ~ ${DAILY_MAX_DAYS} 天`,
+    confirmText: '立它',
+    cancelText: '算了',
+    success: (res) => {
+      if (!res.confirm) return
+      const raw = Math.round(Number(res.content))
+      if (!Number.isFinite(raw) || raw <= 0) {
+        uni.showToast({ title: `填一个 ${DAILY_MIN_DAYS} ~ ${DAILY_MAX_DAYS} 之间的天数`, icon: 'none' })
+        return
+      }
+      createDaily(h, Math.min(DAILY_MAX_DAYS, Math.max(DAILY_MIN_DAYS, raw)))
+    },
+  })
+}
+
+/** 真正落地：把习惯连同打卡记录转成一条日课 */
+function createDaily(h: Row, target: number): void {
+  const carried = habit.daysOf(h.id).length
+  /* 已有的打卡记录一并带过去：历史是真的，不该因为换了容器就消失 */
+  const checks = habit.daysOf(h.id).map((day) => ({ day, state: 'kept' as const }))
+  const created = plan.addPlan({
+    title: h.name,
+    kind: 'long',
+    cadence: 'daily',
+    targetDays: target,
+    checks,
+  })
+  if (!created) return
+  habit.remove(h.id)
+  /*
+   * 带过来的历史可能已经够了 —— 那时 addPlan 会直接把它收束（见 stores/plan.ts）。
+   * 如实说明，不说"已立下、去守 N 天"（那会让人以为还得从头守）。
+   */
+  uni.showToast({
+    title:
+      created.status === 'done'
+        ? `已达标 · ${carried} 天都算数`
+        : carried
+          ? `已立为日课 · 已带 ${carried} 天`
+          : `已立为日课 · 守住 ${target} 天`,
+    icon: 'none',
+  })
+  navigateTo(ROUTES.actionPlanDetail, { id: created.id })
 }
 
 /** 待删除习惯 id（null = 弹框关闭） */

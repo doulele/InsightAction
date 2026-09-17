@@ -11,8 +11,11 @@
  *     也绝不给任何数字注水（如"用过几次"这种追踪不准的一律不写）；
  *  3. 时间轴最多附 500 条（与脊椎软上限一致），超出**如实说明被截断**并指向备份文件。
  */
+import { planWords } from '@/config/lexicon'
 import { levelName } from '@/config/levels'
 import { kindLabel } from '@/config/trace'
+import { useCapsuleStore } from '@/stores/capsule'
+import { useClosingStore } from '@/stores/closing'
 import { useKnowledgeStore } from '@/stores/knowledge'
 import { useModeStore } from '@/stores/mode'
 import { useObserveStore } from '@/stores/observe'
@@ -20,7 +23,7 @@ import { usePlanStore } from '@/stores/plan'
 import { SOURCE_LABEL, useProverbStore } from '@/stores/proverb'
 import { useQuestionStore } from '@/stores/question'
 import { PROBE_SCENE_LABEL, useProbeStore } from '@/stores/probe'
-import { useThoughtStore } from '@/stores/thought'
+import { shelfStateOf, shelfTextOf, useThoughtStore } from '@/stores/thought'
 import { useTraceStore } from '@/stores/trace'
 import { useUrgeStore } from '@/stores/urge'
 import { useVowStore } from '@/stores/vow'
@@ -102,6 +105,9 @@ export function buildArchive(now = new Date()): ArchiveResult {
   const probe = useProbeStore()
   const plan = usePlanStore()
   const proverb = useProverbStore()
+  /* 2026-09-17 新增：收功与时间胶囊都是"我写过的东西"，档案里该有 */
+  const closing = useClosingStore()
+  const capsules = useCapsuleStore()
 
   const L: string[] = []
 
@@ -211,16 +217,21 @@ export function buildArchive(now = new Date()): ArchiveResult {
   }
   L.push('')
 
+  /**
+   * 止念：除文本与判定，还要带上**搁置状态** ——
+   * 否则导出看不出"现在还有几件事悬着"，而那正是止念四补充要留下的东西。
+   */
   const thoughts = thought.records
   const canDo = thoughts.filter((t) => t.answer === 'act').length
-  L.push(`### 止念（累计 ${thoughts.length} 次 · 其中"能做点什么"的 ${canDo} 次）`)
+  L.push(`### 止念（累计 ${thoughts.length} 次 · 能做 ${canDo} · 还候着 ${thought.pendingCount}）`)
   L.push('')
   if (!thoughts.length) {
     L.push('（还没有记过止念）')
   } else {
     for (const t of [...thoughts].sort((a, b) => b.at - a.at).slice(0, DETAIL_CAP)) {
+      const shelf = t.answer === 'let' && shelfStateOf(t) !== 'none' ? `（${shelfTextOf(t)}）` : ''
       L.push(
-        `- ${t.day} · ${oneLine(t.text)} · ${t.answer === 'act' ? '能做' : '先放下'}${
+        `- ${t.day} · ${oneLine(t.text)} · ${t.answer === 'act' ? '能做' : '先放下'}${shelf}${
           t.action ? `：${oneLine(t.action)}` : ''
         }`,
       )
@@ -288,10 +299,14 @@ export function buildArchive(now = new Date()): ArchiveResult {
   L.push('## 行')
   L.push('')
 
-  const longs = plan.plans.filter((p) => p.kind === 'long')
+  /*
+   * 长路与日课分开列（2026-09-17）：两者都是 kind='long'，但一个是"走了几步"、
+   * 一个是"守住几天"，混在一节里读起来会互相误读（"12/21" 到底指步数还是天数）。
+   */
+  const longs = plan.plans.filter((p) => p.kind === 'long' && !plan.isDaily(p))
   const active = longs.filter((p) => p.status === 'active')
   const done = longs.filter((p) => p.status === 'done')
-  L.push(`### 计划（在走 ${active.length} · 已收束 ${done.length}）`)
+  L.push(`### 长路（在走 ${active.length} · 已收束 ${done.length}）`)
   L.push('')
   if (!longs.length) {
     L.push('（还没有立过长期计划）')
@@ -300,9 +315,63 @@ export function buildArchive(now = new Date()): ArchiveResult {
       const pr = plan.progressOf(p)
       const tag = p.challenge ? ` · ${CHALLENGE_LABEL[p.challenge] ?? ''}` : ''
       const at = p.doneAt ? ` · 收束于 ${fmtDay(p.doneAt)}` : ''
+      L.push(`- ${p.status === 'done' ? '已收束' : '在走'} · ${oneLine(p.title)}（走了 ${pr.done}/${pr.total} 步）${tag}${at}`)
+    }
+  }
+  L.push('')
+
+  /** 日课：每天重复一次的事（早睡 / 锻炼 / 戒断）—— 报守住天数、破过几次、当前连续 */
+  const pw = planWords(mode.id)
+  const dailies = plan.dailyPlans
+  const dailiesOn = dailies.filter((p) => p.status === 'active')
+  L.push(`### ${pw.daily}（在守 ${dailiesOn.length} · 已收束 ${dailies.length - dailiesOn.length}）`)
+  L.push('')
+  if (!dailies.length) {
+    L.push(`（还没有立过${pw.daily} —— 每天重复一次的事可以立在这，一天一勾）`)
+  } else {
+    for (const p of dailies) {
+      const broken = (p.checks ?? []).filter((c) => c.state === 'broken').length
+      const streak = plan.dailyStreak(p)
+      const tag = p.challenge ? ` · ${CHALLENGE_LABEL[p.challenge] ?? ''}` : ''
+      /* 没勾的日子不写"缺勤" —— 未记不等于破了（口径见 stores/plan.ts） */
+      const extra = `${broken ? ` · 破过 ${broken} 次` : ''}${streak > 1 ? ` · 当前连续 ${streak} 天` : ''}`
+      const at = p.doneAt ? ` · 收束于 ${fmtDay(p.doneAt)}` : ''
+      const pr = plan.progressOf(p)
       L.push(
-        `- ${p.status === 'done' ? '已收束' : '在走'} · ${oneLine(p.title)}（${pr.done}/${pr.total}）${tag}${at}`,
+        `- ${p.status === 'done' ? '已收束' : '在守'} · ${oneLine(p.title)}（${pw.dailyProgress(pr.done, pr.total)}${extra}）${tag}${at}`,
       )
+    }
+  }
+  L.push('')
+
+  /** 今日收功：用户自己写下的那句"今天收了" */
+  const closings = [...closing.records].sort((a, b) => (a.day < b.day ? 1 : -1))
+  L.push(`### 今日收功（${closings.length} 天）`)
+  L.push('')
+  if (!closings.length) {
+    L.push('（还没有收过功 —— 一天结束前在「行」里留一句，给今天一个句号）')
+  } else {
+    for (const c of closings.slice(0, DETAIL_CAP)) {
+      L.push(`- ${c.day} · ${c.text ? oneLine(c.text) : '只收了工，没留字'}`)
+    }
+  }
+  L.push('')
+
+  /**
+   * 时间胶囊：**未拆的不剧透原文**（那正是它存在的意思），只报封存状态；
+   * 已拆开的才列出原文与当时补的那一句。
+   */
+  const dueCaps = capsules.dueList
+  L.push(`### 时间胶囊（封着 ${capsules.sealed.length} · 到期待拆 ${dueCaps.length} · 已拆 ${capsules.opened.length}）`)
+  L.push('')
+  if (!capsules.count) {
+    L.push('（还没有封过胶囊）')
+  } else {
+    for (const c of capsules.opened) {
+      L.push(`- 已拆 · ${c.dueDay} 到期 · 「${oneLine(c.text)}」${c.reply ? ` —— 当时的回应：${oneLine(c.reply)}` : ''}`)
+    }
+    for (const c of [...dueCaps, ...capsules.sealed]) {
+      L.push(`- ${c.dueDay <= fmtDay(now.getTime()) ? '待拆' : '封着'} · ${c.dueDay} 到期（原文到期那天再读）`)
     }
   }
   L.push('')

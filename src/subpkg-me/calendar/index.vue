@@ -53,7 +53,7 @@
           hover-class="cell--hover"
           @click="pick(cell)"
         >
-          <view v-if="!cell.void" class="cell__dot" :class="`lv-${cell.level}`">
+          <view v-if="!cell.void" class="cell__dot" :class="[`lv-${cell.level}`, { 'is-rest': cell.sabbath }]">
             <text class="cell__day" :class="{ 'is-in': cell.level > 0 }">{{ cell.day }}</text>
           </view>
         </view>
@@ -76,6 +76,10 @@
           <text>多</text>
         </view>
         <text class="cal__hint">深浅 = 观止知行 6 个投入维度被点亮几个</text>
+        <!-- 安息日（2026-09-17）：那天是"休"，不是"漏" —— 必须说一句，否则空白会被读成缺口 -->
+        <text v-if="monthAgg.rest" class="cal__rest">
+          虚框是安息日 · 本月 {{ monthAgg.rest }} 天 —— 那天不计分也不提醒，不算缺口
+        </text>
       </view>
     </view>
 
@@ -125,6 +129,7 @@
  */
 import { computed, ref } from 'vue'
 import { dayStats, activeDimCount, fmtKey, type DayStats } from '@/utils/growth'
+import { isSabbathDay } from '@/utils/sabbath'
 import { useSkinClass } from '@/composables/useSkin'
 import { ROUTES } from '@/router/routes'
 import { useDimLabel } from '@/composables/usePhrase'
@@ -150,6 +155,8 @@ interface Cell {
   selected: boolean
   level: number
   stats: DayStats | null
+  /** 安息日（2026-09-17）：画虚框并在地图说明里单独交代，避免"空白 = 缺口" */
+  sabbath: boolean
 }
 
 const selectedKey = ref(todayKey)
@@ -165,9 +172,18 @@ const cells = computed<Cell[]>(() => {
   const firstDow = (new Date(y, m, 1).getDay() + 6) % 7
   const daysInMonth = new Date(y, m + 1, 0).getDate()
   const out: Cell[] = []
-  for (let i = 0; i < firstDow; i++) {
-    out.push({ key: '', day: 0, void: true, future: false, isToday: false, selected: false, level: 0, stats: null })
+  const blank: Cell = {
+    key: '',
+    day: 0,
+    void: true,
+    future: false,
+    isToday: false,
+    selected: false,
+    level: 0,
+    stats: null,
+    sabbath: false,
   }
+  for (let i = 0; i < firstDow; i++) out.push({ ...blank })
   for (let d = 1; d <= daysInMonth; d++) {
     const key = dateKey(y, m, d)
     const future = key > todayKey
@@ -182,18 +198,20 @@ const cells = computed<Cell[]>(() => {
       selected: key === selectedKey.value,
       level: stats ? activeDimCount(stats) : 0,
       stats,
+      /* 未来的日子不标（安息日是按星期算的，将来的也会命中，但没必要提前显示） */
+      sabbath: !future && isSabbathDay(key),
     })
   }
-  while (out.length < 42) {
-    out.push({ key: '', day: 0, void: true, future: false, isToday: false, selected: false, level: 0, stats: null })
-  }
+  while (out.length < 42) out.push({ ...blank })
   return out
 })
 
 /* 月汇总（只统计到今天为止，未来不计） */
 const monthAgg = computed(() => {
-  const agg = { active: 0, focusMin: 0, marks: 0, traces: 0 }
+  const agg = { active: 0, focusMin: 0, marks: 0, traces: 0, rest: 0 }
   cells.value.forEach((c) => {
+    if (c.future) return
+    if (c.sabbath) agg.rest += 1
     if (!c.stats) return
     if (c.level > 0) agg.active += 1
     agg.focusMin += c.stats.focusMin
@@ -230,6 +248,10 @@ const selectedLabel = computed(() => {
 
 const detailNote = computed(() => {
   if (!selected.value) return ''
+  /* 安息日单独说 —— 与周报同一口径（"休"不是缺口），两处说法不能打架 */
+  if (selected.value.sabbath && selected.value.level === 0) {
+    return '这天是安息日 —— 不计分、不提醒，什么都没记也完全不算缺口。'
+  }
   if (selected.value.level === 0) return '这一天没有留下修行痕迹 —— 也可以是，那天你歇了歇。'
   const groups: string[] = []
   if (d.value.marks > 0) groups.push('观')

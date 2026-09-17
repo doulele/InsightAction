@@ -221,6 +221,30 @@
   transform-origin: right center;
 }
 
+/* 安息日：星期选择（与新建计划的 chips 同一形态，放在卡片之间） */
+.days {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12rpx;
+}
+
+.day {
+  min-width: 84rpx;
+  padding: 14rpx 0;
+  font-size: $gz-fs-small;
+  text-align: center;
+  color: $gz-ink-2;
+  background: $gz-surface;
+  border: 1rpx solid $gz-line;
+  border-radius: $gz-radius-md;
+}
+
+.day.is-on {
+  color: $gz-on-cta;
+  background: $gz-cta-bg;
+  border-color: transparent;
+}
+
 /* 关于 */
 .about {
   padding: 30rpx;

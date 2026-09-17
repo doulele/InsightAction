@@ -8,7 +8,7 @@
       <view class="nav__side" />
     </view>
 
-    <!-- 今日 / 短期 / 中期 / 长期 -->
+    <!-- 今日 / 日课 / 短期 / 中期 / 长期 -->
     <view class="tabs">
       <view
         v-for="t in TABS"
@@ -20,7 +20,8 @@
       >
         {{ t.label }}
         <text v-if="t.id === 'today' && todaySteps.length" class="tab__n">{{ doneSteps }}/{{ todaySteps.length }}</text>
-        <text v-else-if="t.id !== 'today' && horizonCount(t.id)" class="tab__n">{{ horizonCount(t.id) }}</text>
+        <text v-else-if="t.id === 'daily' && dailyList.length" class="tab__n">{{ dailyTodayKept }}/{{ dailyList.length }}</text>
+        <text v-else-if="isHorizonTab(t.id) && horizonCount(t.id)" class="tab__n">{{ horizonCount(t.id) }}</text>
       </view>
     </view>
 
@@ -70,6 +71,50 @@
           </PlanStep>
         </view>
       </view>
+    </template>
+
+    <!--
+      日课（2026-09-17）：早睡 / 锻炼 / 戒色这类"每天重复一次"的事。
+      与长路分开一栏、分开计数（各 3 条）：一条"30 天早睡"和一条"重做作品集"占的心智不是一回事。
+    -->
+    <template v-else-if="tab === 'daily'">
+      <text class="horizon-note">{{ w.dailyNote }}</text>
+
+      <view v-if="dailyList.length">
+        <view
+          v-for="p in dailyList"
+          :key="p.id"
+          class="plan"
+          :class="{ 'is-off': p.status !== 'active' }"
+          hover-class="gz-hover"
+          @click="openDetail(p)"
+        >
+          <view class="plan__head">
+            <text class="plan__title">{{ p.title }}</text>
+            <text v-if="p.challenge" class="plan__tag">{{ challengeLabel(p) }}</text>
+            <text class="plan__status">{{ statusLabel(p) }}</text>
+          </view>
+          <text v-if="p.note" class="plan__note">{{ p.note }}</text>
+          <view class="bar">
+            <view class="bar__fill" :style="{ width: `${plan.progressOf(p).pct}%` }" />
+          </view>
+          <view class="plan__meta">
+            <text class="plan__progress">{{ w.dailyProgress(plan.progressOf(p).done, plan.progressOf(p).total) }}</text>
+            <text class="plan__next">{{ dailyTodayText(p) }}</text>
+          </view>
+        </view>
+      </view>
+
+      <view v-else class="empty">
+        <view class="empty__seal">课</view>
+        <text class="empty__text">{{ w.emptyDaily }}</text>
+      </view>
+
+      <view class="add" hover-class="gz-hover" @click="openNew">
+        <text class="add__mark">＋</text>
+        <text class="add__text">{{ w.newDaily }}</text>
+      </view>
+      <text class="add__cap">{{ w.dailyCap }}</text>
     </template>
 
     <!-- 短期 / 中期 / 长期：同一套列表，只是按期限档筛过 -->
@@ -135,26 +180,62 @@
       <text class="add__cap">三档合计上限 {{ MAX_LONG_ACTIVE }} 条 —— {{ w.cap }}</text>
     </template>
 
-    <!-- 新建长路 -->
+    <!-- 新建长路 / 新建日课 -->
     <view v-if="newOpen" class="overlay" @touchmove.stop.prevent @click="newOpen = false">
       <view class="sheet" @click.stop>
         <text class="sheet__title">{{ newLabel }}</text>
         <input v-model="newTitle" class="sheet__input" placeholder="这条路叫什么" placeholder-class="quick__ph" :maxlength="20" />
         <input v-model="newNote" class="sheet__input" placeholder="为什么走它 / 走成什么样（选填）" placeholder-class="quick__ph" :maxlength="40" />
-        <text class="sheet__label">期限档</text>
-        <view class="chips">
-          <view
-            v-for="h in HORIZONS"
-            :key="h.id"
-            class="chip"
-            :class="{ 'is-on': newHorizon === h.id }"
-            hover-class="gz-hover"
-            @click="newHorizon = h.id"
-          >
-            {{ h.label }}
+
+        <!-- 日课：要的是"守住多少天"，不是期限档 -->
+        <template v-if="isDailyTab">
+          <text class="sheet__label">{{ w.targetLabel }}</text>
+          <view class="chips">
+            <view
+              v-for="n in DAILY_PRESETS"
+              :key="n"
+              class="chip"
+              :class="{ 'is-on': !customOn && newTarget === n }"
+              hover-class="gz-hover"
+              @click="pickPreset(n)"
+            >
+              {{ w.days(n) }}
+            </view>
+            <!-- 自定义天数（2026-09-17）：3 ~ 365 天，超出取边界值，不静默丢弃 -->
+            <view class="chip" :class="{ 'is-on': customOn }" hover-class="gz-hover" @click="toggleCustom">自定义</view>
           </view>
-        </view>
-        <text class="sheet__hint">{{ HORIZON_DESC[newHorizon] }}</text>
+          <view v-if="customOn" class="custom">
+            <input
+              v-model="customDays"
+              class="custom__input"
+              type="number"
+              :maxlength="3"
+              :placeholder="`${DAILY_MIN_DAYS} ~ ${DAILY_MAX_DAYS}`"
+              placeholder-class="quick__ph"
+              @input="onCustomInput"
+            />
+            <text class="custom__unit">天</text>
+          </view>
+          <text class="sheet__hint">{{ targetHint }}</text>
+        </template>
+
+        <template v-else>
+          <text class="sheet__label">期限档</text>
+          <view class="chips">
+            <view
+              v-for="h in HORIZONS"
+              :key="h.id"
+              class="chip"
+              :class="{ 'is-on': newHorizon === h.id }"
+              hover-class="gz-hover"
+              @click="newHorizon = h.id"
+            >
+              {{ h.label }}
+            </view>
+          </view>
+          <text class="sheet__hint">{{ HORIZON_DESC[newHorizon] }}</text>
+        </template>
+
         <text class="sheet__label">挑战类型（选填）</text>
         <view class="chips">
           <view
@@ -196,6 +277,10 @@ import {
   usePlanStore,
   TODAY_STEP_COMFORT,
   MAX_LONG_ACTIVE,
+  DAILY_PRESETS,
+  DAILY_DEFAULT_DAYS,
+  DAILY_MIN_DAYS,
+  DAILY_MAX_DAYS,
   type Plan,
   type StepItem,
   type ChallengeType,
@@ -212,15 +297,25 @@ const mode = useModeStore()
 const skinClass = useSkinClass()
 const w = computed(() => planWords(mode.id))
 
-/** 今日之外按期限分三档；tab 的 id 直接复用 PlanHorizon，省一层映射 */
-type TabId = 'today' | PlanHorizon
+/**
+ * 今日之外按期限分三档；tab 的 id 直接复用 PlanHorizon，省一层映射。
+ * 「日课」（2026-09-17）是另一条轴：它没有期限档，只有"守住 N 天"。
+ */
+type TabId = 'today' | 'daily' | PlanHorizon
 
-const TABS: ReadonlyArray<{ id: TabId; label: string }> = [
+/** tab 名随模式（"日课 / 每日任务 / 日行"—— 见 config/lexicon.ts 的 PlanWords） */
+const TABS = computed<ReadonlyArray<{ id: TabId; label: string }>>(() => [
   { id: 'today', label: '今日' },
+  { id: 'daily', label: w.value.daily },
   { id: 'short', label: HORIZON_LABEL.short },
   { id: 'mid', label: HORIZON_LABEL.mid },
   { id: 'long', label: HORIZON_LABEL.long },
-]
+])
+
+/** 期限三档的 tab（日课与今日不算） */
+function isHorizonTab(id: TabId): id is PlanHorizon {
+  return id !== 'today' && id !== 'daily'
+}
 const HORIZONS: ReadonlyArray<{ id: PlanHorizon; label: string }> = (
   ['short', 'mid', 'long'] as PlanHorizon[]
 ).map((id) => ({ id, label: HORIZON_LABEL[id] }))
@@ -290,33 +385,49 @@ function dropStep(item: StepItem): void {
   })
 }
 
+/* ---------------- 日课（2026-09-17） ---------------- */
+const dailyList = computed<Plan[]>(() => plan.dailyPlans)
+const dailyTodayKept = computed(() => plan.dailyToday().filter((d) => d.state === 'kept').length)
+
+/** 今天这条日课的状态：还没记 / 守住了 / 破了 —— 未记不写成"未完成"（那是审判） */
+function dailyTodayText(p: Plan): string {
+  if (p.status !== 'active') return ''
+  const st = plan.checkOf(p)?.state
+  if (st === 'kept') return w.value.keptAct
+  if (st === 'broken') return `${w.value.brokenAct} · 明天照常`
+  return w.value.notYet
+}
+
 /* ---------------- 短期 / 中期 / 长期 ---------------- */
 /** 当前这一档的路（进行中在前，已收束 / 已收起在后） */
-const horizonList = computed<Plan[]>(() =>
-  tab.value === 'today' ? [] : plan.horizonPlans(tab.value),
-)
+const horizonList = computed<Plan[]>(() => (isHorizonTab(tab.value) ? plan.horizonPlans(tab.value) : []))
 
 /** 当前这一档还在走几条（tab 徽标；「今日」档走的是步子数，不在这里算） */
-function horizonCount(h: TabId): number {
-  return h === 'today' ? 0 : plan.horizonActiveCount(h)
+function horizonCount(h: PlanHorizon): number {
+  return plan.horizonActiveCount(h)
 }
 
 /** 当前这一档的一句话说明（放在列表最上面，说清这一档是什么） */
-const horizonNote = computed<string>(() =>
-  tab.value === 'today' ? '' : HORIZON_DESC[tab.value as PlanHorizon],
-)
+const horizonNote = computed<string>(() => (isHorizonTab(tab.value) ? HORIZON_DESC[tab.value] : ''))
 
 /** 空态：长期沿用原来的话，另两档按档名生成 */
 const emptyText = computed<string>(() =>
-  tab.value === 'long' ? w.value.emptyLong : w.value.emptyHorizon(HORIZON_LABEL[tab.value as PlanHorizon]),
+  tab.value === 'long' ? w.value.emptyLong : w.value.emptyHorizon(isHorizonTab(tab.value) ? HORIZON_LABEL[tab.value] : ''),
 )
 
-/** 「立一条…」按钮与弹层标题：长期用原话，另两档带上档名 */
-const newLabel = computed<string>(() =>
-  tab.value === 'long' ? w.value.newLong : `立一条${HORIZON_LABEL[tab.value as PlanHorizon]}的路`,
-)
+/** 正在新建的是不是日课（弹层里据此换掉"期限档"那一组选项） */
+const isDailyTab = computed(() => tab.value === 'daily')
 
-const staleList = computed(() => plan.staleLong().filter((p) => plan.horizonOf(p) === tab.value))
+/** 「立一条…」按钮与弹层标题：长期用原话，另两档带上档名，日课走自己的话 */
+const newLabel = computed<string>(() => {
+  if (tab.value === 'daily') return w.value.newDaily
+  if (isHorizonTab(tab.value)) return `立一条${HORIZON_LABEL[tab.value]}的路`
+  return w.value.newLong
+})
+
+const staleList = computed(() =>
+  isHorizonTab(tab.value) ? plan.staleLong().filter((p) => plan.horizonOf(p) === tab.value) : [],
+)
 
 function challengeLabel(p: Plan): string {
   return p.challenge ? CHALLENGE_LABEL[p.challenge] : ''
@@ -351,13 +462,52 @@ const newTitle = ref('')
 const newNote = ref('')
 const newChallenge = ref<ChallengeType | undefined>(undefined)
 const newHorizon = ref<PlanHorizon>('long')
+/** 日课的目标天数（只在「日课」档的新建弹层里用） */
+const newTarget = ref<number>(DAILY_DEFAULT_DAYS)
+/** 自定义天数是否展开（展开时预设 chip 不显示选中，避免"两个都选中"） */
+const customOn = ref(false)
+const customDays = ref('')
+
+/** 预设 chip：点了就收起自定义，让"现在到底按哪个数走"一目了然 */
+function pickPreset(n: number): void {
+  newTarget.value = n
+  customOn.value = false
+}
+
+function toggleCustom(): void {
+  customOn.value = !customOn.value
+  if (customOn.value) customDays.value = String(newTarget.value)
+}
+
+/**
+ * 自定义输入 → 目标天数。
+ * 越界取边界值（3 ~ 365）而不是拒绝：用户输入 500 时把它变成 365，比弹一句错更难懂。
+ * 只在真越界时把值回写进输入框，否则不打断输入（不然打"1"就立刻被改成 3，没法往下打）。
+ */
+function onCustomInput(): void {
+  const raw = Number(customDays.value)
+  if (!Number.isFinite(raw) || raw <= 0) return
+  const v = Math.round(raw)
+  newTarget.value = Math.min(DAILY_MAX_DAYS, Math.max(DAILY_MIN_DAYS, v))
+  if (raw !== newTarget.value) customDays.value = String(newTarget.value)
+}
+
+/** 目标天数的说明：跟着当前值走，避免用户以为自己选的还是预设那一档 */
+const targetHint = computed(() =>
+  customOn.value
+    ? `自己定 ${DAILY_MIN_DAYS} ~ ${DAILY_MAX_DAYS} 天 · 现在按 ${newTarget.value} 天算`
+    : '勾满这天数就收束；中途想改随时能改（改了不清记录）',
+)
 
 /**
  * 打开新建弹层：在哪一档点的「＋」，期限档就默认那一档 ——
  * 让用户在「短期」页立路时不用再回头选一次。今日页没有档，默认长期。
  */
 function openNew(): void {
-  newHorizon.value = tab.value === 'today' ? 'long' : tab.value
+  newHorizon.value = isHorizonTab(tab.value) ? tab.value : 'long'
+  /* 弹层是共用的，每次打开都把日课那组状态复位，避免上次开着的自定义输入框留到这一次 */
+  customOn.value = false
+  customDays.value = ''
   newOpen.value = true
 }
 
@@ -413,12 +563,15 @@ function startChallenge(c: { id: ChallengeType; title: string; note: string; hor
 }
 
 function savePlan(): void {
+  const daily = isDailyTab.value
   const created = plan.addPlan({
     title: newTitle.value,
     note: newNote.value,
     kind: 'long',
     challenge: newChallenge.value,
     horizon: newHorizon.value,
+    cadence: daily ? 'daily' : 'steps',
+    targetDays: daily ? newTarget.value : undefined,
   })
   if (!created) {
     if (!newTitle.value.trim()) uni.showToast({ title: '先给它起个名字', icon: 'none' })
@@ -428,8 +581,11 @@ function savePlan(): void {
   newNote.value = ''
   newChallenge.value = undefined
   newHorizon.value = 'long'
+  newTarget.value = DAILY_DEFAULT_DAYS
+  customOn.value = false
+  customDays.value = ''
   newOpen.value = false
-  uni.showToast({ title: '已立下 · 去拆成几步吧', icon: 'none' })
+  uni.showToast({ title: daily ? '已立下 · 今天就可以开始守' : '已立下 · 去拆成几步吧', icon: 'none' })
   navigateTo(ROUTES.actionPlanDetail, { id: created.id })
 }
 

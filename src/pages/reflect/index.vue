@@ -467,6 +467,26 @@ const moreEntries = computed<MoreEntry[]>(() => [
     url: ROUTES.reflectGrowth,
   },
   /*
+   * 旧卡重逢（2026-09-17）：内化的唯一检验。
+   * 写下来当天觉得对不算数 —— 隔 30 天再见还认它，才算站住了；
+   * 想法变了就派生一张新卡（"曾经我以为…"），那比"仍然认同"更值钱。
+   */
+  {
+    mark: '逢',
+    title: '旧卡重逢',
+    subtitle: knowledge.dueEcho
+      ? `今天递给你一条：${knowledge.dueEcho.title}`
+      : knowledge.echableCount
+        ? `${knowledge.echableCount} 张写满 30 天的卡在排队，一天只递一条`
+        : '写满 30 天的卡才会重新出现在这里',
+    badge: knowledge.dueEcho
+      ? { text: '今天一条', tone: 'accent' }
+      : knowledge.echableCount
+        ? { text: `${knowledge.echableCount} 张待见`, tone: 'muted' }
+        : { text: '待积累', tone: 'muted' },
+    url: ROUTES.reflectEcho,
+  },
+  /*
    * 碎片回收站 · 截图分析（2026-09-16 复核标注）。
    *
    * 原来标「后端期」不准确 —— 查证后：微信官方的「通用印刷体识别」（`/cv/ocr/comm`）

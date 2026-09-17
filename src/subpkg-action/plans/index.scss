@@ -508,3 +508,28 @@
   border: 1rpx solid $gz-line;
   color: $gz-ink-2;
 }
+
+/* 自定义目标天数（2026-09-17）：与 chips 同一行语义，故紧跟在 chips 下面 */
+.custom {
+  display: flex;
+  align-items: center;
+  gap: 12rpx;
+  margin-top: 16rpx;
+}
+
+.custom__input {
+  flex: 1;
+  height: 72rpx;
+  padding: 0 22rpx;
+  box-sizing: border-box;
+  font-size: $gz-fs-small;
+  color: $gz-ink;
+  background: $gz-input-bg;
+  border: 1rpx solid $gz-line;
+  border-radius: $gz-radius-md;
+}
+
+.custom__unit {
+  font-size: $gz-fs-small;
+  color: $gz-ink-3;
+}

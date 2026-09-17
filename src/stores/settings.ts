@@ -40,12 +40,21 @@ export const useSettingsStore = defineStore(
      */
     const sandglassAmbient = ref('none')
 
-    return { eveningRemind, streakRemind, lowNoise, soundOn, sandglassAmbient }
+    /**
+     * 安息日（2026-09-17）：每周留一天，什么都不必记。
+     *
+     * 值 = 星期几（0 周日 … 6 周六），`null` = 关闭（默认关闭，不替用户安排休息）。
+     * 那天**功能全部照常，只是不入账**（痕迹仍然完整，见 utils/traceLog.ts），
+     * 且不出现任何"你还没做"的催促（见 utils/sabbath.ts）。
+     */
+    const sabbathWeekday = ref<number | null>(null)
+
+    return { eveningRemind, streakRemind, lowNoise, soundOn, sandglassAmbient, sabbathWeekday }
   },
   {
     persist: {
       key: 'settings',
-      paths: ['eveningRemind', 'streakRemind', 'lowNoise', 'soundOn', 'sandglassAmbient'],
+      paths: ['eveningRemind', 'streakRemind', 'lowNoise', 'soundOn', 'sandglassAmbient', 'sabbathWeekday'],
     },
   },
 )

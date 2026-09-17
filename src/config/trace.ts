@@ -6,7 +6,7 @@
  * 修为不再由各页面手动「+N」，而是随 trace 的 value 入账（见 utils/traceLog.ts），
  * 所以「加一个新行为要加多少分」只需要改这张表。
  *
- * 20 种事件（观 5 / 止 7 / 知 3 / 行 5），hall 由 kind 前缀推导，不重复写。
+ * 25 种事件（观 5 / 止 7 / 知 5 / 行 8），hall 由 kind 前缀推导，不重复写。
  */
 import type { HallId } from '@/config/lexicon'
 
@@ -25,16 +25,26 @@ export type TraceKind =
   | 'pause.cooldown'
   | 'pause.urge'
   | 'pause.thought'
-  // 知 · 3
+  // 知 · 5
   | 'reflect.note'
   | 'reflect.apply'
   | 'reflect.probe'
-  // 行 · 5
+  /** 旧卡重逢（2026-09-17）：隔一段时间再见一次自己写过的东西，判它还成不成立 */
+  | 'reflect.echo'
+  /** 拆开时间胶囊（2026-09-17）：到期的那句给未来的话，今天读到了 */
+  | 'reflect.capsule'
+  // 行 · 8
   | 'action.todo'
   | 'action.habit'
   | 'action.challenge'
   | 'action.box'
   | 'action.body'
+  /** 日课勾选（2026-09-17）：每天重复一次的事（早睡 / 锻炼 / 戒断），守住一次记一笔 */
+  | 'action.daily'
+  /** 日课破了（2026-09-17）：只留痕不给分 —— 与立约「破了写一句」同一口径 */
+  | 'action.daily.break'
+  /** 今日收功（2026-09-17）：一天结束前把它收个尾 */
+  | 'action.closing'
 
 export interface TraceMeta {
   /** 所属环（由 kind 前缀推导，这里显式写死以避免运行时字符串切割出错） */
@@ -64,12 +74,17 @@ export const TRACE_META: Record<TraceKind, TraceMeta> = {
   'reflect.note': { hall: 'reflect', value: 5, label: '记笔记' },
   'reflect.apply': { hall: 'reflect', value: 15, label: '用上了' },
   'reflect.probe': { hall: 'reflect', value: 10, label: '自省' },
+  'reflect.echo': { hall: 'reflect', value: 8, label: '旧卡重逢' },
+  'reflect.capsule': { hall: 'reflect', value: 10, label: '拆开慢递' },
   // 行
   'action.todo': { hall: 'action', value: 10, label: '完成一件事' },
   'action.habit': { hall: 'action', value: 6, label: '习惯打卡' },
   'action.challenge': { hall: 'action', value: 20, label: '完成挑战' },
   'action.box': { hall: 'action', value: 12, label: '盲盒达成' },
   'action.body': { hall: 'action', value: 2, label: '身体电量' },
+  'action.daily': { hall: 'action', value: 8, label: '守住日课' },
+  'action.daily.break': { hall: 'action', value: 0, label: '日课破了' },
+  'action.closing': { hall: 'action', value: 8, label: '今日收功' },
 }
 
 /** 全部事件类型（供统计/筛选遍历） */
@@ -92,6 +107,12 @@ export const DAY_CAP: Partial<Record<TraceKind, number>> = {
   'reflect.note': 5,
   'reflect.apply': 3,
   'action.todo': 3,
+  /* 2026-09-17 新增：日课每天最多 3 条计分（按每日重复一次的本性，天然不会超）；
+     收功 / 重逢 / 拆胶囊都是「一天一次就够」的事，第二次起只留痕。 */
+  'action.daily': 3,
+  'action.closing': 1,
+  'reflect.echo': 1,
+  'reflect.capsule': 1,
 }
 
 /** 该类事件的每日入账上限；0 = 不限 */

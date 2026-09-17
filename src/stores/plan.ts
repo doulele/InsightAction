@@ -43,6 +43,42 @@ export const SHORT_SPAN_DAYS = 7
 /** 中期上限：一个月内走得完（超过即长期） */
 export const MID_SPAN_DAYS = 30
 
+/**
+ * 路的**形态**（2026-09-17 新增 daily）。
+ *
+ * 为什么必须加这一维：有些路根本不是"分几步走完"，而是**同一件事重复 N 天** ——
+ * 早睡、锻炼、戒色。用节点表达只有两条死路：建 30 个节点（荒谬），
+ * 或者只在最后勾一次（中间 N 天完全没有抓手）。
+ * 这类事原来的唯一去处是「习惯打卡」，而习惯没有期限、不会收束、没有回望 ——
+ * 一条早睡会在列表里躺一辈子。
+ *
+ * 于是把「每天重复一次」收进计划：**日课（daily）** 与 **长路（steps）** 并存，
+ * 各自计数（日课 ≤3 条、长路 ≤3 条，见 MAX_DAILY_ACTIVE / MAX_LONG_ACTIVE）。
+ * 习惯打卡页保留，但把「有期限的日课」导流到这里（习惯页的「立为日课」）。
+ *
+ * 老数据没有这一项 → 一律按 steps 处理（见 cadenceOf），不需要迁移脚本。
+ */
+export type PlanCadence = 'steps' | 'daily'
+
+/** 日课的每日状态：kept = 今天守住了；broken = 今天破了（只对戒断型有意义） */
+export interface DailyCheck {
+  /** YYYY-MM-DD */
+  day: string
+  state: 'kept' | 'broken'
+  /** 破了的理由（写进【知】的那一句，可空） */
+  note?: string
+}
+
+/** 日课目标天数的预设档 */
+export const DAILY_PRESETS = [7, 21, 30, 100] as const
+/** 同时在守的日课上限（与长路的 3 条分开算：两者的心智负担不是一回事） */
+export const MAX_DAILY_ACTIVE = 3
+/** 目标天数的合理区间：低于 3 天谈不上"每天"，高于一年已不是日课 */
+export const DAILY_MIN_DAYS = 3
+export const DAILY_MAX_DAYS = 365
+/** 日课目标天数的默认值（新建时让用户改） */
+export const DAILY_DEFAULT_DAYS = 21
+
 /** 挑战三型 → 知识卡标签（收束回望写卡时用） */
 const CHALLENGE_TAG: Record<ChallengeType, string> = {
   abstain: '戒断',
@@ -68,9 +104,18 @@ export interface Plan {
   /** 计划内容：为什么做 / 做成什么样 */
   note?: string
   kind: PlanKind
-  /** 期限档：短期 / 中期 / 长期（老数据没有这一项，按 horizonOf 推） */
+  /**
+   * 形态：steps（分几步走完，默认）/ daily（每天重复一次）。
+   * 老数据没有这一项 → cadenceOf() 一律当 steps。
+   */
+  cadence?: PlanCadence
+  /** 期限档：短期 / 中期 / 长期（老数据没有这一项，按 horizonOf 推；daily 型不用它） */
   horizon?: PlanHorizon
   nodes: PlanNode[]
+  /** 日课型的每日记录（只有 daily 型会写） */
+  checks?: DailyCheck[]
+  /** 日课型的目标天数：勾满即收束 */
+  targetDays?: number
   challenge?: ChallengeType
   /** YYYY-MM-DD */
   startDay: string
@@ -112,6 +157,24 @@ export interface StepItem {
   challenge?: ChallengeType
 }
 
+/**
+ * 日课的一条（行大厅与计划页共用）。
+ *
+ * 与 StepItem 刻意分开：步子是"做一次就划掉"，日课是"今天这一次记上没记上" ——
+ * 前者的 key 里带 nodeId，后者按自然日算；混进一个列表会让勾选手势的含义变得含糊。
+ */
+export interface DailyItem {
+  planId: number
+  title: string
+  /** 今天的状态：'' = 还没记（未记不等于破了，见 stores/plan.ts 的口径注释） */
+  state: '' | 'kept' | 'broken'
+  /** 已守住天数 */
+  kept: number
+  /** 目标天数 */
+  target: number
+  challenge?: ChallengeType
+}
+
 let uniq = 1
 
 function nextId(): number {
@@ -146,11 +209,31 @@ export const usePlanStore = defineStore(
 
     /* ---------------- 派生清单 ---------------- */
 
-    /** 进行中的长期计划 */
-    const activeLong = computed(() => plans.value.filter((p) => p.kind === 'long' && p.status === 'active'))
+    /**
+     * 形态判断：老数据没有 cadence → steps。
+     * 页面一律用它，不要直接读 `p.cadence`（否则老数据会被判成日课或反过来）。
+     */
+    function cadenceOf(p: Plan): PlanCadence {
+      return p.cadence ?? 'steps'
+    }
 
-    /** 进行中的长期计划数（入口徽标用） */
+    function isDaily(p: Plan): boolean {
+      return cadenceOf(p) === 'daily'
+    }
+
+    /** 进行中的**长路**（steps 型）—— 日课不占这 3 个名额，两者分开计数 */
+    const activeLong = computed(() =>
+      plans.value.filter((p) => p.kind === 'long' && !isDaily(p) && p.status === 'active'),
+    )
+
+    /** 进行中的长路数（入口徽标 / 上限判定用） */
     const activeLongCount = computed(() => activeLong.value.length)
+
+    /** 进行中的**日课**（每天重复一次的那几条） */
+    const activeDaily = computed(() => plans.value.filter((p) => p.kind === 'long' && isDaily(p) && p.status === 'active'))
+
+    /** 进行中的日课数 */
+    const activeDailyCount = computed(() => activeDaily.value.length)
 
     function byId(id: number): Plan | undefined {
       return plans.value.find((p) => p.id === id)
@@ -161,10 +244,10 @@ export const usePlanStore = defineStore(
       return p.horizon ?? horizonBySpan(p.startDay, p.dueDay)
     }
 
-    /** 某一档的路（进行中在前，已收束 / 已归档在后）—— 与 longPlans 同序 */
+    /** 某一档的路（进行中在前，已收束 / 已归档在后）—— 与 longPlans 同序；日课不在此列 */
     function horizonPlans(h: PlanHorizon): Plan[] {
       return plans.value
-        .filter((p) => p.kind === 'long' && horizonOf(p) === h)
+        .filter((p) => p.kind === 'long' && !isDaily(p) && horizonOf(p) === h)
         .sort((a, b) => Number(a.status !== 'active') - Number(b.status !== 'active') || b.updatedAt - a.updatedAt)
     }
 
@@ -173,8 +256,20 @@ export const usePlanStore = defineStore(
       return horizonPlans(h).filter((p) => p.status === 'active').length
     }
 
-    /** 进度口径：done / (nodes.length || 1)；无节点视为单节点整体完成 */
+    /** 日课：全部（进行中在前），与 longPlans 同序 */
+    const dailyPlans = computed(() =>
+      plans.value
+        .filter((p) => p.kind === 'long' && isDaily(p))
+        .sort((a, b) => Number(a.status !== 'active') - Number(b.status !== 'active') || b.updatedAt - a.updatedAt),
+    )
+
+    /** 进度口径：steps = done / (nodes.length || 1)；daily = 已守住 / 目标天数 */
     function progressOf(plan: Plan): { done: number; total: number; pct: number } {
+      if (isDaily(plan)) {
+        const total = plan.targetDays ?? DAILY_DEFAULT_DAYS
+        const done = keptCountOf(plan)
+        return { done, total, pct: Math.min(100, Math.round((done / Math.max(1, total)) * 100)) }
+      }
       const total = plan.nodes.length || 1
       const done = plan.nodes.filter((n) => n.done).length
       return { done, total, pct: Math.round((done / total) * 100) }
@@ -189,6 +284,171 @@ export const usePlanStore = defineStore(
     function remainDaysOf(plan: Plan, day = todayKey()): number | null {
       if (!plan.dueDay) return null
       return diffDays(day, plan.dueDay)
+    }
+
+    /* ---------------- 日课（2026-09-17） ----------------
+     * 每天重复一次的事：早睡 / 锻炼 / 戒色。
+     *
+     * 两条口径（与立约同一套）：
+     *  1. **未记 ≠ 破了**：三态是"守住 / 破了 / 没记"，没记只是空白。
+     *     一旦把"没勾"当"破了"，打卡就变回了自我审判（这也是原来习惯打卡的隐患）。
+     *  2. **破了不归零、不扣分**：只记一笔（action.daily.break）并可写一句为什么，
+     *     那一句进【知】的省察 —— 知道自己为什么破，比没破更有价值。
+     */
+
+    /** 已守住的次数（broken 不计） */
+    function keptCountOf(plan: Plan): number {
+      return (plan.checks ?? []).filter((c) => c.state === 'kept').length
+    }
+
+    /** 某天的日课记录 */
+    function checkOf(plan: Plan, day = todayKey()): DailyCheck | undefined {
+      return (plan.checks ?? []).find((c) => c.day === day)
+    }
+
+    /** 今天该守的日课（只列进行中的） */
+    function dailyToday(day = todayKey()): DailyItem[] {
+      const out: DailyItem[] = []
+      for (const p of plans.value) {
+        if (p.kind !== 'long' || !isDaily(p) || p.status !== 'active') continue
+        const hit = checkOf(p, day)
+        out.push({
+          planId: p.id,
+          title: p.title,
+          state: hit ? hit.state : '',
+          kept: keptCountOf(p),
+          target: p.targetDays ?? DAILY_DEFAULT_DAYS,
+          challenge: p.challenge,
+        })
+      }
+      // 还没记的排前面（今天先看得见该守什么），破了的不排后 —— 它不是"更差"
+      return out
+    }
+
+    /** 今天还没记的日课数（大厅提示用） */
+    function dailyRemainCount(day = todayKey()): number {
+      return dailyToday(day).filter((d) => d.state === '').length
+    }
+
+    /**
+     * 勾今天（守住 / 做成）。
+     * 再点一次 = 取消今天这一笔（同一天不留两条，勾错了好退）。
+     * @returns done = 今天现在是不是"守住"；closed = 是否刚好勾满目标天数（页面据此弹回望）
+     */
+    function checkDaily(planId: number, day = todayKey()): { done: boolean; closed: boolean } {
+      const p = byId(planId)
+      if (!p || !isDaily(p)) return { done: false, closed: false }
+      const checks = p.checks ?? (p.checks = [])
+      const hit = checks.find((c) => c.day === day)
+
+      if (hit && hit.state === 'kept') {
+        /*
+         * 取消今天这一笔：只留痕，不回滚"已守住"的历史（历史那一刻是真的）。
+         * **已收束的也允许撤** —— 勾满目标天数当天就收束了，若那一下勾错了
+         * （或只是想再守一天），不该卡在"已完成"里动不了；撤了就把状态退回在守。
+         */
+        p.checks = checks.filter((c) => c.day !== day)
+        if (p.status === 'done') {
+          p.status = 'active'
+          p.doneAt = undefined
+        }
+        touch(p)
+        logOnly({ kind: 'action.daily', text: `${p.title}（撤销今天）`, ref: `plan-${p.id}` })
+        return { done: false, closed: false }
+      }
+
+      /* 新增勾选必须在守；上面那条取消分支有意放在这个判断之前 */
+      if (p.status !== 'active') return { done: false, closed: false }
+
+      if (hit) {
+        hit.state = 'kept'
+        hit.note = undefined
+      } else {
+        checks.push({ day, state: 'kept' })
+      }
+      touch(p)
+      /*
+       * 每天一次、同一条日课算一次（DAY_CAP 兜底）——
+       * 一天勾三次不会再给分，但痕迹都留着（痕迹必须完整，否则周报会撒谎）。
+       */
+      logTrace({ kind: 'action.daily', text: p.title, ref: `plan-${p.id}` })
+
+      const target = p.targetDays ?? DAILY_DEFAULT_DAYS
+      if (keptCountOf(p) >= target) {
+        closePlan(p.id, '')
+        return { done: true, closed: true }
+      }
+      return { done: true, closed: false }
+    }
+
+    /** 今天破了（先不决策 / 没守住）—— 只记一笔，可写一句为什么 */
+    function markDailyBroken(planId: number, reason = '', day = todayKey()): boolean {
+      const p = byId(planId)
+      if (!p || !isDaily(p) || p.status !== 'active') return false
+      const checks = p.checks ?? (p.checks = [])
+      const body = reason.trim()
+      const hit = checks.find((c) => c.day === day)
+      if (hit) {
+        hit.state = 'broken'
+        hit.note = body || undefined
+      } else {
+        checks.push({ day, state: 'broken', note: body || undefined })
+      }
+      touch(p)
+      logOnly({ kind: 'action.daily.break', text: p.title, ref: `plan-${p.id}` })
+      if (body) {
+        useKnowledgeStore().add({
+          kind: 'note',
+          title: `破例：${p.title}`,
+          content: body,
+          tags: ['省察', '日课'],
+          depth: 2,
+          src: `行 · 日课 ${day}`,
+        })
+      }
+      return true
+    }
+
+    /**
+     * 改日课的目标天数（预设档与自定义都走这里）。
+     * 刻意**允许随时改**：一开始定的天数本来就是猜的，走几天再调才是常态。
+     * 改小了若已达标，就顺手收束（不留一条"已完成但还挂着"的路）。
+     */
+    function setTargetDays(planId: number, days: number): boolean {
+      const p = byId(planId)
+      if (!p || !isDaily(p)) return false
+      const v = Math.round(Number(days))
+      if (!Number.isFinite(v) || v < DAILY_MIN_DAYS || v > DAILY_MAX_DAYS) return false
+      p.targetDays = v
+      touch(p)
+      if (p.status === 'active' && keptCountOf(p) >= v) closePlan(p.id, '')
+      return true
+    }
+
+    /** 日课进度的一句话（不显示百分比 —— "守住 12 天 / 共 21 天"就是它的全部信息） */
+    function dailyText(plan: Plan): string {
+      const target = plan.targetDays ?? DAILY_DEFAULT_DAYS
+      return `守住 ${keptCountOf(plan)} 天 / 共 ${target} 天`
+    }
+
+    /** 连续守住天数（从今天（或昨天）往前数；破了或没记就断，但**不归零**任何历史） */
+    function dailyStreak(plan: Plan, day = todayKey()): number {
+      const set = new Map((plan.checks ?? []).map((c) => [c.day, c.state]))
+      let cursor = day
+      // 今天还没记不算断：从昨天接着数（与习惯打卡的连续性口径一致）
+      if (set.get(cursor) !== 'kept') {
+        const d = new Date(`${cursor}T12:00:00`)
+        d.setDate(d.getDate() - 1)
+        cursor = todayKey(d)
+      }
+      let n = 0
+      while (set.get(cursor) === 'kept') {
+        n += 1
+        const d = new Date(`${cursor}T12:00:00`)
+        d.setDate(d.getDate() - 1)
+        cursor = todayKey(d)
+      }
+      return n
     }
 
     /** 今天要走的步子：派到今天的未完成/已完成节点 ∪ today 型计划 */
@@ -285,7 +545,11 @@ export const usePlanStore = defineStore(
       return poolStepsOf(day).length
     }
 
-    /** 30 天无动作的长期计划（提示「还继续吗」） */
+    /**
+     * 30 天无动作的**长路**（提示「还继续吗」）。
+     * 日课不算在内 —— 它天天在勾，不会被判"没动"；哪天真不勾了，它自己会停在原地，
+     * 也不必再弹一句"还继续吗"去催（催了就是打卡焦虑）。
+     */
     function staleLong(day = todayKey()): Plan[] {
       return activeLong.value.filter((p) => diffDays(todayKey(new Date(p.updatedAt)), day) >= LONG_STALE_DAYS)
     }
@@ -321,24 +585,47 @@ export const usePlanStore = defineStore(
       kind: PlanKind
       challenge?: ChallengeType
       dueDay?: string
-      /** 期限档（不传就按目标日的跨度推） */
+      /** 期限档（不传就按目标日的跨度推；daily 型不用它） */
       horizon?: PlanHorizon
+      /** 形态：steps（默认）/ daily（每天重复一次） */
+      cadence?: PlanCadence
+      /** daily 型的目标天数（默认 21，区间 DAILY_MIN_DAYS ~ DAILY_MAX_DAYS） */
+      targetDays?: number
+      /** daily 型的起始记录：从习惯打卡转过来时把老记录一并带进来 */
+      checks?: DailyCheck[]
       /** 建计划时一并立下的节点（可选） */
       nodes?: Array<{ title: string; note?: string; dueDay?: string }>
     }): Plan | null {
       const title = input.title.trim()
       if (!title) return null
-      if (input.kind === 'long' && activeLongCount.value >= MAX_LONG_ACTIVE) {
-        uni.showToast({ title: `先在走的长路已满 ${MAX_LONG_ACTIVE} 条，走完再立`, icon: 'none' })
-        return null
+      const cadence: PlanCadence = input.cadence ?? 'steps'
+      /*
+       * 上限分两本账：长路 ≤3、日课 ≤3。
+       * 刻意不合并成一个"总活跃 ≤3"—— 一条"30 天早睡"与一条"重做作品集"占的心智不是一回事，
+       * 合起来算会让人不敢开始任何一件小事。
+       */
+      if (input.kind === 'long') {
+        if (cadence === 'daily' && activeDailyCount.value >= MAX_DAILY_ACTIVE) {
+          uni.showToast({ title: `在守的日课已满 ${MAX_DAILY_ACTIVE} 条，走完再立`, icon: 'none' })
+          return null
+        }
+        if (cadence === 'steps' && activeLongCount.value >= MAX_LONG_ACTIVE) {
+          uni.showToast({ title: `先在走的长路已满 ${MAX_LONG_ACTIVE} 条，走完再立`, icon: 'none' })
+          return null
+        }
       }
       const now = Date.now()
       const day = todayKey()
+      const targetDays =
+        cadence === 'daily'
+          ? Math.min(DAILY_MAX_DAYS, Math.max(DAILY_MIN_DAYS, Math.round(input.targetDays ?? DAILY_DEFAULT_DAYS)))
+          : undefined
       const plan: Plan = {
         id: nextId(),
         title,
         note: input.note?.trim() || undefined,
         kind: input.kind,
+        cadence: input.cadence,
         nodes: (input.nodes ?? [])
           .filter((n) => n.title.trim())
           .map((n) => ({
@@ -348,6 +635,8 @@ export const usePlanStore = defineStore(
             done: false,
             dueDay: n.dueDay,
           })),
+        checks: cadence === 'daily' ? (input.checks ?? []) : undefined,
+        targetDays,
         challenge: input.challenge,
         horizon: input.horizon ?? horizonBySpan(day, input.dueDay),
         startDay: day,
@@ -356,6 +645,14 @@ export const usePlanStore = defineStore(
         updatedAt: now,
       }
       plans.value.unshift(plan)
+      /*
+       * 日课从习惯转过来时，带进来的历史可能就够了 —— 那时它一立就该是收束态，
+       * 否则会出现「守住 30 天 / 共 7 天、进度 100% 却还在走」的怪状态
+       * （只在 checkDaily / setTargetDays 里判达标是不够的，建的那一刻也要判）。
+       */
+      if (cadence === 'daily' && targetDays !== undefined && keptCountOf(plan) >= targetDays) {
+        closePlan(plan.id, '')
+      }
       return plan
     }
 
@@ -531,9 +828,10 @@ export const usePlanStore = defineStore(
 
     /**
      * 计划收束：状态置 done。
-     * 只有 **long（跨天的长路）** 才记 action.challenge(20，同一条只给一次) ——
-     * today 型是「今天多做的一件事」，它的完成已经记过 action.todo(10)，
-     * 再给一次 20 分等于给临时待办发双重奖励。
+     * 只有 **long 且 steps 型** 才记 action.challenge(20，同一条只给一次) ——
+     *  - today 型是「今天多做的一件事」，完成时已记过 action.todo(10)，再给 20 是双重奖励；
+     *  - **日课型也不给**：它的分已经按天给过了（守住一天一次 action.daily），
+     *    收束时再给一笔 20 等于让日课变成刷分工具（30 天 = 240 + 20）。
      * reflection 非空时再写一张 Lv.2 知识卡（「行 → 知」的闭环；留空即跳过，不拦人）。
      */
     function closePlan(planId: number, reflection = ''): boolean {
@@ -542,7 +840,7 @@ export const usePlanStore = defineStore(
       plan.status = 'done'
       plan.doneAt = Date.now()
       touch(plan)
-      if (plan.kind === 'long') {
+      if (plan.kind === 'long' && !isDaily(plan)) {
         logTrace({
           kind: 'action.challenge',
           text: plan.title,
@@ -576,10 +874,10 @@ export const usePlanStore = defineStore(
 
     /* ---------------- 分组视图（列表页用） ---------------- */
 
-    /** 长期 tab：进行中（未收束）在前，已收束 / 归档在后 */
+    /** 长期 tab：进行中（未收束）在前，已收束 / 归档在后；日课单独一栏（dailyPlans） */
     const longPlans = computed(() =>
       plans.value
-        .filter((p) => p.kind === 'long')
+        .filter((p) => p.kind === 'long' && !isDaily(p))
         .sort((a, b) => Number(a.status !== 'active') - Number(b.status !== 'active') || b.updatedAt - a.updatedAt),
     )
 
@@ -594,6 +892,9 @@ export const usePlanStore = defineStore(
       plans,
       activeLong,
       activeLongCount,
+      activeDaily,
+      activeDailyCount,
+      dailyPlans,
       longPlans,
       todayPlans,
       stepsOf,
@@ -602,12 +903,24 @@ export const usePlanStore = defineStore(
       staleLong,
       sweep,
       byId,
+      cadenceOf,
+      isDaily,
       horizonOf,
       horizonPlans,
       horizonActiveCount,
       progressOf,
       nextNodeOf,
       remainDaysOf,
+      /* 日课（2026-09-17） */
+      keptCountOf,
+      checkOf,
+      dailyToday,
+      dailyRemainCount,
+      checkDaily,
+      markDailyBroken,
+      setTargetDays,
+      dailyText,
+      dailyStreak,
       addPlan,
       updatePlan,
       archivePlan,

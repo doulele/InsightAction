@@ -27,6 +27,9 @@ import {
 } from '@/stores/proverb'
 import { useTraceStore } from '@/stores/trace'
 import { useXpStore } from '@/stores/xp'
+import { useCapsuleStore } from '@/stores/capsule'
+import { useKnowledgeStore } from '@/stores/knowledge'
+import { isSabbathToday, sabbathLine } from '@/utils/sabbath'
 import { LEVEL_NAMES, LEVEL_THRESHOLDS, levelIndexFromXp } from '@/config/levels'
 import {
   BODY_NAMES,
@@ -186,6 +189,8 @@ export const missingLabel = computed(() =>
 )
 
 export const suggestion = computed(() => {
+  /* 安息日：不点缺维、不劝补 —— 那天唯一该说的话就是"今天不必" */
+  if (silentToday()) return sabbathLine(modeStore.id)
   const m = missing.value
   if (m) {
     const hints: Record<BuddyDim['key'], string> = {
@@ -448,6 +453,56 @@ export function goProverbs(): void {
   navigateTo(ROUTES.meProverbs)
 }
 
+/* ---------------- 递话（2026-09-17）：把「到期的东西」递到眼前 ----------------
+ * 个人主体拿不到微信推送（长期订阅只对线下公共服务开放，见 docs/观止知行-未做事项.md #1），
+ * 所以"回来"这件事只能靠打开小程序那一刻：把该见的东西递给他，一次只递一条。
+ *
+ * 排序按「错过就有损失」：到期的胶囊（它等了 N 天）> 今天该重逢的旧卡。
+ * 两条都没有就不出现 —— 不硬凑一句话来显得贴心（与箴言引用同一口径）。
+ */
+export interface Handoff {
+  key: 'capsule' | 'echo'
+  label: string
+  text: string
+  go: () => void
+}
+
+const capsules = useCapsuleStore()
+const knowledge = useKnowledgeStore()
+
+export const handoff = computed<Handoff | null>(() => {
+  const cap = capsules.dueList[0]
+  if (cap) {
+    return {
+      key: 'capsule',
+      label: '有一条胶囊到期了 —— 给你的',
+      text: '去拆开看看',
+      go: () => {
+        open.value = false
+        navigateTo(ROUTES.meCapsule)
+      },
+    }
+  }
+  const card = knowledge.dueEcho
+  if (card) {
+    return {
+      key: 'echo',
+      label: '今天该重看一张旧卡',
+      text: card.title,
+      go: () => {
+        open.value = false
+        navigateTo(ROUTES.reflectEcho)
+      },
+    }
+  }
+  return null
+})
+
+/** 安息日那天小枢不说话：不问候、不催、不结算（见 utils/sabbath.ts 的口径 2） */
+function silentToday(): boolean {
+  return isSabbathToday()
+}
+
 export function goMissing(): void {
   const m = missing.value
   const target = m
@@ -507,6 +562,8 @@ const SETTLE_KEY = 'buddy-settle'
 
 function maybeSettle(): void {
   if (settleOpen.value) return
+  /* 安息日不结算：那天"什么都没入账"是正常的，不该被总结成一句亏欠 */
+  if (silentToday()) return
   if (new Date().getHours() < 23) return
   const key = todayKey()
   if ((getItem<string>(SETTLE_KEY, '') ?? '') === key) return
@@ -584,6 +641,8 @@ export function poke(): void {
 
 /** 早/晚窗口问候：同窗只弹一次；晚窗话术按设置个性化 */
 function maybeGreetWindow(): void {
+  /* 安息日不问候、不催办（那天连"新的一天，先安顿最重要的一件事"都是多余的） */
+  if (silentToday()) return
   const win = winKeyOf()
   if (win) {
     const last = getItem<string>(WINDOW_GREET_KEY, '') ?? ''
@@ -685,5 +744,6 @@ export function useBuddy() {
     remembered,
     rememberedLabel,
     goProverbs,
+    handoff,
   }
 }

@@ -228,6 +228,14 @@
   font-weight: 600;
 }
 
+/* 「立为日课」：给这条习惯一个期限（2026-09-17） */
+.card__to {
+  flex: none;
+  padding: 6rpx 10rpx;
+  font-size: 20rpx;
+  color: $gz-accent;
+}
+
 .card__del {
   flex: none;
   padding: 6rpx 10rpx;

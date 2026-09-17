@@ -510,6 +510,30 @@
   text-align: right;
 }
 
+/* 递话：把「到期的东西」送到眼前（胶囊 / 旧卡重逢），点了直接去 */
+.bf__hand {
+  margin-top: 18rpx;
+  padding: 16rpx 20rpx;
+  border: 1rpx solid var(--gz-accent);
+  border-radius: $gz-radius-md;
+  background: var(--gz-surface);
+}
+
+.bf__hand-label {
+  display: block;
+  font-size: $gz-fs-caption;
+  letter-spacing: 0.1em;
+  color: var(--gz-accent);
+}
+
+.bf__hand-text {
+  display: block;
+  margin-top: 4rpx;
+  font-size: $gz-fs-small;
+  line-height: 1.7;
+  color: var(--gz-ink);
+}
+
 .bf__acts {
   margin-top: 24rpx;
   display: flex;

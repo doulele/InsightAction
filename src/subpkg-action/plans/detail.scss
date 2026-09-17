@@ -422,3 +422,123 @@
   border: 1rpx solid $gz-line;
   color: $gz-ink-2;
 }
+
+/* ---- 日课（2026-09-17）：今天守没守住 ---- */
+.dact {
+  display: flex;
+  gap: 16rpx;
+  margin-top: 24rpx;
+}
+
+.dact__btn {
+  flex: 1;
+  height: 88rpx;
+  font-size: $gz-fs-body;
+  font-weight: 600;
+  line-height: 88rpx;
+  text-align: center;
+  color: $gz-on-cta;
+  background: $gz-accent;
+  border-radius: $gz-radius-md;
+}
+
+.dact__btn.is-on {
+  color: $gz-accent;
+  background: transparent;
+  border: 1rpx solid $gz-accent;
+}
+
+.dact__break {
+  flex: none;
+  padding: 0 30rpx;
+  height: 88rpx;
+  font-size: $gz-fs-small;
+  line-height: 88rpx;
+  color: $gz-ink-3;
+  border: 1rpx solid $gz-line;
+  border-radius: $gz-radius-md;
+}
+
+.dact__break.is-on {
+  color: $gz-ink-2;
+}
+
+.dact__hint {
+  display: block;
+  margin-top: 14rpx;
+  font-size: $gz-fs-caption;
+  line-height: 1.7;
+  color: $gz-ink-3;
+}
+
+.dots {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10rpx;
+  margin-top: 26rpx;
+}
+
+.dots__cell {
+  width: 34rpx;
+  height: 34rpx;
+  background: $gz-surface-2;
+  border: 1rpx solid $gz-line;
+  border-radius: 8rpx;
+}
+
+.dots__cell.is-on {
+  background: $gz-accent;
+  border-color: transparent;
+}
+
+.dots__cell.is-broken {
+  border-color: $gz-ink-3;
+}
+
+.dots__cell.is-today {
+  border-color: $gz-accent;
+}
+
+.dots__note {
+  display: block;
+  margin-top: 12rpx;
+  font-size: $gz-fs-caption;
+  line-height: 1.7;
+  color: $gz-ink-3;
+}
+
+/* 自定义目标天数（2026-09-17）：输入 + 单位 + 「改」（改已有日课走"填好再点改"） */
+.custom {
+  display: flex;
+  align-items: center;
+  gap: 12rpx;
+  margin-top: 16rpx;
+}
+
+.custom__input {
+  flex: 1;
+  height: 72rpx;
+  padding: 0 22rpx;
+  box-sizing: border-box;
+  font-size: $gz-fs-small;
+  color: $gz-ink;
+  background: $gz-input-bg;
+  border: 1rpx solid $gz-line;
+  border-radius: $gz-radius-md;
+}
+
+.custom__unit {
+  font-size: $gz-fs-small;
+  color: $gz-ink-3;
+}
+
+.custom__btn {
+  flex: none;
+  padding: 0 28rpx;
+  height: 72rpx;
+  font-size: $gz-fs-small;
+  line-height: 72rpx;
+  color: $gz-on-cta;
+  background: $gz-accent;
+  border-radius: $gz-radius-md;
+}

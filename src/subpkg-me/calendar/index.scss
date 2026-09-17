@@ -200,6 +200,15 @@
   opacity: 0.35;
 }
 
+/*
+ * 安息日（2026-09-17）：虚框 —— 说"这天本来就该是空的"，
+ * 与"漏了一天"（实底浅色 = 有投入但很少）在观感上分开。
+ */
+.cell__dot.is-rest {
+  background: transparent;
+  border: 2rpx dashed $gz-line;
+}
+
 .cell--hover {
   opacity: 0.8;
 }
@@ -242,6 +251,15 @@
 .cal__hint {
   margin-left: auto;
   font-size: 16rpx;
+  color: $gz-ink-3;
+}
+
+/* 安息日说明：单独一行，不挤在图例里（图例那行已经放满四个色块 + 一句） */
+.cal__rest {
+  display: block;
+  margin-top: 14rpx;
+  font-size: 18rpx;
+  line-height: 1.7;
   color: $gz-ink-3;
 }
 

@@ -18,12 +18,16 @@ import type { SyncMeta } from '@/api/modules/sync'
 const AUTO_INTERVAL_MS = 24 * 60 * 60 * 1000
 
 /**
- * 只留在本机、不随云备份上传的 store。**步数（body）** 是这里目前唯一的成员：
- * 它属于健康类敏感数据，能不上传就不上传 —— 隐私保护指引里也是这么写的，
- * 少声明一条「我们云端有你的健康数据」，也少一份泄露面。
- * 代价：换机恢复时本地备份**文件**（导出/恢复那条路）才带得走步数，云端不带。
+ * 只留在本机、不随云备份上传的 store。
+ *
+ *  - **body**：步数属健康类敏感数据，能不上传就不上传 —— 隐私保护指引里也是这么写的，
+ *    少声明一条「我们云端有你的健康数据」，也少一份泄露面。
+ *  - **capsule**（2026-09-17）：时间胶囊是写给未来的自己的私话，
+ *    页面上也如实写了"只在本机"；让它上行会变成一句假话。
+ *
+ * 代价：换机恢复时靠本地备份**文件**（导出/恢复那条路）才带得走，云端不带。
  */
-const LOCAL_ONLY_STORES: string[] = ['body']
+const LOCAL_ONLY_STORES: string[] = ['body', 'capsule']
 
 export interface BackupOutcome {
   saved: boolean

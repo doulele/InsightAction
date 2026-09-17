@@ -15,6 +15,15 @@
  *   ③ 搁置与到期轻问 —— "先放下"给一个去处（今晚 / 三天后 / 就此放下），到期只浮出来一次问"现在还想吗"
  *   ④ 反刍后省察 —— 记下后就地挂情境省察（probe scene='thought'），答完沉淀一张 Lv.3 卡进「知」
  *
+ * 2026-09-17（四）口径校准（与用户逐条谈定）：
+ *   · 「今晚」的到点从 23:59:59 改成 **21:30** —— 23:59 到点时人已睡，"今晚"这个承诺兑现不了；
+ *     深夜才写（已过 21:30）则顺延到明晚，不给一个已经过去的时刻。
+ *   · 取数门槛**分块**（MAP_NEED）：比例 3 / 时段 5 / 反复 5 / 到期无门槛 —— 全用一个 5 会让
+ *     "到点了"这件事实被样本不足挡掉，而它根本不是统计。
+ *   · `recurring` 的门槛改成「**跨天**出现 ≥ 2 次」—— 同一天写两遍不算反复回来。
+ *   · 新增 `insight`：地图页顶部那一句，只陈述计数与形状，**不下"你焦虑""想太多"这类结论**。
+ *     比例条也**刻意不给百分比** —— "75% 你都只能先放下"本身就是一句负向评价。
+ *
  * 观察边界：只用来回看"最近在反复想什么"，**不做频率排名、不做"你今天想太多了"这类评价**。
  */
 import { defineStore } from 'pinia'
@@ -54,18 +63,60 @@ export const THOUGHT_ACTION_MAX = 30
 
 /** 搁置窗口选项（页面文案唯一来源，别在页面里写死） */
 export const SHELVE_KINDS: ReadonlyArray<{ id: ShelveKind; label: string; note: string }> = [
-  { id: 'tonight', label: '今晚', note: '今天睡前再看一眼它还在不在' },
+  { id: 'tonight', label: '今晚', note: '今晚 21:30 再看一眼它还在不在' },
   { id: 'days3', label: '三天后', note: '放三天，三天后还惦记才算真牵挂' },
 ]
 
-/** 窗口 → 到期绝对时刻（今晚 = 当天 23:59:59；三天后 = 现在 + 3 天） */
+/**
+ * 「今晚」的到点时刻 = 21:30。
+ * 口径（2026-09-17（四）与用户定）：睡前惯例时间，真的还能看一眼。
+ * 原本写的 23:59:59 不对 —— 到点时人已睡，"今晚"这个承诺兑现不了，第二天早上才看到等于没到。
+ */
+const TONIGHT_HOUR = 21
+const TONIGHT_MINUTE = 30
+
+/** 窗口 → 到期绝对时刻（今晚 = 最近一个 21:30；三天后 = 现在 + 3 天） */
 export function revisitAtOf(kind: ShelveKind): number {
   if (kind === 'tonight') {
     const d = new Date()
-    d.setHours(23, 59, 59, 0)
+    d.setHours(TONIGHT_HOUR, TONIGHT_MINUTE, 0, 0)
+    /* 深夜才写（已过 21:30）→ 顺延到明晚，不能给一个已经过去的时刻 */
+    if (d.getTime() <= Date.now()) d.setDate(d.getDate() + 1)
     return d.getTime()
   }
   return Date.now() + 3 * 86400 * 1000
+}
+
+/**
+ * 念头地图各块的取数门槛（**刻意分块，不是一个 5**）：
+ *   比例条 —— 只是两个计数，不是结论 → 3 条就能看
+ *   时段分布 —— 4 个桶平摊，少了每桶只剩 1 条，画出来是噪声 → 5 条
+ *   反复出现的 —— 本身已要求出现 ≥ 2 次，再要求样本 ≥ 5 做双保险 → 5 条
+ *   到期卡片 —— 无门槛（它不是统计，是"到点了"这一件事实）
+ */
+export const MAP_NEED = { ratio: 3, band: 5, theme: 5 } as const
+
+/**
+ * 一条记录的搁置状态。
+ * `none` = 当时选的"就此放下"（没给窗口），`shelved` = 还在候着，`due` = 到点了，`closed` = 已了结。
+ * 列表标记与档案导出共用这一份判定 —— 别在页面里各写一遍。
+ */
+export type ShelfState = 'none' | 'shelved' | 'due' | 'closed'
+
+export function shelfStateOf(r: ThoughtRecord, now = Date.now()): ShelfState {
+  if (!r.revisitAt || r.revisitAt <= 0) return 'none'
+  if (r.closed) return 'closed'
+  return r.revisitAt <= now ? 'due' : 'shelved'
+}
+
+/** 状态 → 一句人话（列表 / 档案用，只陈述事实） */
+export function shelfTextOf(r: ThoughtRecord, now = Date.now()): string {
+  const st = shelfStateOf(r, now)
+  if (st === 'none') return '放下了'
+  if (st === 'closed') return '已了结'
+  const d = new Date(r.revisitAt as number)
+  const md = `${d.getMonth() + 1}月${d.getDate()}日`
+  return st === 'due' ? `${md} 到点，还候着` : `${md} 再看一眼`
 }
 
 let uniq = 1
@@ -113,8 +164,6 @@ function sharedCount(a: string, b: string): number {
   })
   return n
 }
-
-let innerId = 1
 
 export const useThoughtStore = defineStore(
   'thought',
@@ -219,7 +268,15 @@ export const useThoughtStore = defineStore(
       })),
     )
 
-    /** ① 念头地图 · 反复出现的那几件（按相似度聚成簇，只列出现 ≥ 2 次、前三） */
+    /**
+     * ① 念头地图 · 反复出现的那几件（按相似度聚成簇，只列出现 ≥ 2 次、前三）。
+     *
+     * 门槛是「**跨天**出现 ≥ 2 次」，不只是条数 ≥ 2：
+     * 同一天把同一件事写两遍（上午一遍、下午一遍）不算"反复回来"，
+     * 那是当天的事在打转；只有跨过一夜还想起来，才是这一层要看的形状。
+     * （原文档写的"过滤 shelved==='tonight' 的临时项"没有落地价值 ——
+     *  ShelveKind 里根本没有 'today' 这个值，且真按窗口过滤会把真实的反刍一并藏掉。）
+     */
     interface ThemeCluster {
       sample: string
       count: number
@@ -227,11 +284,12 @@ export const useThoughtStore = defineStore(
       lastAnswer: ThoughtAnswer
     }
     const recurring = computed<ThemeCluster[]>(() => {
-      const clusters: Array<ThemeCluster & { lastAt: number }> = []
+      const clusters: Array<ThemeCluster & { lastAt: number; days: Set<string> }> = []
       for (const r of records.value) {
         const hit = clusters.find((c) => overlap(c.sample, r.text) >= 0.5)
         if (hit) {
           hit.count += 1
+          hit.days.add(r.day)
           if (r.at > hit.lastAt) {
             hit.lastAt = r.at
             hit.lastDay = r.day
@@ -244,11 +302,12 @@ export const useThoughtStore = defineStore(
             lastDay: r.day,
             lastAnswer: r.answer,
             lastAt: r.at,
+            days: new Set([r.day]),
           })
         }
       }
       return clusters
-        .filter((c) => c.count >= 2)
+        .filter((c) => c.count >= 2 && c.days.size >= 2)
         .sort((a, b) => b.count - a.count)
         .slice(0, 3)
         .map(({ sample, count, lastDay, lastAnswer }) => ({
@@ -259,6 +318,30 @@ export const useThoughtStore = defineStore(
         }))
     })
 
+    /**
+     * 地图页顶部那一句（与 urge.insight 同构，但**只陈述不评价**）。
+     * 不写"你最近很焦虑""想得太多"这类结论 —— 地图只负责把形状摆出来。
+     */
+    const insight = computed(() => {
+      const total = records.value.length
+      if (total < MAP_NEED.band) {
+        return `再写 ${MAP_NEED.band - total} 念，这张地图才看得出形状。`
+      }
+      const a = byAnswer.value
+      const top = [...byHourBand.value].sort((x, y) => y.count - x.count)[0]
+      let s = `这 ${total} 念里，能接着做点什么的有 ${a.act} 条，写下来就放下的有 ${a.let} 条。`
+      if (top && top.count > 0) s += `落笔最多的是${top.label}。`
+      const theme = recurring.value[0]
+      if (theme) s += `「${theme.sample.slice(0, 10)}」这样的事来过 ${theme.count} 次。`
+      return s
+    })
+
+    /** 到点的条数（大厅入口徽标要用，避免在页面里再 filter 一遍） */
+    const dueCount = computed(() => due.value.length)
+
+    /** 还候着的条数（档案导出用：现在还有几件事悬着） */
+    const pendingCount = computed(() => records.value.filter((r) => shelfStateOf(r) === 'shelved').length)
+
     return {
       records,
       add,
@@ -266,11 +349,14 @@ export const useThoughtStore = defineStore(
       ofDay,
       matchPrior,
       due,
+      dueCount,
+      pendingCount,
       closeShelf,
       reshelve,
       byAnswer,
       byHourBand,
       recurring,
+      insight,
     }
   },
   {

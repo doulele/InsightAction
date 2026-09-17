@@ -54,6 +54,8 @@ export const ROUTES = {
   reflectLibrary: '/subpkg-reflect/library/index',
   /** 批次 C · 知：认知成长曲线（分包 subpkg-reflect） */
   reflectGrowth: '/subpkg-reflect/growth/index',
+  /** 知：旧卡重逢 —— 隔一段时间再看一次自己写过的东西，判它还成不成立（分包 subpkg-reflect） */
+  reflectEcho: '/subpkg-reflect/echo/index',
   /** 批次 C · 行：习惯打卡（分包 subpkg-action） */
   actionHabits: '/subpkg-action/habits/index',
   /** 批次 C · 行：微行动盲盒（分包 subpkg-action） */
@@ -72,6 +74,8 @@ export const ROUTES = {
   meBond: '/subpkg-me/bond/index',
   /** 我：我的箴言 —— 收藏句子的统一落点（开屏/小枢/日课，分包 subpkg-me） */
   meProverbs: '/subpkg-me/proverbs/index',
+  /** 我：时间胶囊 —— 给未来的自己留一句话，到期那天递给你（分包 subpkg-me） */
+  meCapsule: '/subpkg-me/capsule/index',
   meReview: '/subpkg-me/review/index',
   /** 我：修行看板 —— 四维雷达 / 认知深度分布 / 知→行转化率 / 成长图谱（分包 subpkg-me） */
   meBoard: '/subpkg-me/board/index',

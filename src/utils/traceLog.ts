@@ -12,6 +12,9 @@
  *
  * 每日上限（规格 §12.2）：高频动作触顶后**仍写 trace，只是 value 归零**——
  * 痕迹记录了"你确实做了这件事"，只是不再付钱。见 config/trace.ts 的 DAY_CAP。
+ *
+ * 安息日（2026-09-17）：那天同样「照写痕迹、不入账」。这是**全局唯一的开关点** ——
+ * 页面不各自判断，见 utils/sabbath.ts。
  */
 import { useTraceStore } from '@/stores/trace'
 import type { Trace, TraceInput } from '@/stores/trace'
@@ -19,6 +22,7 @@ import { useXpStore } from '@/stores/xp'
 import { dayCapOf, valueOf } from '@/config/trace'
 import type { TraceKind } from '@/config/trace'
 import { todayKey } from '@/stores/daily'
+import { isSabbathAt } from '@/utils/sabbath'
 
 /** 当日该类事件是否已触顶（0 = 不限） */
 function overCap(kind: TraceKind, at: number): boolean {
@@ -30,9 +34,10 @@ function overCap(kind: TraceKind, at: number): boolean {
 export function logTrace(input: TraceInput): Trace {
   const at = input.at ?? Date.now()
   const value = typeof input.value === 'number' ? input.value : valueOf(input.kind)
-  const capped = value > 0 && overCap(input.kind, at)
-  const trace = useTraceStore().push(capped ? { ...input, value: 0 } : input)
-  if (!capped && trace.value > 0) useXpStore().gain(trace.value)
+  // 两种「不给分」：① 当日触顶；② 安息日（功能照常，只是不记账）
+  const noScore = value > 0 && (overCap(input.kind, at) || isSabbathAt(at))
+  const trace = useTraceStore().push(noScore ? { ...input, value: 0 } : input)
+  if (!noScore && trace.value > 0) useXpStore().gain(trace.value)
   return trace
 }
 

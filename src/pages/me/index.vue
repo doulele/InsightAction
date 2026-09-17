@@ -226,6 +226,7 @@ import { useFocusStore } from '@/stores/focus'
 import { useKnowledgeStore } from '@/stores/knowledge'
 import { useTraceStore } from '@/stores/trace'
 import { useProverbStore } from '@/stores/proverb'
+import { useCapsuleStore } from '@/stores/capsule'
 import { useAccountStore } from '@/stores/account'
 import { useIdentityStore } from '@/stores/identity'
 import { backupNow } from '@/utils/cloudBackup'
@@ -258,6 +259,8 @@ const knowledge = useKnowledgeStore()
 const contentStore = useContentStore()
 /** 记住的句子（开屏箴言 / 小枢对话 / 日课三处来源都汇到这里） */
 const proverbs = useProverbStore()
+/** 时间胶囊（2026-09-17）：给未来的自己留的一句话；到期时入口徽标会亮 */
+const capsule = useCapsuleStore()
 
 /** 主题化取词：远端运营位优先、内置兜底（与页面皮肤同一套词） */
 const p = (key: PhraseKey, mode: ModeId = modeStore.id): string => contentStore.phraseOf(key, mode)
@@ -618,6 +621,25 @@ const moreEntries = computed<MoreEntry[]>(() => [
         : '遇到想留住的句子，点亮「记住这句」就收进这里',
     badge: proverbs.count > 0 ? { text: `${proverbs.count} 句`, tone: 'accent' } : undefined,
     url: ROUTES.meProverbs,
+  },
+  /*
+   * 时间胶囊（2026-09-17）：唯一一个**指向未来**的入口。
+   * 徽标优先级：有到期 → 报到期条数（这是我们希望他点进来的唯一理由）；
+   * 否则报还得等多久（最靠前的那条），让人知道它真的在走。
+   */
+  {
+    mark: '封',
+    title: '时间胶囊',
+    subtitle:
+      capsule.count > 0
+        ? `封着 ${capsule.sealed.length} 条 · 拆开过 ${capsule.opened.length} 条 · 只在本机留存`
+        : '给未来的自己留一句话，选个日子，到期那天递给你',
+    badge: capsule.dueCount
+      ? { text: `${capsule.dueCount} 条到期`, tone: 'accent' }
+      : capsule.sealed.length
+        ? { text: `${capsule.sealed[0].dueDay} 见`, tone: 'muted' }
+        : { text: '封一条', tone: 'muted' },
+    url: ROUTES.meCapsule,
   },
   {
     mark: '年',

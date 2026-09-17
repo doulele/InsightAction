@@ -19,6 +19,9 @@ dist
 # 本地私有讨论文档（不入库，仅供本地查看）
 docs/
 
+# CodeBuddy 本地规则（内容指向本地 docs/，同理不入库；settings.json 仍照常入库）
+.codebuddy/rules/
+
 # Editor directories and files
 .idea
 *.suo

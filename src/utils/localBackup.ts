@@ -19,6 +19,8 @@ import { useAssessmentStore } from '@/stores/assessment'
 import { useImageStore } from '@/stores/images'
 import { useBodyStore } from '@/stores/body'
 import { useBoxStore } from '@/stores/box'
+import { useCapsuleStore } from '@/stores/capsule'
+import { useClosingStore } from '@/stores/closing'
 import { useComposeDraftStore } from '@/stores/composeDraft'
 import { useDailyStore } from '@/stores/daily'
 import { useFocusStore } from '@/stores/focus'
@@ -101,6 +103,15 @@ const HYDRATORS: Array<{ key: string; use: () => Patchable }> = [
   { key: 'assessment', use: () => useAssessmentStore() },
   { key: 'body', use: () => useBodyStore() },
   { key: 'box', use: () => useBoxStore() },
+  /*
+   * capsule（2026-09-17 补）：它虽然被 cloudBackup 的 LOCAL_ONLY_STORES 排除在**云**备份之外，
+   * 但「导出全部数据」的本地备份文件里**有它**（collectBackup 收所有 insight:store: 键）。
+   * 所以它同样必须回写内存 —— 漏了的话，恢复后界面仍显示旧胶囊，
+   * 且 $subscribe 会在下一次变更时把旧值写回 storage，等于这次恢复白做。
+   * 口径：**LOCAL_ONLY 只影响"上不上云"，不改变"要不要回写内存"。**
+   */
+  { key: 'capsule', use: () => useCapsuleStore() },
+  { key: 'closing', use: () => useClosingStore() },
   { key: 'composeDraft', use: () => useComposeDraftStore() },
   { key: 'daily', use: () => useDailyStore() },
   { key: 'focus', use: () => useFocusStore() },

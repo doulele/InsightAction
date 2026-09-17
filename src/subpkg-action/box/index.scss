@@ -218,3 +218,13 @@
   letter-spacing: 0.06em;
   color: $gz-ink-3;
 }
+
+/* 步数联动（2026-09-17）：今天走得少时的一句说明 —— 不占位、只在真低时出现 */
+.ready__move {
+  display: block;
+  margin-top: 14rpx;
+  font-size: $gz-fs-caption;
+  line-height: 1.7;
+  color: $gz-accent;
+  text-align: center;
+}

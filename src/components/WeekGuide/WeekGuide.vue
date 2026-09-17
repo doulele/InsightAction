@@ -22,13 +22,19 @@ import { computed } from 'vue'
 import { useAppStore } from '@/stores/app'
 import { todayPlan, type GuideHall } from '@/config/unlock'
 import { todayKey } from '@/stores/daily'
+import { isSabbathToday } from '@/utils/sabbath'
 import { navigateTo, ROUTES, type RoutePath } from '@/router/routes'
 
 const props = defineProps<{ for: GuideHall }>()
 
 const app = useAppStore()
 const plan = computed(() => todayPlan(app.firstLaunchAt, todayKey()))
-const show = computed(() => plan.value != null && plan.value.hall === props.for)
+/**
+ * 安息日整块不挂（2026-09-17）：引导卡说的是「今天的主角是…」，
+ * 而那天唯一的立场是"什么都不必做" —— 挂出来就自相矛盾（见 utils/sabbath.ts 口径 2「不催」）。
+ * 只跳过当天，第二天照常继续，七天节奏不受影响。
+ */
+const show = computed(() => !isSabbathToday() && plan.value != null && plan.value.hall === props.for)
 
 /** 主角大厅 → 所属 tab 页（防御用：正常不该走到，卡片本来就只挂在主角大厅页里） */
 const HALL_ROUTE: Record<GuideHall, RoutePath> = {

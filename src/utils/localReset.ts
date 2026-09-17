@@ -27,13 +27,15 @@ import { useUrgeStore } from '@/stores/urge'
 import { useVowStore } from '@/stores/vow'
 import { useInterruptStore } from '@/stores/interrupt'
 import { useProbeStore } from '@/stores/probe'
+import { useClosingStore } from '@/stores/closing'
+import { useCapsuleStore } from '@/stores/capsule'
 
 export function resetPracticeData(): void {
   useXpStore().$patch({ total: 0, maxLevel: 0 })
   useFocusStore().$patch({ days: [], dailyGoal: 60 })
   useQualityStore().$patch({ sources: [], dayMarks: {} })
   useQuestionStore().$patch({ records: {}, lastIdx: 0 })
-  useKnowledgeStore().$patch({ cards: [], seedImported: [] })
+  useKnowledgeStore().$patch({ cards: [], seedImported: [], echoDay: '' })
   useSeedStore().$patch({ seeds: [] })
   useHabitStore().$patch({ habits: [], records: {} })
   useBoxStore().$patch({ drawn: null })
@@ -63,4 +65,7 @@ export function resetPracticeData(): void {
   useVowStore().$patch({ current: null, history: [] })
   useInterruptStore().$patch({ custom: [], records: [] })
   useProbeStore().$patch({ records: [], skipped: {} })
+  /* 收功（每天一句）与时间胶囊（写给未来的自己的话）同样属于"我写过的东西"，一并清 */
+  useClosingStore().$patch({ records: [] })
+  useCapsuleStore().$patch({ items: [] })
 }

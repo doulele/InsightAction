@@ -26,6 +26,20 @@ export const BOX_IDEAS: readonly string[] = [
   '站直，把肩膀向后绕十圈',
 ]
 
+/**
+ * 走动类（2026-09-17）：步数明显不足时，优先从这几只里出。
+ *
+ * 为什么不是单独一个"运动盲盒"：盲盒的价值就在于不知道会抽到什么；
+ * 加一整个新池子会把它变成分类菜单。只调**权重**就够了 ——
+ * 今天走得太少，先给你一只离开座位的；走得够了，一切照旧。
+ */
+export const BOX_MOVE_INDEXES: readonly number[] = [
+  1, // 走到窗边，数出窗外三种不同的颜色
+  7, // 出门走两百步，再原路回来
+  11, // 做一次全身舒展
+  15, // 站直，把肩膀向后绕十圈
+]
+
 export interface DrawnBox {
   dayKey: string
   index: number
@@ -44,14 +58,26 @@ export const useBoxStore = defineStore(
       return drawn.value && drawn.value.dayKey === k ? drawn.value : null
     }
 
-    /** 抽一只；可再抽一次（取与上次不同的角） */
-    function draw(allowRedraw: boolean): number | null {
+    /**
+     * 抽一只；可再抽一次（取与上次不同的角）。
+     * @param preferMove 今天步数明显不足 → 先从走动类里出（见 BOX_MOVE_INDEXES）
+     */
+    function draw(allowRedraw: boolean, preferMove = false): number | null {
       const today = todayDrawn()
       if (today && !allowRedraw) return today.index
-      let idx = Math.floor(Math.random() * BOX_IDEAS.length)
+      const pool = preferMove && BOX_MOVE_INDEXES.length ? BOX_MOVE_INDEXES : null
+      let idx = pool
+        ? pool[Math.floor(Math.random() * pool.length)]
+        : Math.floor(Math.random() * BOX_IDEAS.length)
       // 换一只：避免连续两次同一行动
       if (today && allowRedraw) {
-        while (idx === today.index) idx = Math.floor(Math.random() * BOX_IDEAS.length)
+        let guard = 0
+        while (idx === today.index && guard < 40) {
+          idx = pool
+            ? pool[Math.floor(Math.random() * pool.length)]
+            : Math.floor(Math.random() * BOX_IDEAS.length)
+          guard += 1
+        }
       }
       const entry: DrawnBox = { dayKey: todayKey(), index: idx, done: false }
       if (today && allowRedraw) {
