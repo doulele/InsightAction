@@ -217,6 +217,44 @@
   word-break: break-all;
 }
 
+/*
+ * 「你写的摘要」与正文预览（2026-09-19）——
+ * 这一页的理可以来自一篇文章（正文上限一万字），平铺出来会把整列淹掉（卡片高度失控），
+ * 所以：摘要单独一块、正文只留三行预览、全文去详情页。
+ * 限高用 -webkit-line-clamp（微信 WebView 支持；`.kid__text` 的单行截断也是同一套东西），
+ * 两条兜住同一件事：**列表的高度必须由卡片说了算，不能由正文长度说了算**。
+ */
+.brief {
+  margin-top: 12rpx;
+  padding: 12rpx 16rpx;
+  border-radius: $gz-radius-sm;
+  background: $gz-surface-2;
+}
+
+.brief__label {
+  display: block;
+  font-size: $gz-fs-caption;
+  color: $gz-ink-3;
+}
+
+.brief__text {
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 4;
+  overflow: hidden;
+  margin-top: 6rpx;
+  font-size: $gz-fs-small;
+  line-height: 1.8;
+  color: $gz-ink-2;
+}
+
+.card__content.is-cut {
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 3;
+  overflow: hidden;
+}
+
 .why {
   margin-top: 14rpx;
   padding: 14rpx 18rpx;

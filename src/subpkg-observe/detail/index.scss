@@ -138,9 +138,109 @@
 }
 
 .origin__label {
+  flex: 1;
+  min-width: 0;
   font-size: $gz-fs-caption;
   letter-spacing: 0.06em;
   color: $gz-ink-3;
+}
+
+/* 卡头右侧那一撮：导入角标 / 听 / 展开全文 —— 统一用 gap 排，别各自赖 margin */
+.origin__ops {
+  flex: none;
+  display: flex;
+  align-items: center;
+  gap: 12rpx;
+}
+
+/*
+ * 「听」（正文收听，2026-09-19）：与「展开全文」同一档大小，
+ * 但用主题色描边 + 浅底把它从右边那一撮里拎出来 —— 它是这一段正文的新主操作。
+ */
+.origin__listen {
+  flex: none;
+  padding: 4rpx 24rpx;
+  border: 1rpx solid $gz-accent;
+  border-radius: 999rpx;
+  background: $gz-accent-soft;
+  font-size: $gz-fs-caption;
+  font-weight: 600;
+  color: $gz-accent;
+}
+
+/*
+ * 收听条（2026-09-19 晚升级）：状态 + **真进度条** + 时间 + 四个控制。
+ * 为什么现在能有真进度：合成换成服务端之后，一段就是一个完整 mp3（有真实时长），
+ * 而不再是一堆 50 字的小片 —— 进度按"字数加权"把段内进度折算进总进度（见 utils/speech.ts）。
+ */
+.listen {
+  margin-top: 14rpx;
+  padding: 14rpx 18rpx 12rpx;
+  border: 1rpx solid $gz-line;
+  border-radius: $gz-radius-md;
+  background: $gz-surface;
+}
+
+.listen__top {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12rpx;
+}
+
+.listen__state {
+  flex: 1;
+  min-width: 0;
+  font-size: $gz-fs-caption;
+  line-height: 1.6;
+  color: $gz-accent;
+}
+
+/* 本段的时间（0:42 / 4:18）：一段可能有几分钟，读秒没意义 */
+.listen__time {
+  flex: none;
+  font-size: 20rpx;
+  color: $gz-ink-3;
+}
+
+.listen__track {
+  height: 6rpx;
+  margin-top: 10rpx;
+  border-radius: 999rpx;
+  background: $gz-line-soft;
+  overflow: hidden;
+}
+
+.listen__fill {
+  height: 100%;
+  border-radius: 999rpx;
+  background: $gz-accent;
+  transition: width 0.25s linear;
+}
+
+.listen__acts {
+  display: flex;
+  justify-content: flex-end;
+  align-items: center;
+  gap: 12rpx;
+  margin-top: 12rpx;
+}
+
+.listen__btn {
+  padding: 6rpx 22rpx;
+  border: 1rpx solid $gz-line;
+  border-radius: 999rpx;
+  background: $gz-surface-2;
+  font-size: $gz-fs-caption;
+  color: $gz-ink-2;
+}
+
+/* 停止 / 关闭：整条里唯一的"主"操作（其余都是调节项） */
+.listen__btn--main {
+  border-color: $gz-accent;
+  background: $gz-accent-soft;
+  color: $gz-accent;
+  font-weight: 600;
 }
 
 .origin__toggle {
@@ -184,10 +284,9 @@
   max-height: none;
 }
 
-/* 「导入」角标：让人一眼知道这段不是自己敲的 */
+/* 「导入」角标：让人一眼知道这段不是自己敲的（间距由 .origin__ops 的 gap 给） */
 .origin__tag {
   flex: none;
-  margin-right: 12rpx;
   padding: 4rpx 14rpx;
   border-radius: 999rpx;
   background: rgba(196, 96, 46, 0.12);

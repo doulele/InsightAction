@@ -15,6 +15,7 @@ import { initUpdateManager } from '@/utils/update'
 import { initPrivacyGuard } from '@/utils/privacy'
 import { autoBackupIfDue } from '@/utils/cloudBackup'
 import { initAudioOption, resumeAudio, setSoundEnabled, suspendAudio } from '@/utils/audio'
+import { suspendSpeech } from '@/utils/speech'
 import { installRouterGuard, ROUTES } from '@/router/routes'
 
 onLaunch(() => {
@@ -118,8 +119,15 @@ watch(
  * 切后台 / 回前台：普通 innerAudioContext 会被微信挂起，这里主动收干净，
  * 回前台再按记录把环境音续上。页面不用管这件事 ——
  * 计时按墙上时间照走（沙漏/茶室的规则不变），只是声音断一下。
+ *
+ * 收听（正文朗读）**先暂停**再收音频：朗读是一段一段排着队的，
+ * 后台回来不能自动接着念（用户可能已经切走了），让他自己按「继续」；
+ * 顺序不能反 —— 先 suspendAudio 会把实例硬停，朗读器那时才收到通知，界面会闪一下。
  */
-onHide(() => suspendAudio())
+onHide(() => {
+  suspendSpeech()
+  suspendAudio()
+})
 onShow(() => resumeAudio())
 </script>
 

@@ -9,7 +9,8 @@
  *    3. docx / xlsx / pdf / 图片 —— 送服务端解析（已接，见 api/modules/parse.ts 与服务端 parseService）。
  *
  * 给外部 AI 的**契约与模板**（可复制、可转发成文件）统一放在 `utils/importTemplate.ts`：
- * 字段名在这里解析、在那里生成，两处必须一起改。
+ * 字段名在这里解析、在那里生成，两处必须一起改 —— 契约按形态给（文章 / 一句话 / 视频字段不一样），
+ * 而且里面**没有 `form` 这一格**，粘/导进来之后由这里的 `inferForm()` 反推。
  *
  * 隐私：这里读的是用户**从聊天里主动选中**的文件，读取在**本机**完成
  * （`FileSystemManager.readFileSync`），不上传、不落第二份。
@@ -346,6 +347,79 @@ export function parseImportFile(name: string, text: string): ImportResult {
   const ext = (name.split('.').pop() ?? '').toLowerCase()
   if (ext === 'json') return parseJson(text)
   return parseLoose(text)
+}
+
+/* ---------------- 粘贴进来的文本（2026-09-19） ---------------- */
+
+/**
+ * 剥掉 Markdown 代码围栏。
+ *
+ * 为什么必须有这一步：AI 聊天里复制出来的 JSON 十有八九裹在 ```json 里
+ * （它这么写是为了好看），原样贴进 `JSON.parse` 只会得到"不是合法的 JSON"。
+ * 剥法保守 —— 只在围栏成对出现时取中间那段，否则原文返回。
+ */
+export function stripFence(text: string): string {
+  const m = /```[a-zA-Z0-9]*\s*\n([\s\S]*?)```/.exec(text)
+  return (m ? m[1] : text).trim()
+}
+
+/**
+ * 「这是你要的清单：{ … } 有问题再问我」—— 从一段话里把那个 JSON 对象抠出来。
+ * 只在整段**不是**以 `{` 开头时试；抠出来的那段必须真能 parse 才算数，
+ * 所以不会把正文里恰好带花括号的普通文字误当成 JSON。
+ */
+function tryExtractJson(text: string): string {
+  const a = text.indexOf('{')
+  const b = text.lastIndexOf('}')
+  if (a < 0 || b <= a) return ''
+  const slice = text.slice(a, b + 1)
+  try {
+    JSON.parse(slice)
+    return slice
+  } catch {
+    return ''
+  }
+}
+
+/**
+ * 粘贴进来的文本：与「选文件」走同一个解析器，只是**没有文件名可依**，靠内容自己认。
+ *  1. 先剥代码围栏（见 stripFence）；
+ *  2. 以 `{` / `[` 开头 → JSON；开头是别的话，就试着从里面抠一个能 parse 的对象；
+ *  3. 都不是 → 按「字段：值」逐行读（md / txt 那条路）。
+ * 认不出字段不在这里报错，由页面决定怎么说（返回空 fields + warnings）。
+ */
+export function parsePasted(text: string): ImportResult {
+  const body = stripFence(text)
+  if (/^[[{]/.test(body)) return parseJson(body)
+  const inner = tryExtractJson(body)
+  if (inner) return parseJson(inner)
+  return parseLoose(body)
+}
+
+/**
+ * 认出来的字段名（按表单顺序）。
+ * 给"填进去了什么"的交代用 —— 选文件与粘贴两条路共用同一份说法，
+ * 免得两个入口把同一件事说成两种（原来这段逻辑散在页面里，2026-09-19 收到这里）。
+ */
+export function recognizedFields(f: ImportedForm): string[] {
+  const got: string[] = []
+  if (f.kind) got.push('归属')
+  if (f.form) got.push('形态')
+  if (f.title) got.push('标题')
+  if (f.topics?.length) got.push('主题')
+  if (f.tags?.length) got.push('标签')
+  if (f.sourceName) got.push('来源')
+  if (f.link) got.push('原文链接')
+  if (f.videoUrl) got.push('视频链接')
+  if (f.content) got.push('正文')
+  if (f.contentHtml) got.push('样式')
+  if (f.digest) got.push('摘要')
+  if (f.viewpoints?.length) got.push('重要观点')
+  if (f.summary) got.push('一句话总结')
+  if (f.insight) got.push('感悟')
+  if (f.why) got.push('为什么成立')
+  if (f.golden?.length) got.push('经典语句')
+  return got
 }
 
 /* ---------------- md → HTML（只做收件需要的那几种结构） ---------------- */

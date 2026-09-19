@@ -265,6 +265,17 @@ export const useObserveStore = defineStore(
       })
     }
 
+    /**
+     * 改一条。
+     *
+     * 归属（事 / 理 / 道）能在编辑页改，而它**不是一个标签**：理要写了「为什么成立」才入册进理库，
+     * 改成事就该从理库退出去。所以状态在这里跟着重算一次（原规则只单向「补写即入册」，
+     * 于是"一条事改成理"会没写 why 也躺在理库里 —— 2026-09-19 修）：
+     *  - 理：有 why → confirmed（入册），没有 → draft（草稿，不进理库）；
+     *  - 别的归属：confirmed；
+     *  - 待整理（pending，每日一则「记住」的落点）不因一次编辑改状态 —— 那是另一条队列。
+     * 编辑页"换归属先提示一句"的那段文案与这里的口径是一对，改一处要一起改。
+     */
     function update(id: string, patch: Partial<ObsInput>): void {
       const it = find(id)
       if (!it) return
@@ -272,8 +283,11 @@ export const useObserveStore = defineStore(
       /* 富文本同样要过清洗：编辑页会传进来，但 store 才是唯一闸门（新入口绕不过去） */
       if (typeof next.contentHtml === 'string') next.contentHtml = sanitizeHtml(next.contentHtml) || undefined
       Object.assign(it, next)
-      // 补写「为什么成立」→ 草稿自动入册
-      if (it.kind === 'theory' && it.state === 'draft' && it.why?.trim()) it.state = 'confirmed'
+      if (it.kind === 'theory') {
+        if (it.state !== 'pending') it.state = it.why?.trim() ? 'confirmed' : 'draft'
+      } else {
+        it.state = 'confirmed'
+      }
     }
 
     function remove(id: string): void {

@@ -314,9 +314,14 @@
  * 刻意不设计时器：给一段时间是沙漏与茶室的职责（详见 stores/thought.ts 头注释）。
  * 地图只陈述不评价 —— 不给百分比、不写"深夜那一箱"这类结论（见 store 里的 insight）。
  * 样式外置在 thought/index.scss（超过 100 行，按项目约定拆出）。
+ *
+ * 声音（2026-09-19 加）：写完一念、或把候着的那件事了结时，放一记「落定」
+ * （config/audio.ts 的 settle）—— 它标的是「这件事从脑子里挪走了」，不是一次得分。
+ * 写的过程没有环境音：这里不是一段有起止的练习，没地方挂循环声。
+ * 与沙漏 / 茶室 / 呼吸干预共用同一套开关（设置 → 静修声音）。
  */
 import { computed, ref } from 'vue'
-import { onLoad } from '@dcloudio/uni-app'
+import { onLoad, onUnload } from '@dcloudio/uni-app'
 import {
   MAP_NEED,
   SHELVE_KINDS,
@@ -330,6 +335,7 @@ import type { ShelveKind, ThoughtAnswer, ThoughtRecord } from '@/stores/thought'
 import { useDailyStore } from '@/stores/daily'
 import { useKnowledgeStore } from '@/stores/knowledge'
 import { logTrace } from '@/utils/traceLog'
+import { playCue, teardownAudio } from '@/utils/audio'
 import { useSkinClass } from '@/composables/useSkin'
 import SceneProbe from '@/components/SceneProbe/SceneProbe.vue'
 import { ROUTES } from '@/router/routes'
@@ -404,6 +410,8 @@ function save(): void {
   action.value = ''
   shelved.value = null
 
+  /* 一记落定：这一念已经从脑子里挪到纸上了（素材没到位就静默，不影响入账） */
+  playCue('settle')
   uni.showToast({ title: toastOf(rec), icon: 'none' })
 }
 
@@ -510,6 +518,8 @@ function onStill(id: number): void {
 
 function onDone(id: number): void {
   thought.closeShelf(id)
+  /* 同一记落定：这件悬着的事也了结了 */
+  playCue('settle')
   uni.showToast({ title: '了结了', icon: 'none' })
 }
 
@@ -537,6 +547,9 @@ function remove(id: number): void {
     },
   })
 }
+
+/* 离页收干净：落定那一记不该跟着回到大厅还在响 */
+onUnload(() => teardownAudio())
 
 function goBack(): void {
   const pages = getCurrentPages()

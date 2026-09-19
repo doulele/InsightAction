@@ -39,10 +39,45 @@
         <view v-if="item.content || item.contentHtml" class="origin">
           <view class="origin__head">
             <text class="origin__label">{{ originLabel }}</text>
-            <text v-if="item.imported" class="origin__tag">导入</text>
-            <text v-if="contentLong" class="origin__toggle" hover-class="gz-hover" @click="contentOpen = !contentOpen">
-              {{ contentOpen ? '收起' : '展开全文' }}
-            </text>
+            <view class="origin__ops">
+              <text v-if="item.imported" class="origin__tag">导入</text>
+              <!-- 收听（2026-09-19）：有正文、插件可用才出现；正在读时控件挪到下面那条收听条上 -->
+              <text v-if="canListen && !listening" class="origin__listen" hover-class="gz-hover" @click="startListen">{{ SPEECH_TEXT.start }}</text>
+              <text v-if="contentLong" class="origin__toggle" hover-class="gz-hover" @click="contentOpen = !contentOpen">
+                {{ contentOpen ? '收起' : '展开全文' }}
+              </text>
+            </view>
+          </view>
+
+          <!--
+            收听条：状态 + 进度条 + 时间 + 四个控制。
+            进度是**真的**（每一段都是一个完整 mp3，有真实时长），总百分比按字数加权 ——
+            段长不等（首段更短），按段数算会一跳一跳（见 utils/speech.ts 的 progress()）。
+          -->
+          <view v-if="listening" class="listen">
+            <view class="listen__top">
+              <text class="listen__state">{{ listenLabel }}</text>
+              <text v-if="listenDuration > 0" class="listen__time">
+                {{ formatTime(listenNow) }} / {{ formatTime(listenDuration) }}
+              </text>
+            </view>
+            <view class="listen__track">
+              <view class="listen__fill" :style="{ width: `${listenPercent}%` }" />
+            </view>
+            <view class="listen__acts">
+              <text class="listen__btn" hover-class="gz-hover" @click="toggleRate">{{ listenRate }}x</text>
+              <!-- 音色只有服务端合成那一路可选（插件回落时只有一套发音） -->
+              <text v-if="listenEngine === 'server'" class="listen__btn" hover-class="gz-hover" @click="toggleVoice">
+                {{ voiceLabel }}
+              </text>
+              <text
+                v-if="listenState !== 'done'"
+                class="listen__btn"
+                hover-class="gz-hover"
+                @click="toggleListenPause"
+              >{{ listenState === 'playing' || listenState === 'synth' ? SPEECH_TEXT.act.pause : SPEECH_TEXT.act.resume }}</text>
+              <text class="listen__btn listen__btn--main" hover-class="gz-hover" @click="closeListen">{{ listenState === 'done' ? SPEECH_TEXT.act.close : SPEECH_TEXT.act.stop }}</text>
+            </view>
           </view>
           <!--
             有格式就用富文本回显（这正是导入带样式的初衷）；老数据没有 contentHtml，走纯文本分支。
@@ -187,12 +222,25 @@
  *  - 「正文 / 原文」= 灰底一块，限高 520rpx，长了就地「展开全文」—— 别人的字；
  *  - 「摘要 / 重要观点 / 经典语句 / 一句话总结 / 感悟 / 为什么成立」= 细分割线 +
  *    主题色小竖条 —— 你写的字。
+ *
+ * 2026-09-19 加了**收听**（正文朗读）：「文字 → 音频 → 按段排队播放」全在 `utils/speech.ts`
+ * （默认走我们后端的微软 Edge 合成，服务端不通时自动回落到微信同声传译插件），
+ * 这一页只管按钮与那条收听条（状态 / 进度条 / 倍速 / 音色 / 暂停停止）；口径与隐私见该文件头。
  */
 import { computed, ref } from 'vue'
-import { onLoad } from '@dcloudio/uni-app'
+import { onLoad, onUnload } from '@dcloudio/uni-app'
 import { useObserveStore } from '@/stores/observe'
+import { useRemoteStore } from '@/stores/remote'
 import { decorate, hasMarkup } from '@/utils/richText'
 import { useSkinClass } from '@/composables/useSkin'
+import { DEFAULT_VOICE, SPEECH_RATES, SPEECH_TEXT, TTS_VOICES } from '@/config/speech'
+import {
+  speechAvailable,
+  startReading,
+  type SpeechFailReason,
+  type SpeechSession,
+  type SpeechState,
+} from '@/utils/speech'
 import { navigateTo, ROUTES } from '@/router/routes'
 
 const store = useObserveStore()
@@ -229,6 +277,155 @@ const originLabel = computed(() => {
   if (it.form === 'video') return '正文 · 视频里讲的'
   return '正文 · 原文'
 })
+
+/* ---------------- 收听（正文朗读，2026-09-19；09-19 晚换成服务端合成） ----------------
+ * 为什么放在这一页：正文在收件匣 / 理库里只有限高三行的预览，逐字读的地方只有详情页。
+ * 五条口径：
+ *  1. **有正文才能听**；两个引擎都用不了时「听」**整个不出现**（不按下去没反应的按钮）；
+ *  2. 朗读**独占音频通道** —— 全项目只有一个 innerAudioContext（见 utils/audio.ts），
+ *     开始朗读时环境音会让位、一记也进不来；
+ *  3. **离开这一页就停**（onUnload）：否则返回列表后声音还在响，却已经找不到开关；
+ *     切后台是「暂停」（App.vue 调 suspendSpeech），回来按「继续」接着听；
+ *  4. 合成在**服务端**（微软 Edge 在线合成，音色自然、一段最多 1200 字）；
+ *     服务端不可用时 utils/speech.ts 会自动回落到微信同声传译插件 —— 页面不用管；
+ *  5. 进度是**真进度**：每一段都是一个完整 mp3（有真实时长），总百分比按字数加权。
+ */
+const remote = useRemoteStore()
+const listenState = ref<SpeechState>('idle')
+const listenIndex = ref(0)
+const listenTotal = ref(0)
+const listenReason = ref<SpeechFailReason | ''>('')
+/** 进度（250ms 轮询：总百分比 / 本段位置 / 本段时长） */
+const listenPercent = ref(0)
+const listenNow = ref(0)
+const listenDuration = ref(0)
+/** 倍速与音色（**只在本页会话里记着**，不落库 —— 要"记住选择"得动 settings + schema，见未做事项） */
+const listenRate = ref<number>(SPEECH_RATES[0])
+const listenVoice = ref<string>(DEFAULT_VOICE)
+/** 当前这一路朗读（同一时刻只有一路；页面持有它才能暂停/停止） */
+let listenSession: SpeechSession | null = null
+let listenTimer: ReturnType<typeof setInterval> | null = null
+
+/**
+ * 这一条能不能听：有正文 + 有可用的引擎。
+ * 服务端引擎（远端 features.tts 开着）不依赖插件；关掉时才需要插件在。
+ */
+const canListen = computed(
+  () => !!item.value?.content.trim() && (remote.feature('tts') || speechAvailable()),
+)
+/** 有没有在听（收听条只在"有"的时候出现） */
+const listening = computed(() => listenState.value !== 'idle')
+/** 当前引擎（音量/音色按钮据此显隐） */
+const listenEngine = ref<'server' | 'plugin'>('server')
+
+/** 音色按钮上那个词 */
+const voiceLabel = computed(() => TTS_VOICES.find((v) => v.id === listenVoice.value)?.label ?? '音色')
+
+/** 收听条上那句话：状态 + 进度（段数 >1 才报"第几段"，只有一段时读数字反而奇怪） */
+const listenLabel = computed(() => {
+  if (listenState.value === 'error') {
+    return listenReason.value ? SPEECH_TEXT.fail[listenReason.value] : SPEECH_TEXT.state.error
+  }
+  const base = SPEECH_TEXT.state[listenState.value] ?? ''
+  if (listenState.value === 'done' || listenTotal.value <= 1) return base
+  return `${base} ${Math.min(listenIndex.value + 1, listenTotal.value)}/${listenTotal.value}`
+})
+
+/** mm:ss —— 一段可能有几分钟，只报秒数没法读 */
+function formatTime(sec: number): string {
+  const s = Math.max(0, Math.floor(sec || 0))
+  return `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`
+}
+
+/** 进度轮询：只在"有朗读"的时候开着（250ms，够顺滑又不费） */
+function startPolling(): void {
+  if (listenTimer) return
+  listenTimer = setInterval(() => {
+    if (!listenSession) return
+    const p = listenSession.progress()
+    listenPercent.value = p.percent
+    listenNow.value = p.position
+    listenDuration.value = p.duration
+  }, 250)
+}
+
+function stopPolling(): void {
+  if (!listenTimer) return
+  clearInterval(listenTimer)
+  listenTimer = null
+}
+
+function startListen(): void {
+  const it = item.value
+  if (!it || listening.value) return
+  const session = startReading(
+    it.content,
+    {
+      onState: (state, progress) => {
+        listenState.value = state
+        listenIndex.value = progress.index
+        listenTotal.value = progress.total
+        listenReason.value = progress.reason ?? ''
+        if (state === 'done') {
+          listenPercent.value = 100
+          stopPolling()
+        } else if (state === 'idle') {
+          stopPolling()
+        }
+      },
+    },
+    { voice: listenVoice.value, rate: listenRate.value },
+  )
+  if (!session) {
+    uni.showToast({ title: SPEECH_TEXT.fail.unsupported, icon: 'none' })
+    return
+  }
+  listenSession = session
+  listenEngine.value = session.engine
+  listenPercent.value = 0
+  startPolling()
+  /* 开始听就把正文展开：对着字听，比对着三行预览听踏实 */
+  contentOpen.value = true
+}
+
+/** 暂停 / 继续（真暂停：停在当前位置；出错后是「继续」= 从当前这一段重新合成） */
+function toggleListenPause(): void {
+  if (!listenSession) return
+  if (listenState.value === 'playing' || listenState.value === 'synth') listenSession.pause()
+  else listenSession.resume()
+}
+
+/** 倍速：播放端变速，立即生效（不重新合成） */
+function toggleRate(): void {
+  const i = SPEECH_RATES.indexOf(listenRate.value as (typeof SPEECH_RATES)[number])
+  const next = SPEECH_RATES[(i + 1) % SPEECH_RATES.length] ?? 1
+  listenRate.value = next
+  listenSession?.setRate(next)
+}
+
+/** 音色：对**后面还没合成的段**生效（正在播的这段不变）—— 所以给一句说明 */
+function toggleVoice(): void {
+  const i = TTS_VOICES.findIndex((v) => v.id === listenVoice.value)
+  const next = TTS_VOICES[(i + 1) % TTS_VOICES.length]
+  if (!next) return
+  listenVoice.value = next.id
+  listenSession?.setVoice(next.id)
+  uni.showToast({ title: `${next.label} · 从下一段起生效`, icon: 'none' })
+}
+
+/** 收摊：停声 + 收起收听条（离页也走它） */
+function closeListen(): void {
+  listenSession?.stop()
+  listenSession = null
+  stopPolling()
+  listenState.value = 'idle'
+  listenIndex.value = 0
+  listenTotal.value = 0
+  listenReason.value = ''
+  listenPercent.value = 0
+  listenNow.value = 0
+  listenDuration.value = 0
+}
 
 function kindText(kind: string): string {
   return kind === 'thing' ? '事' : kind === 'theory' ? '理' : '道'
@@ -339,6 +536,12 @@ function goBack(): void {
 onLoad((query) => {
   id.value = (query as Record<string, string>)?.id ?? ''
 })
+
+/**
+ * 离页即停：朗读没有"全局播放条"，声音要是跟着人走，用户就没地方关它了。
+ * （切后台不在此列 —— App.vue 走的是暂停，回来还能接着听。）
+ */
+onUnload(() => closeListen())
 </script>
 
 <style lang="scss" scoped>

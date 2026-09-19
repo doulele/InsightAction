@@ -56,7 +56,13 @@
         </view>
 
         <text class="card__name" hover-class="gz-hover" @click="toggle(m.id)">{{ m.title }}</text>
-        <text class="card__line">{{ m.content }}</text>
+
+        <!-- 文章 / 视频：卡片先给「你写的摘要」，正文只留三行（全文在详情页）—— 2026-09-19 -->
+        <view v-if="briefText(m)" class="brief">
+          <text class="brief__label">{{ briefLabel(m) }}</text>
+          <text class="brief__text">{{ briefText(m) }}</text>
+        </view>
+        <text v-if="m.content" class="card__line" :class="{ 'is-cut': isDoc(m) }">{{ m.content }}</text>
 
         <!-- 挂靠的内容（展开） -->
         <view v-if="openId === m.id" class="kids">
@@ -65,7 +71,12 @@
           </view>
           <view v-for="k in kidsOf(m.id)" :key="k.id" class="kid">
             <text class="kid__kind">{{ k.kind === 'theory' ? '理' : '事' }}</text>
-            <text class="kid__text">{{ k.title || k.content.slice(0, 24) }}</text>
+            <view class="kid__body">
+              <text class="kid__text">{{ k.title || k.content.slice(0, 24) }}</text>
+              <!-- 挂进来的往往就是一篇长文：一行摘要，让人不必点进去也知道这条是什么 -->
+              <text v-if="briefText(k)" class="kid__brief">{{ briefLabel(k) }} · {{ briefText(k) }}</text>
+            </view>
+            <text v-if="isDoc(k)" class="kid__x" hover-class="gz-hover" @click="goDetail(k.id)">详情</text>
             <text class="kid__x" hover-class="gz-hover" @click="detach(k.id)">解挂</text>
           </view>
         </view>
@@ -73,6 +84,7 @@
         <view class="ops">
           <text class="ops__state">{{ openId === m.id ? '收起' : '展开' }}</text>
           <view class="ops__right">
+            <text v-if="isDoc(m)" class="ops__btn" hover-class="gz-hover" @click="goDetail(m.id)">详情</text>
             <text class="ops__btn" hover-class="gz-hover" @click="drop(m.id)">删</text>
             <text class="ops__btn" hover-class="gz-hover" @click="writeFor(m)">写一笔</text>
             <text class="ops__btn ops__btn--main" hover-class="gz-hover" @click="attachTo(m.id)">挂靠</text>
@@ -156,6 +168,30 @@ function toggle(id: string): void {
 /** 理道图谱：本页按母题列，图谱按「关系」列 —— 同一份数据的第三个切面 */
 function goGraph(): void {
   navigateTo(ROUTES.observeGraph)
+}
+
+/* ---------------- 卡片上的摘要 / 正文限高 / 详情入口（2026-09-19） ----------------
+ * 母题自己与挂在它下面的内容都可能是**文章 / 视频**（正文最长一万字）。
+ * 在这里平铺正文会把卡片撑得没法看，而真正该被看见的是你写的那两三句摘要，
+ * 所以与理库同一套口径：卡片给摘要、正文留三行预览、全文去详情页看。
+ * 一句话形态不掺和（正文就是那一句，短，也没有"详情"可点）。
+ */
+function isDoc(it: ObsItem): boolean {
+  return it.form !== 'quote'
+}
+
+/** 摘要优先，没写摘要就退回「一句话总结」—— 标签跟着换，不能把总结说成摘要 */
+function briefLabel(it: ObsItem): string {
+  return it.digest ? '摘要' : '一句话总结'
+}
+
+function briefText(it: ObsItem): string {
+  return it.digest || it.summary || ''
+}
+
+/** 详情页：收件匣 / 理库 / 母题库看的是同一条数据，全文与编辑都在那边 */
+function goDetail(id: string): void {
+  navigateTo(ROUTES.observeDetail, { id })
 }
 
 function taken(name: string): boolean {

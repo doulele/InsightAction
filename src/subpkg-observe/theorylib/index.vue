@@ -77,7 +77,16 @@
           </view>
 
           <text class="card__title">{{ it.title || it.content.slice(0, 20) }}</text>
-          <text class="card__content">{{ it.content }}</text>
+
+          <!--
+            文章 / 视频：卡片上先给「你写的摘要」（你要找回来的就是这一句），
+            正文只留三行预览，全文进详情页 —— 一篇长逐字稿平铺出来会把整列淹掉（2026-09-19）。
+          -->
+          <view v-if="briefText(it)" class="brief">
+            <text class="brief__label">{{ briefLabel(it) }}</text>
+            <text class="brief__text">{{ briefText(it) }}</text>
+          </view>
+          <text v-if="it.content" class="card__content" :class="{ 'is-cut': isDoc(it) }">{{ it.content }}</text>
 
           <view v-if="it.why" class="why">
             <text class="why__label">为什么成立</text>
@@ -96,6 +105,8 @@
           <view class="ops">
             <text class="ops__state">{{ it.handledAt ? `已处理 · Lv.${it.depth}` : '未处理' }}</text>
             <view class="ops__right">
+              <!-- 文章 / 视频才有详情可看：一句话的正文就是那一句，本来就全在卡上 -->
+              <text v-if="isDoc(it)" class="ops__btn" hover-class="gz-hover" @click="goDetail(it.id)">详情</text>
               <text v-if="!it.motherId" class="ops__btn" hover-class="gz-hover" @click="promote(it.id)">提炼母题</text>
               <text class="ops__btn ops__btn--main" hover-class="gz-hover" @click="attach(it.id)">
                 {{ it.motherId ? '改挂' : '挂靠' }}
@@ -430,6 +441,31 @@ function promote(id: string): void {
 
 function goMother(): void {
   navigateTo(ROUTES.observeMotherLib)
+}
+
+/* ---------------- 卡片上的摘要 / 正文限高 / 详情入口（2026-09-19） ----------------
+ * 这一页装的是「理」，而理可以是从一篇文章里认出来的 —— 那张卡片于是有两件事不对：
+ *  1. 正文最长可以有一万字（记一笔的上限），平铺在列表里会把整列挤没；
+ *  2. 而真正要你回头找的「摘要」（你用自己话压出来的那两三句）反而看不见。
+ * 所以：卡片先给摘要、正文只留三行预览、要看全文点「详情」去详情页（那一页本来就有展开全文）。
+ * 一句话形态不掺和 —— 它的正文就是那一句，短，也就没有"详情"可点。
+ */
+function isDoc(it: ObsItem): boolean {
+  return it.form !== 'quote'
+}
+
+/** 摘要优先，没写摘要就退回「一句话总结」—— 标签跟着换，不能把总结说成摘要 */
+function briefLabel(it: ObsItem): string {
+  return it.digest ? '摘要' : '一句话总结'
+}
+
+function briefText(it: ObsItem): string {
+  return it.digest || it.summary || ''
+}
+
+/** 全文在详情页（收件匣与理库看的是同一条数据，编辑入口也在那边） */
+function goDetail(id: string): void {
+  navigateTo(ROUTES.observeDetail, { id })
 }
 
 function goCompose(): void {

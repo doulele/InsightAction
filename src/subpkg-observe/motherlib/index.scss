@@ -195,6 +195,44 @@
   color: $gz-ink-2;
 }
 
+/*
+ * 「你写的摘要」与正文预览（2026-09-19）——
+ * 母题自己与挂在它下面的内容都可能是文章 / 视频（正文上限一万字）：
+ * 摘要单独一块给全，正文只留三行，全文去详情页。
+ * 限高用 -webkit-line-clamp（微信 WebView 支持，`.kid__text` 的单行截断也是同一套），
+ * 目的是让**卡片高度由卡片说了算，不由正文长度说了算**。
+ */
+.brief {
+  margin-top: 12rpx;
+  padding: 12rpx 16rpx;
+  border-radius: $gz-radius-sm;
+  background: $gz-surface-2;
+}
+
+.brief__label {
+  display: block;
+  font-size: $gz-fs-caption;
+  color: $gz-ink-3;
+}
+
+.brief__text {
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 4;
+  overflow: hidden;
+  margin-top: 6rpx;
+  font-size: $gz-fs-small;
+  line-height: 1.8;
+  color: $gz-ink-2;
+}
+
+.card__line.is-cut {
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 3;
+  overflow: hidden;
+}
+
 .kids {
   margin-top: 18rpx;
   padding: 16rpx 18rpx;
@@ -212,7 +250,7 @@
   display: flex;
   align-items: center;
   gap: 12rpx;
-  padding: 8rpx 0;
+  padding: 10rpx 0;
 }
 
 .kid__kind {
@@ -224,11 +262,26 @@
   font-size: 20rpx;
 }
 
-.kid__text {
+/* 标题 + 一行摘要：正文再长也只占这一行的位置（长文点「详情」看全文） */
+.kid__body {
   flex: 1;
   min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2rpx;
+}
+
+.kid__text {
   font-size: $gz-fs-small;
   color: $gz-ink;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.kid__brief {
+  font-size: 20rpx;
+  color: $gz-ink-3;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;

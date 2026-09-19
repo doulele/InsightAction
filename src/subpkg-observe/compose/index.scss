@@ -156,25 +156,18 @@
 }
 
 /*
- * 导入文件（2026-09-17，2026-09-18 改版）：
- * **整块只有一行** —— 「导入文件」按钮 + 格式清单 + 问号圆标（三者同一行，两个入口都打开格式说明）。
- * 按钮不带箭头：会跟富文本工具栏的图标抢注意力。
+ * 拿一份外来清单进来（2026-09-17，2026-09-19 改成两行）：
+ *   第一行 = 两个按钮 + 问号圆标（三者都能点，问号与清单一个入口：格式说明）；
+ *   第二行 = 格式清单一行小字。
  *
- * 这一行是压出来的，动字号 / 往里加东西之前先看这笔宽度账（卡片内可用 ≈618rpx）：
- *   按钮 ≈130rpx（「导入文件」4 字 × 22rpx + 两侧 20rpx 内边距）
- *   + 间距 10rpx
- *   + 清单 ≈390rpx（「JSON 最准」20rpx ＋ 「（或MD/TXT/Word/Excel/PDF/图片）」18rpx）
- *   + 间距 10rpx
- *   + 问号 ≈60rpx（44rpx 圆标 + 两侧 8rpx 内边距，点击区比圆大一圈）
- *   ≈ 600rpx，余量 18rpx —— 已经贴着地板了。
- * 所以：清单字号取 18rpx（括号里）/ 20rpx（被强调的「JSON 最准」，比 caption 22rpx 小一档）、
- * 分隔用「/」不留空格、括号里只说一个"或"字、卡片左右内边距收到 18rpx —— 少一样就会折行
- * （折行后退回两行排版：清单整段落到第二行，可接受但不理想）。
+ * 为什么不再硬挤一行：加了「粘贴清单」之后一行放不下三个东西（旧版的宽度账算到 600rpx/618rpx
+ * 就已经贴着地板），而把说明压到 18rpx 换来的"一行"并不好读。分两行之后：
+ *   第一行 ≈ 粘贴清单 160rpx + 导入文件 160rpx + 间距 12rpx + 问号 60rpx ≈ 392rpx（宽裕）
+ *   第二行是整行小字，写多长都换行，不再受宽度账约束。
+ * 层级也顺过来了：「粘贴清单」（手机上最省事的那条路）描主题色，选文件退成普通描边按钮 ——
+ * 但两个都不填主题色实底，主操作（存入收件匣）只有一个。
  */
 .import {
-  display: flex;
-  align-items: center;
-  gap: 10rpx;
   margin-top: 22rpx;
   padding: 16rpx 18rpx;
   background: $gz-surface;
@@ -182,14 +175,26 @@
   border-radius: $gz-radius-md;
 }
 
+.import__row {
+  display: flex;
+  align-items: center;
+  gap: 12rpx;
+}
+
 .import__btn {
   flex: none;
   display: flex;
   align-items: center;
-  padding: 8rpx 20rpx;
+  padding: 10rpx 24rpx;
   border-radius: 999rpx;
+  border: 1rpx solid $gz-line;
+  background: $gz-surface;
+}
+
+/* 主路：粘贴清单 */
+.import__btn--main {
+  border-color: $gz-accent;
   background: $gz-accent-soft;
-  border: 1rpx solid $gz-accent;
 }
 
 /* 解析中：按钮整体压暗（禁用连点，也让人知道正在等） */
@@ -200,27 +205,30 @@
 .import__text {
   font-size: $gz-fs-caption;
   font-weight: 600;
+  color: $gz-ink-2;
+}
+
+.import__btn--main .import__text {
   color: $gz-accent;
 }
 
 /*
- * 格式清单：18rpx 是一行放得下的最小档。
- * 那根虚线细下划线是"这里可以点（打开格式说明）"的唯一提示 ——
+ * 格式清单：那根虚线细下划线是"这里可以点（打开格式说明）"的唯一提示 ——
  * 用 $gz-line-soft 压到几乎看不见：给的是可供性，不抢字。
  */
 .import__hint {
-  min-width: 0;
+  display: block;
+  margin-top: 12rpx;
   padding-bottom: 2rpx;
   border-bottom: 1rpx dashed $gz-line-soft;
-  font-size: 18rpx;
-  line-height: 1.5;
+  font-size: 20rpx;
+  line-height: 1.6;
   color: $gz-ink-3;
 }
 
 /*
- * 「JSON 最准」：清单里唯一被突出的那一截 —— 20rpx（比括号里的 18rpx 大一档）
- * + 主题色 + 加粗，三层一起把它从括号里拎出来。它是最准的一条路（字段与表单一一对应）。
- * 注意：这截字号一动就要重算宽度账（见文件头），它是这条线上最贵的一段。
+ * 「JSON 粘进来最准」：清单里唯一被突出的那一截 ——
+ * 主题色 + 加粗，两层把它从括号里拎出来（它是最准的一条路：字段与表单一一对应）。
  */
 .import__k {
   font-size: 20rpx;
@@ -671,5 +679,103 @@
 .foot__text {
   font-size: $gz-fs-caption;
   letter-spacing: 0.08em;
+  color: $gz-ink-3;
+}
+
+/*
+ * 粘贴台（2026-09-19）：从底部升起的作答层，版式与理库的「回看收成」是同一套。
+ *
+ * 高度这件事要留意：`.page` 上有 `min-height: 100vh`，但这里 **mask 用 fixed + inset: 0**，
+ * 高度由视口给，不看 min-height —— 所以不存在"面板被撑成整屏高"那个坑
+ * （踩坑与排查顺序见 docs/观止知行-架构总览.md 的「工程约定与坑」）。
+ */
+.mask {
+  position: fixed;
+  inset: 0;
+  z-index: 30;
+  display: flex;
+  align-items: flex-end;
+  background: rgba(20, 16, 10, 0.5);
+}
+
+.sheet {
+  width: 100%;
+  padding: 34rpx 32rpx calc(env(safe-area-inset-bottom) + 30rpx);
+  background: $gz-surface;
+  border-radius: 32rpx 32rpx 0 0;
+  box-sizing: border-box;
+}
+
+.sheet__title {
+  display: block;
+  font-size: 32rpx;
+  font-weight: 700;
+  color: $gz-ink;
+}
+
+.sheet__sub {
+  display: block;
+  margin-top: 10rpx;
+  font-size: $gz-fs-caption;
+  line-height: 1.7;
+  color: $gz-ink-3;
+}
+
+/*
+ * 粘贴框：给足高度 —— 一份 JSON 清单常常几十行，矮框里翻着看等于没有。
+ * 高度写死（不用 auto-height）：让「解析并填入」始终在屏幕里，不用先滚到底。
+ * 注意 maxlength 必须显式给大（textarea 默认只收 140 字，粘一份清单会被截断）。
+ */
+.sheet__area {
+  width: 100%;
+  height: 420rpx;
+  margin-top: 20rpx;
+  padding: 20rpx;
+  background: $gz-input-bg;
+  border: 1rpx solid $gz-line;
+  border-radius: $gz-radius-md;
+  font-size: $gz-fs-small;
+  line-height: 1.7;
+  color: $gz-ink;
+  box-sizing: border-box;
+}
+
+.sheet__ph {
+  color: $gz-ink-3;
+}
+
+.sheet__btn {
+  margin-top: 22rpx;
+  padding: 26rpx 0;
+  border-radius: $gz-radius-md;
+  background: $gz-accent;
+}
+
+/* 按钮里的字单独给样式：文字自带一行才不会跟着模板换行多出空格 */
+.sheet__btn-text {
+  display: block;
+  text-align: center;
+  line-height: 1.4;
+  color: $gz-on-cta;
+  font-size: $gz-fs-body;
+  font-weight: 600;
+}
+
+/* 一个字都没粘：不是禁用，只是先把颜色收起来（点下去会有 toast 告诉他） */
+.sheet__btn.is-off {
+  background: $gz-input-bg;
+  border: 1rpx dashed $gz-line;
+}
+
+.sheet__btn.is-off .sheet__btn-text {
+  color: $gz-ink-3;
+  font-weight: 400;
+}
+
+.sheet__cancel {
+  margin-top: 14rpx;
+  padding: 18rpx 0;
+  text-align: center;
+  font-size: $gz-fs-small;
   color: $gz-ink-3;
 }
