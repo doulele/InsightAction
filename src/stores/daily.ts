@@ -10,7 +10,7 @@ import { computed, ref } from 'vue'
  * 三件事不再是凭空的待办清单，而是从观/知里回应出来的：
  * 它可以是「我立的某条理」「某张知识卡片」「某一次冲动记录」，也可以坦白说「无出处」。
  */
-export type TodoRefKind = 'theory' | 'card' | 'urge' | 'thought' | 'none'
+export type TodoRefKind = 'theory' | 'card' | 'urge' | 'thought' | 'plan' | 'none'
 
 /**
  * 一次「跨 tab 预填」的交接内容（2026-09-17 加）。

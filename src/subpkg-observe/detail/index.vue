@@ -36,14 +36,25 @@
         <text v-if="item.title" class="title">{{ item.title }}</text>
 
         <!-- 正文（原文）：灰底一块 + 限高，长了就地展开 —— 与"你的话"一眼分得开 -->
-        <view v-if="item.content" class="origin">
+        <view v-if="item.content || item.contentHtml" class="origin">
           <view class="origin__head">
             <text class="origin__label">{{ originLabel }}</text>
+            <text v-if="item.imported" class="origin__tag">导入</text>
             <text v-if="contentLong" class="origin__toggle" hover-class="gz-hover" @click="contentOpen = !contentOpen">
               {{ contentOpen ? '收起' : '展开全文' }}
             </text>
           </view>
-          <text class="origin__text" :class="{ 'is-open': contentOpen }">{{ item.content }}</text>
+          <!--
+            有格式就用富文本回显（这正是导入带样式的初衷）；老数据没有 contentHtml，走纯文本分支。
+            节点先过 decorate() —— 小程序 rich-text 不吃外部 class，样式得内联注入（见 utils/richText.ts）。
+          -->
+          <rich-text
+            v-if="hasHtml"
+            class="origin__rich"
+            :class="{ 'is-open': contentOpen }"
+            :nodes="richNodes"
+          />
+          <text v-else class="origin__text" :class="{ 'is-open': contentOpen }">{{ item.content }}</text>
         </view>
 
         <view v-if="item.digest" class="block">
@@ -128,6 +139,11 @@
         <view v-if="item.tags.length" class="topics">
           <text v-for="t in item.tags" :key="t" class="topic">{{ t }}</text>
         </view>
+        <!-- 处理时写下的那一句（2026-09-17 从正文里挪出来单独存，原文保持原文） -->
+        <view v-if="item.handleNote" class="block">
+          <text class="block__label">处理时写下的一句</text>
+          <text class="block__text">{{ item.handleNote }}</text>
+        </view>
         <view v-if="item.handledAt" class="block">
           <text class="block__label">处理</text>
           <text class="block__text">{{ timeLabel(item.handledAt) }} · 深度 Lv.{{ item.depth }}</text>
@@ -175,6 +191,7 @@
 import { computed, ref } from 'vue'
 import { onLoad } from '@dcloudio/uni-app'
 import { useObserveStore } from '@/stores/observe'
+import { decorate, hasMarkup } from '@/utils/richText'
 import { useSkinClass } from '@/composables/useSkin'
 import { navigateTo, ROUTES } from '@/router/routes'
 
@@ -196,7 +213,13 @@ const canRead = computed(() => (item.value ? store.canDeepRead(item.value.id) : 
 /** 正文默认限高（九行上下），超了给一个「展开全文」开关 —— 不让一篇长逐字稿把下面全顶走 */
 const contentOpen = ref(false)
 const CONTENT_LONG = 240
+/** 限高按**纯文本**长度算：HTML 的标签长度不该影响"算不算长" */
 const contentLong = computed(() => (item.value?.content.length ?? 0) > CONTENT_LONG)
+
+/** 这一条是不是带格式（有 contentHtml 才走富文本渲染分支） */
+const hasHtml = computed(() => hasMarkup(item.value?.contentHtml))
+/** 渲染节点：注入内联样式的副本（不动原件 —— 原件是存档用的正本） */
+const richNodes = computed(() => decorate(item.value?.contentHtml ?? ''))
 
 /** 正文那一块的标签：三种形态读法不同（视频没有"原文"，是"视频里讲的"） */
 const originLabel = computed(() => {

@@ -169,7 +169,7 @@ interface CardDim {
 const dims = computed<CardDim[]>(() => {
   const done = daily.doneCount
   return [
-    { key: 'observe', label: dl('observe'), value: `${st.marks} 次`, score: st.marks },
+    { key: 'observe', label: dl('observe'), value: `${st.obsN} 条`, score: st.obsN },
     { key: 'pause', label: dl('pause'), value: `${st.focusMin} 分钟`, score: st.focusMin },
     { key: 'reflect', label: dl('reflect'), value: `${st.cards} 张卡片`, score: st.cards + (st.answered ? 1 : 0) },
     { key: 'action', label: dl('action'), value: `${done}/${daily.planCount || 3} 件`, score: done },

@@ -38,6 +38,13 @@
       </view>
     </view>
 
+    <!--
+      事 / 理 / 道 的正面解释（随选中的那一张换）：它指什么 + 一个例子 + 这一类的硬要求。
+      不放弹框 —— 这是这一页第一个要做的判断，不能藏在"?"里；
+      而「见闻 / 认知 / 母题」三个词本身分不出界线（2026-09-18 补）。
+    -->
+    <view class="kinds__note">{{ kindNote }}</view>
+
     <!-- 形态：文章 / 一句话 / 视频 -->
     <view class="forms">
       <view
@@ -50,6 +57,31 @@
       >
         <text class="forms__text">{{ f.label }}</text>
       </view>
+    </view>
+
+    <!--
+      导入文件（2026-09-17）：让外部 AI 按契约生成一份清单，导进来把表单填好。
+      刻意放在最上面（形态之后）—— 它的用途就是"省掉手打"，埋在后面等于没有。
+    -->
+    <view class="import">
+      <view class="import__btn" :class="{ 'is-off': importing }" hover-class="gz-hover" @click="doImport">
+        <text class="import__text">{{ importing ? '解析中…' : '导入文件' }}</text>
+      </view>
+      <!--
+        格式清单：整块压成一行 —— JSON 提到括号外（它是最准的那条路），其余一律收进括号。
+        清单与右端的问号是同一个入口（都打开契约说明）；括号里只留一个"或"字，是给问号腾宽度。
+        整行写死在一行里不放换行，免得多出空格；宽度账见 index.scss 同名注释。
+      -->
+      <text class="import__hint" hover-class="gz-hover" @click="showContract"><text class="import__k">JSON 最准</text>（或{{ importOtherExts }}/Word/Excel/PDF/图片）</text>
+      <view class="import__help" hover-class="gz-hover" @click="showContract">
+        <text class="import__help-q">?</text>
+      </view>
+    </view>
+    <view v-if="importNotice" class="import__notice">
+      <!-- 谁整理的要说清：AI 整理过就标 AI，图片识别标图片识别，别混着说 -->
+      <AiBadge v-if="importSourceLabel" :source="importSource === 'ai' ? 'ai' : 'local'" :text="importSourceLabel" />
+      <text class="import__notice-text">{{ importNotice }}</text>
+      <text class="import__notice-x" hover-class="gz-hover" @click="closeNotice">×</text>
     </view>
 
     <!-- 主题：先归到哪些领域（可多选，六个一行排满） -->
@@ -131,17 +163,17 @@
         <view class="field field--main">
           <view class="field__top">
             <text class="field__label">正文 / 摘录<text class="field__opt">选填 · 与链接二选一</text></text>
-            <text class="field__count">{{ form.content.length }}/10000</text>
           </view>
-          <textarea
-            v-model="form.content"
-            class="field__area"
-            :class="{ 'is-focus': focusKey === 'body' }"
-            placeholder="摘录触动你的段落（原文原话，不是你的总结）"
-            placeholder-class="field__ph"
-            :maxlength="10000"
-            @focus="focusKey = 'body'"
-            @blur="focusKey = ''"
+          <!--
+            正文改用富文本（2026-09-17）：导入的文件常常带简单样式（小标题、加粗、列表），
+            纯文本框会把它们全抹平。工具与两条正文的同步规则见 components/RichEditor。
+          -->
+          <RichEditor
+            :html="form.contentHtml"
+            :max="BODY_MAX"
+            placeholder="摘录触动你的段落（原文原话，不是你的总结）· 可加粗、起小标题"
+            @update:html="onBodyHtml"
+            @update:text="onBodyText"
           />
         </view>
       </block>
@@ -197,17 +229,13 @@
         <view class="field field--main">
           <view class="field__top">
             <text class="field__label">正文<text class="field__opt">选填 · 视频里说了什么</text></text>
-            <text class="field__count">{{ form.content.length }}/10000</text>
           </view>
-          <textarea
-            v-model="form.content"
-            class="field__area"
-            :class="{ 'is-focus': focusKey === 'body' }"
+          <RichEditor
+            :html="form.contentHtml"
+            :max="BODY_MAX"
             placeholder="它讲了什么？贴逐字稿，或记下关键几句"
-            placeholder-class="field__ph"
-            :maxlength="10000"
-            @focus="focusKey = 'body'"
-            @blur="focusKey = ''"
+            @update:html="onBodyHtml"
+            @update:text="onBodyText"
           />
         </view>
       </block>
@@ -332,7 +360,7 @@
           <text class="field__count">{{ form.content.length }}/2000</text>
         </view>
         <textarea
-          v-model="form.content"
+          :value="form.content"
           class="field__area"
           :class="{ 'is-focus': focusKey === 'main' }"
           placeholder="把那一句写下来（不写就不让存 —— 收藏夹不养僵尸）"
@@ -340,6 +368,7 @@
           :maxlength="2000"
           @focus="focusKey = 'main'"
           @blur="focusKey = ''"
+          @input="onQuoteInput"
         />
       </view>
 
@@ -415,6 +444,9 @@
     <view class="foot">
       <text class="foot__text">{{ footText }}</text>
     </view>
+
+    <!-- 复制契约示例（剪贴板）与选文件都属隐私接口，首次调用前要过这道门 -->
+    <PrivacyGate />
   </view>
 </template>
 
@@ -434,16 +466,37 @@
  *     真按下「存下」那一刻草稿自动清掉，不留影子；放满 14 天（DRAFT_HOLD_MS）也会自动清掉，
  *     且进页时明说一句，不悄悄吞掉用户敲过的字。草稿槽见 stores/composeDraft.ts。
  */
-import { computed, ref } from 'vue'
+import { computed, ref, watch } from 'vue'
 import { onLoad, onShow } from '@dcloudio/uni-app'
 import { OBSERVE_TOPICS, useObserveStore, validate } from '@/stores/observe'
 import type { ObsItem, ObserveForm, ObserveKind, Viewpoint } from '@/stores/observe'
+import { useAccountStore } from '@/stores/account'
+import { useRemoteStore } from '@/stores/remote'
 import { useComposeDraftStore } from '@/stores/composeDraft'
 import { useSkinClass } from '@/composables/useSkin'
+import { sanitizeHtml } from '@/utils/richText'
+import {
+  LOCAL_EXTS,
+  extOf,
+  isLocalExt,
+  isRemoteExt,
+  parseImportFile,
+  pickFile,
+  readAsBase64,
+  readAsText,
+  type ImportedForm,
+  type PickedFile,
+} from '@/utils/fileImport'
+import { parseFile } from '@/api/modules/parse'
+import { CONTRACT_JSON, shareTemplate, type TemplateKind } from '@/utils/importTemplate'
 import { ROUTES } from '@/router/routes'
 
 const store = useObserveStore()
 const draftStore = useComposeDraftStore()
+/** 登录态（上传解析要带 token；未登录会静默登录一次） */
+const account = useAccountStore()
+/** 远端功能开关：`features.parse` 关掉时二进制文件入口直接说"未开启" */
+const remote = useRemoteStore()
 const skinClass = useSkinClass()
 
 /** 草稿是否已填回表单（决定草稿条上还显不显示「继续写」） */
@@ -467,6 +520,22 @@ const KINDS: Array<{ id: ObserveKind; label: string; hint: string }> = [
   { id: 'mother', label: '道', hint: '母题' },
 ]
 
+/**
+ * 事 / 理 / 道 各是什么 —— 用户看到的三张签上只有「事 · 见闻」这么点字，
+ * 分不出界线（这三类本来也容易混：一条新闻里既有事也有理）。
+ * 所以每一类都要说清三件事：**它指什么 → 一个例子 → 这一类的硬要求**，
+ * 短的那句放在签下面（kindNote），随选中的那一张换。
+ *
+ * 「理」与「道」的硬要求是产品口径，不是文案修饰，别删：
+ * 理要写「为什么成立」才入册（见 footText 与 stores/observe 的校验），
+ * 道是反复出现的底层问题，多半不是从某一篇里读出来的。
+ */
+const KIND_NOTES: Record<ObserveKind, string> = {
+  thing: '事：你看到、听到或亲身经历的一件事（一条新闻、一次谈话、别人的做法）。记下「发生了什么」就够，想法写进「感悟」。',
+  theory: '理：一条你认下的道理或认知（复利、二八法则、延迟满足）。要写清「它为什么成立」，这条才算入册。',
+  mother: '道：反复出现的底层问题 —— 换个人、换个领域还会再遇到的那个（比如「人为什么会拖延」）。',
+}
+
 const FORMS: Array<{ id: ObserveForm; label: string }> = [
   { id: 'article', label: '文章' },
   { id: 'quote', label: '一句话' },
@@ -486,6 +555,8 @@ const form = ref({
   viewpoints: [] as Viewpoint[],
   summary: '',
   content: '',
+  /** 富文本正文（正本；content 是它的纯文本副本，由 RichEditor 同步吐出，见 utils/richText.ts） */
+  contentHtml: '',
   why: '',
   /** 感悟（你的话；三种形态都收） */
   insight: '',
@@ -497,6 +568,32 @@ const tagsDraft = ref('')
 const goldenDraft = ref('')
 /** 当前聚焦的字段名：用于把「字写在哪一格」画出来（微信原生 input 无 focus 样式） */
 const focusKey = ref('')
+
+/** 正文上限（按纯文本字数算）—— 与 RichEditor 的提示同一口径 */
+const BODY_MAX = 10000
+/** 这一笔是不是从文件导入的：存库时带上（不占配额 + 详情页角标） */
+const imported = ref(false)
+/** 导入结果的一句话交代（成功填了什么 / 哪里没读到），可手动关掉 */
+const importNotice = ref('')
+/**
+ * 括号里那句"其余格式"：JSON 单独提到括号外突出（它是最准的那条路），剩下的都进括号。
+ * 本机那几类从白名单派生，二进制那几类给中文说法（别在页面里手写扩展名）；
+ * markdown 不列 —— 它和 md 是同一个东西，列出来只增噪（仍在白名单里可选）。
+ * 分隔符用「/」且两边不留空格：整块要压进一行，空格在这里纯属浪费宽度（见 index.scss 的宽度账）。
+ */
+const importOtherExts = LOCAL_EXTS.filter((e) => e !== 'json' && e !== 'markdown')
+  .map((e) => e.toUpperCase())
+  .join('/')
+/** 正在解析（上传解析比本机读慢，得有反馈） */
+const importing = ref(false)
+/** 这一次是谁整理的：rule 规则 / ai 模型 / ocr 图片识别（空 = 本机解析） */
+const importSource = ref<'' | 'rule' | 'ai' | 'ocr'>('')
+const importSourceLabel = computed(() => {
+  if (importSource.value === 'ai') return 'AI 整理'
+  if (importSource.value === 'ocr') return '图片识别'
+  if (importSource.value === 'rule') return '规则抽取'
+  return ''
+})
 
 /*
  * 字段怎么分堆（定规，改版后按这条走）：
@@ -526,12 +623,17 @@ function loadItem(it: ObsItem): void {
   form.value.viewpoints = (it.viewpoints ?? []).map((v) => ({ ...v }))
   form.value.summary = it.summary
   form.value.content = it.content
+  form.value.contentHtml = it.contentHtml ?? ''
+  imported.value = Boolean(it.imported)
   form.value.why = it.why ?? ''
   form.value.insight = it.insight ?? ''
   form.value.golden = [...it.golden]
   form.value.topics = [...it.topics]
   tagsDraft.value = it.tags.join(', ')
 }
+
+/** 当前归属的解释（文案见 KIND_NOTES）：页面上常驻一行，随选中的那张签换 */
+const kindNote = computed(() => KIND_NOTES[form.value.kind])
 
 /** 一句话总结的占位文案：文章说「这篇」，视频说「这个视频」 */
 const summaryPlaceholder = computed(() =>
@@ -602,6 +704,7 @@ const isBlank = computed(() => {
     !f.viewpoints.some((v) => v.title.trim() || v.text.trim()) &&
     !f.summary.trim() &&
     !f.content.trim() &&
+    !f.contentHtml.trim() &&
     !f.why.trim() &&
     !f.insight.trim() &&
     !f.topics.length &&
@@ -633,6 +736,8 @@ function saveDraft(): void {
     viewpoints: form.value.viewpoints.map((v) => ({ ...v })),
     summary: form.value.summary,
     content: form.value.content,
+    contentHtml: form.value.contentHtml,
+    imported: imported.value,
     why: form.value.why,
     insight: form.value.insight,
     golden: [...form.value.golden],
@@ -663,6 +768,8 @@ function resumeDraft(): void {
       : []
   form.value.summary = d.summary
   form.value.content = d.content
+  form.value.contentHtml = d.contentHtml ?? ''
+  imported.value = Boolean(d.imported)
   form.value.why = d.why
   form.value.insight = d.insight
   form.value.golden = [...d.golden]
@@ -691,6 +798,216 @@ function dropDraft(): void {
   })
 }
 
+/* ---------------- 正文的两条线（富文本 ↔ 纯文本） ----------------
+ * 口径只有一句：**contentHtml 是正本，content 是它的可读副本**。
+ * RichEditor 每次变化同时吐出两份，所以"两份保持一致"是结构上成立的；
+ * 一句话形态不走富文本，改正文时顺手把导入留下的富文本作废（免得留一份对不上的旧格式）。
+ */
+function onBodyHtml(html: string): void {
+  form.value.contentHtml = html
+}
+
+function onBodyText(text: string): void {
+  form.value.content = text
+}
+
+function onQuoteInput(e: unknown): void {
+  form.value.content = (e as { detail?: { value?: string } })?.detail?.value ?? ''
+  /* 一句话形态不走富文本：手改了正文，之前导入的富文本版本就作废，别留一份对不上的旧格式 */
+  form.value.contentHtml = ''
+}
+
+watch(
+  () => form.value.form,
+  (f) => {
+    if (f === 'quote') form.value.contentHtml = ''
+  },
+)
+
+/* ---------------- 导入文件（2026-09-17） ----------------
+ * 三条规矩，都指向同一件事：**导入只是预填**。
+ *  1. 只覆盖文件里真写了的字段，没写的一律保留用户当前输入；
+ *  2. 回填后明说一句"过一遍再存"，不装作是自己写的；
+ *  3. 不代存 —— 最后那一下「存入收件匣」永远由用户按。
+ */
+async function doImport(): Promise<void> {
+  try {
+    const file = await pickFile()
+    const ext = extOf(file.name)
+
+    /* 本机能读的（JSON / MD / TXT）：**全程不离开手机**，直接读、直接解析 */
+    if (isLocalExt(ext)) {
+      const { fields, warnings } = parseImportFile(file.name, readAsText(file.path))
+      finishImport(fields, warnings, '')
+      return
+    }
+
+    if (!isRemoteExt(ext)) {
+      uni.showToast({ title: `暂不支持 .${ext} 这种文件`, icon: 'none' })
+      return
+    }
+
+    /* 二进制格式（Word / Excel / PDF / 图片）本机读不了，必须上传 —— 先征得同意 */
+    if (!remote.feature('parse')) {
+      uni.showToast({ title: '文件解析暂未开启（可在设置里看当前开关）', icon: 'none' })
+      return
+    }
+    if (!(await confirmUpload(file))) return
+
+    importing.value = true
+    const dataBase64 = readAsBase64(file.path, file.size)
+    /* withAuth：token 过期时静默重登一次再试（与 AI 能力同一套，用户无感） */
+    const res = await account.withAuth((token) => parseFile(token, { name: file.name, dataBase64 }))
+    finishImport(res.fields, res.warnings, res.source)
+
+    /* AI 整理过就说一声用量：这个功能确实花钱，不该瞒着用户 */
+    if (res.source === 'ai' && res.meta) {
+      importNotice.value += `（AI 整理用了 ${res.meta.tokens.total} tokens）`
+    }
+  } catch (e) {
+    const msg = e instanceof Error ? e.message : '导入失败'
+    /* 用户自己取消不是错误，别弹一句"已取消"吓他 */
+    if (msg !== '已取消') uni.showToast({ title: msg, icon: 'none', duration: 2600 })
+  } finally {
+    importing.value = false
+  }
+}
+
+/**
+ * 上传前的明示同意（**不能省**）。
+ *
+ * 本机解析与上传解析是性质不同的两件事：前者文件没离开手机，后者离开了 ——
+ * 用户有权在这一刻选择"不传"，而且我们要给他一条不用传的路（手打 / 换成 JSON 或 md）。
+ */
+function confirmUpload(file: PickedFile): Promise<boolean> {
+  return new Promise((resolve) => {
+    uni.showModal({
+      title: '这个文件要上传解析',
+      content:
+        `「${file.name}」这类文件本机读不了，需要上传到服务器解析。\n\n`
+        + '解析完成即删除：不落盘、不留存、不用于其他用途。\n\n'
+        + '不想上传也有办法：直接手打，或让 AI 输出 .json / .md 文本 —— 那两种全程不离开手机。',
+      confirmText: '上传解析',
+      cancelText: '不上传',
+      success: (r) => resolve(!!r.confirm),
+      fail: () => resolve(false),
+    })
+  })
+}
+
+/** 解析结果落进表单 + 给一句交代（成功填了什么 / 哪里没读到） */
+function finishImport(fields: ImportedForm, warnings: string[], source: '' | 'rule' | 'ai' | 'ocr'): void {
+  applyImport(fields)
+  imported.value = true
+  importSource.value = source
+
+  const got: string[] = []
+  if (fields.title) got.push('标题')
+  if (fields.content) got.push('正文')
+  if (fields.contentHtml) got.push('样式')
+  if (fields.summary) got.push('总结')
+  if (fields.sourceName) got.push('来源')
+  importNotice.value = got.length
+    ? `已填入：${got.join(' / ')}${warnings.length ? ` · ${warnings.join('；')}` : ''} —— 过一遍再存`
+    : `这份文件没读到可用字段${warnings.length ? `（${warnings.join('；')}）` : ''}`
+  uni.showToast({ title: got.length ? '已回填表单' : '没读到内容', icon: 'none' })
+}
+
+function closeNotice(): void {
+  importNotice.value = ''
+  importSource.value = ''
+}
+
+/** 解析结果落进表单：未提到的字段一律保留原值 */
+function applyImport(f: ImportedForm): void {
+  const v = form.value
+  if (f.kind) v.kind = f.kind
+  if (f.form) v.form = f.form
+  if (f.title) v.title = f.title
+  if (f.topics?.length) v.topics = [...f.topics]
+  if (f.tags?.length) tagsDraft.value = f.tags.join(', ')
+  if (f.sourceName) v.sourceName = f.sourceName
+  if (f.link) v.link = f.link
+  if (f.videoUrl) v.videoUrl = f.videoUrl
+  if (f.content) v.content = f.content
+  /* 富文本进表单前再洗一遍（store 存的时候还会洗第三次 —— 闸门宁可多一道） */
+  if (f.contentHtml) v.contentHtml = sanitizeHtml(f.contentHtml)
+  if (f.digest) v.digest = f.digest
+  /* 契约里的 viewpoints 两个字段都可缺省，落进表单时要补齐（表单类型是必填） */
+  if (f.viewpoints?.length) {
+    v.viewpoints = f.viewpoints.map((x) => ({ title: x.title ?? '', text: x.text ?? '' }))
+  }
+  if (f.summary) v.summary = f.summary
+  if (f.insight) v.insight = f.insight
+  if (f.why) v.why = f.why
+  if (f.golden?.length) v.golden = [...f.golden]
+}
+
+/* ---------------- 格式说明 / 契约与模板（2026-09-18 扩） ----------------
+ * 「?」与那行格式清单点开同一个动作表，四项各对应一件事：
+ *   复制契约示例 —— 手机上的 AI：文本粘过去就行；
+ *   转发 JSON 模板 —— 电脑上的 AI：文件发过去，让它照它填（最推荐）；
+ *   转发 MD 模板 —— 电脑上人工填，或 AI 只会写「字段：值」时用；
+ *   看格式说明 —— 把"为什么 JSON 最稳、哪些格式要上传"讲清。
+ * 两条不许破：模板**本机生成**（不经后端、不上传）；导入永远只是预填，不代存。
+ */
+function showContract(): void {
+  uni.showActionSheet({
+    itemList: ['转发 JSON 模板', '转发 MD 模板', '复制契约示例', '看格式说明'],
+    success: (res) => {
+      if (res.tapIndex === 0) void sendTemplate('json')
+      else if (res.tapIndex === 1) void sendTemplate('md')
+      else if (res.tapIndex === 2) copyContract()
+      else showFormatHelp()
+    },
+  })
+}
+
+/** 复制契约示例：给手机上的 AI（一段文本就够，不必造文件） */
+function copyContract(): void {
+  uni.setClipboardData({
+    data: CONTRACT_JSON,
+    success: () => uni.showToast({ title: '示例已复制 · 交给 AI 照它填', icon: 'none', duration: 2600 }),
+    fail: () => uni.showToast({ title: '复制失败，可手动照抄字段名', icon: 'none' }),
+  })
+}
+
+/**
+ * 转发模板文件：本机写文件 → 转发到聊天（用户发给「文件传输助手」，再在电脑上打开）。
+ * 文案里刻意不出现"下载" —— 微信里没有下载落点，落点就是"转发到聊天"。
+ */
+async function sendTemplate(kind: TemplateKind): Promise<void> {
+  try {
+    await shareTemplate(kind)
+    uni.showToast({ title: '已生成模板 · 发给电脑让 AI 照它填', icon: 'none', duration: 2600 })
+  } catch (e) {
+    uni.showModal({
+      title: '模板没能转发',
+      content: `${e instanceof Error ? e.message : '未知错误'}\n\n可以改用「复制契约示例」，把格式直接粘给 AI。`,
+      showCancel: false,
+    })
+  }
+}
+
+/**
+ * 格式说明：只解释，不再兼做复制（复制已经单独是一项）。
+ * 正文里不用 `**` 表强调 —— 原生弹框不认 Markdown，星号会原样显示出来。
+ */
+function showFormatHelp(): void {
+  uni.showModal({
+    title: '文件格式说明',
+    content:
+      'JSON 最准：契约 = 这一笔的全部字段（形态 / 标题 / 来源 / 链接 / 视频链接 / 经典语句 / 摘要 / 重要观点 / 一句话总结 / 感悟 / 为什么成立 / 正文，加一份带样式的正文）。把「JSON 模板」转发到电脑、让 AI 照它填，最不容易出错。\n\n'
+      + '不进契约的只有三格：归属（事 / 理 / 道）、主题、标签 —— 原文里并没有写着「这是理」，归类是你的事，得你自己归。\n\n'
+      + 'MD 与 JSON 是同一套字段，只是写法不同：按「字段：值」逐行写，字段名后面能用括号注明"这格要什么"；「正文：」以下全算正文，用 # 小标题、**加粗**、- 列表、> 引用写，会自动转成富文本。\n\n'
+      + '上面这两种都在小程序本机解析，文件不会离开手机。\n\n'
+      + 'Word / Excel / PDF / 图片本机读不了，会上传到服务器解析（解析完即删，也不占当日信息配额）。Excel 建议摆成两列：左列字段名、右列内容；PDF 若是扫描件、或中文用了非标准字体，可能抽不出文字 —— 那种情况改用文本清单最省事；图片直接读上面的文字（走微信官方识别）。\n\n'
+      + '不管哪种方式，导入都只是预填：最后那一下「存入收件匣」永远由你按。',
+    showCancel: false,
+    confirmText: '知道了',
+  })
+}
+
 function save(): void {
   const err = validate({ ...form.value })
   if (err) {
@@ -712,6 +1029,9 @@ function save(): void {
     digest: form.value.digest.trim() || undefined,
     viewpoints: viewpoints.length ? viewpoints : undefined,
     content: form.value.content.trim(),
+    /* 一句话形态不走富文本：它的正文就是"那一句"，给它格式没有意义 */
+    contentHtml: form.value.form !== 'quote' && form.value.contentHtml ? form.value.contentHtml : undefined,
+    imported: imported.value || undefined,
     insight: form.value.insight.trim() || undefined,
     golden: [...form.value.golden],
     link: form.value.link.trim() || undefined,

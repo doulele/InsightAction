@@ -33,7 +33,7 @@
       <view class="section__head">
         <view>
           <text class="section__title">最近所悟</text>
-          <text class="section__hint">拷问 / 播种收成 / 行动回写，都汇到这里</text>
+          <text class="section__hint">拷问 / 播种收成 / 行动回写，都汇到这里 · 专业卡在知识库那一本</text>
         </view>
         <text class="section__badge">{{ cards.length }} 条 · 深度 Lv.1-3</text>
       </view>
@@ -89,12 +89,14 @@
           v-for="it in profile.items"
           :key="it.key"
           class="pf__row"
-          :class="{ 'is-ready': it.samples >= it.need }"
+          :class="{ 'is-ready': it.samples >= it.need, 'is-tap': it.key === 'probe' }"
+          hover-class="gz-hover"
+          @click="onProfileTap(it.key)"
         >
           <view class="pf__top">
             <text class="pf__label">{{ it.label }}</text>
             <text class="pf__n">
-              {{ it.samples >= it.need ? `${it.samples} 次` : `${it.samples}/${it.need}` }}
+              {{ it.samples >= it.need ? `${it.samples} 次` : `${it.samples}/${it.need}` }}{{ it.key === 'probe' ? ' ›' : '' }}
             </text>
           </view>
           <!-- 把「还差多少」画出来：成形前是灰条（在攒），成形后才是品牌色 -->
@@ -176,6 +178,37 @@
       </view>
     </view>
 
+    <!--
+      省察记录（2026-09-17）：自我画像里「知 · 省察」那一行点开的回看。
+      为什么放在这里而不是新开一个入口：§13.1 定案省察**不做常驻入口**（否则变成第二个每日待办），
+      情境省察只在事件现场就地一问、答完即走 —— 于是「都答过些什么」缺一个回看的地方，
+      这一层就是补那个缺口，它不是一个"要去做的功能"，只是一次回看。
+    -->
+    <view v-if="probeOpen" class="mask" @click="probeOpen = false">
+      <view class="sheet" @click.stop>
+        <view class="sheet__head">
+          <text class="sheet__tag">省察</text>
+          <text class="sheet__src">{{ probeList.length }} 条</text>
+        </view>
+        <text class="sheet__title">你问过自己的话</text>
+        <text class="sheet__note">每日一问与情境省察合在一起，按时间倒序 —— 它们本来就是同一件事。</text>
+        <scroll-view class="probe" scroll-y>
+          <view v-for="r in probeList" :key="r.key" class="probe__row">
+            <view class="probe__top">
+              <text class="probe__tag">{{ r.tag }}</text>
+              <text class="probe__day">{{ r.day }}</text>
+            </view>
+            <text v-if="r.q" class="probe__q">{{ r.q }}</text>
+            <text class="probe__a">{{ r.a }}</text>
+          </view>
+          <text v-if="!probeList.length" class="probe__empty">
+            还没有作答过 —— 上面那道拷问就是开始的地方。
+          </text>
+        </scroll-view>
+        <view class="sheet__close" hover-class="gz-hover" @click="probeOpen = false">关闭</view>
+      </view>
+    </view>
+
     <!-- 批次 D · 小枢全局浮层 -->
     <BuddyFloat />
 
@@ -198,13 +231,14 @@ import WeekGuide from '@/components/WeekGuide/WeekGuide.vue'
 import { onHide, onShow } from '@dcloudio/uni-app'
 import { useModeStore } from '@/stores/mode'
 import { useQuestionStore, rolloverRemainMin } from '@/stores/question'
+import { useProbeStore, PROBE_SCENE_LABEL } from '@/stores/probe'
 import { useKnowledgeStore, DEPTH_LABEL, depthColor, type CardDepth, type KnowledgeCard } from '@/stores/knowledge'
 import { useTraceStore } from '@/stores/trace'
 import { DWELL_MS, dwellTip, poke } from '@/composables/useBuddy'
 import { logTrace } from '@/utils/traceLog'
 import { useSkinClass } from '@/composables/useSkin'
 import { syncTabBar } from '@/utils/skin'
-import { stopPenTip } from '@/utils/growth'
+import { fmtKey, stopPenTip } from '@/utils/growth'
 import { buildProfile, type ProfileItem } from '@/utils/profile'
 import { refOfCard } from '@/utils/refSource'
 import { navigateTo, ROUTES } from '@/router/routes'
@@ -216,6 +250,8 @@ const skinClass = useSkinClass()
 const question = useQuestionStore()
 const knowledge = useKnowledgeStore()
 const trace = useTraceStore()
+/** 情境化省察（冲动后 / 违约后 / 周报后 / 止念后）—— 只在回看层里合并展示 */
+const probe = useProbeStore()
 
 onShow(() => {
   /* 批次 D · 小枢：评估到点激励 / 入定到点提醒 */
@@ -251,6 +287,46 @@ function armDwell(): void {
  */
 /* 自我画像：派生数据，不入库、不持久化 —— 每次进场按当前脊椎重算一遍 */
 const profile = computed(() => buildProfile())
+
+/* ---------------- 省察记录（2026-09-17） ----------------
+ * 把「每日一问」与「情境省察」合到一份清单里，时间倒序。
+ * 口径：两份数据本身**完全独立**（情境省察不占每日额度，见 stores/probe.ts），
+ * 这里只是展示时并排 —— 不动任何一方的计数与入账。
+ */
+const probeOpen = ref(false)
+
+interface ProbeRow {
+  key: string
+  /** 来源标签：每日一问 / 冲动后 / 违约后 … */
+  tag: string
+  day: string
+  q: string
+  a: string
+}
+
+const probeList = computed<ProbeRow[]>(() => {
+  const out: ProbeRow[] = []
+  for (const [day, rec] of Object.entries(question.records)) {
+    if (!rec?.answer?.trim()) continue
+    out.push({ key: `q-${day}`, tag: '每日一问', day, q: rec.q ?? '', a: rec.answer })
+  }
+  for (const r of probe.records) {
+    if (!r.answer.trim()) continue
+    out.push({
+      key: `p-${r.ref}`,
+      tag: PROBE_SCENE_LABEL[r.scene],
+      day: fmtKey(new Date(r.at)),
+      q: r.q,
+      a: r.answer,
+    })
+  }
+  return out.sort((a, b) => (a.day < b.day ? 1 : -1))
+})
+
+/** 只有「知 · 省察」那一行可点开 —— 别的画像条目是纯读数，点了没去处 */
+function onProfileTap(key: string): void {
+  if (key === 'probe') probeOpen.value = true
+}
 
 /** 样本进度条宽度：封顶 100%（攒够了就是满格，多出来的样本不再画） */
 function fillOf(it: ProfileItem): string {
@@ -336,11 +412,16 @@ function questionSlotDate(): string {
   return `${t.getFullYear()}-${pad(t.getMonth() + 1)}-${pad(t.getDate())}`
 }
 
+/**
+ * 「最近所悟」= 拷问即时卡 + **我的知识**书架的前 20 张。
+ * 刻意不混专业卡（2026-09-17）：工作 / 面试的东西混进自省流里，两边都会失焦 ——
+ * 专业卡在知识库的「专业知识」那一本里看（入口徽标会把两本的数量都报出来）。
+ */
 const cards = computed<ViewCard[]>(() => {
   const list: ViewCard[] = []
   const q = liveQuestionCard.value
   if (q) list.push(q)
-  knowledge.cards.forEach((c) => {
+  knowledge.cardsOf('life').forEach((c) => {
     list.push({
       key: `card:${c.createdAt}`,
       raw: c,
@@ -365,7 +446,7 @@ const cards = computed<ViewCard[]>(() => {
 const headLine = computed(() => hallLine('reflect', modeStore.id))
 
 const headStats = computed(() => [
-  { value: `${cards.value.length}`, label: '知识卡 · 张' },
+  { value: `${cards.value.length}`, label: '我的知识 · 张' },
   { value: `${question.consecutiveDays()}`, label: '连续省察 · 天' },
 ])
 
@@ -467,7 +548,7 @@ const moreEntries = computed<MoreEntry[]>(() => [
   {
     mark: '说',
     title: '费曼速记',
-    subtitle: '按住说 60 秒 → 转成文字 → 检验讲没讲明白（识别在微信侧完成，音频不出微信）',
+    subtitle: '按住说 60 秒 → 转成文字 → 检验讲没讲明白，再选存进哪一本（识别在微信侧完成，音频不出微信）',
     badge: { text: '语音', tone: 'accent' },
     url: ROUTES.reflectLibrary,
     params: { add: '1' },
@@ -476,7 +557,10 @@ const moreEntries = computed<MoreEntry[]>(() => [
     mark: '存',
     title: '知识库 · 标签检索',
     subtitle: '全部卡片按关键词 / 标签 / 深度检索 · 可手动打标，也可让 AI 给建议',
-    badge: { text: `${knowledge.cards.length} 张`, tone: knowledge.cards.length ? 'accent' : 'muted' },
+    badge: {
+      text: `我的 ${knowledge.countOf('life')} · 专业 ${knowledge.countOf('work')}`,
+      tone: knowledge.cards.length ? 'accent' : 'muted',
+    },
     url: ROUTES.reflectLibrary,
   },
   {

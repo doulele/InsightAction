@@ -12,7 +12,6 @@ import { useHabitStore } from '@/stores/habit'
 import { useKnowledgeStore } from '@/stores/knowledge'
 import { usePlanStore } from '@/stores/plan'
 import { useProverbStore, reviewFinished } from '@/stores/proverb'
-import { useQualityStore } from '@/stores/quality'
 import { useQuestionStore } from '@/stores/question'
 import { useSeedStore } from '@/stores/seed'
 import { useTraceStore, type Trace } from '@/stores/trace'
@@ -105,8 +104,15 @@ export interface DayStats {
   date: string
   /** 止：该日静修分钟 */
   focusMin: number
-  /** 观：该日辨源标注次数（有用 + 没用） */
-  marks: number
+  /**
+   * 观：该日观环痕迹数（每日一则互动 / 收下 / 立理 / 提炼母题 / 清理收件）。
+   *
+   * 2026-09-17 换口径：原先是「辨源标注次数」（对来源投有用 / 没用），而那个动作
+   * 已经没有入口了（来龙去脉见 utils/sourceLedger.ts 的注释）—— 指标会永远是 0，
+   * 于是四维雷达、活跃日历、日课卡里的「观」会集体熄灭。
+   * 改成数观环痕迹：零新增数据、与「行」的 traces 同一口径，且每一条都对应真实行为。
+   */
+  obsN: number
   /** 行：该日痕迹事件数（三件事 / 习惯 / 盲盒） */
   traces: number
   /** 行：该日习惯打卡数（习惯 × 天，与痕迹流互为补充） */
@@ -120,16 +126,17 @@ export interface DayStats {
 /** 某自然日的六类来源投入快照 */
 export function dayStats(dateKey: string): DayStats {
   const focus = useFocusStore()
-  const quality = useQualityStore()
   const question = useQuestionStore()
   const habit = useHabitStore()
   const knowledge = useKnowledgeStore()
   const trace = useTraceStore()
+  /* 一天扫一次痕迹，观环数量与总条数共用同一趟 —— 别为两个数字各扫一遍 */
+  const dayTraces = trace.ofDay(dateKey)
   return {
     date: dateKey,
     focusMin: focus.minutesOn(dateKey),
-    marks: quality.marksOn(dateKey).total,
-    traces: trace.ofDay(dateKey).length,
+    obsN: dayTraces.filter((t) => t.hall === 'observe').length,
+    traces: dayTraces.length,
     habitDone: habit.doneOn(dateKey),
     cards: knowledge.countOn(dateKey),
     answered: Boolean(question.records[dateKey]?.answer),
@@ -139,7 +146,7 @@ export function dayStats(dateKey: string): DayStats {
 /** 活跃的维度数 0-6：观 / 止 / 行(痕迹) / 行(习惯) / 知(卡) / 知(拷问) */
 export function activeDimCount(s: DayStats): number {
   let n = 0
-  if (s.marks > 0) n += 1
+  if (s.obsN > 0) n += 1
   if (s.focusMin > 0) n += 1
   if (s.traces > 0) n += 1
   if (s.habitDone > 0) n += 1
@@ -194,8 +201,8 @@ export interface YearStats {
   activeDays: number
   /** 静修分钟 */
   focusMin: number
-  /** 辨源标注次数 */
-  marks: number
+  /** 观环痕迹数（口径同 DayStats.obsN） */
+  obsN: number
   /** 新建知识卡片数 */
   cards: number
   /** 拷问作答天数 */
@@ -227,7 +234,6 @@ function dayKeyOf(ts: number): string {
  */
 export function yearStats(year = new Date().getFullYear()): YearStats {
   const focus = useFocusStore()
-  const quality = useQualityStore()
   const question = useQuestionStore()
   const habit = useHabitStore()
   const knowledge = useKnowledgeStore()
@@ -242,10 +248,13 @@ export function yearStats(year = new Date().getFullYear()): YearStats {
   const dayValue = new Map<string, number>()
   let xp = 0
   let traces = 0
+  /** 观环痕迹数（口径同 DayStats.obsN） */
+  let obsN = 0
 
   for (const t of trace.list) {
     if (!inYear(t.day)) continue
     traces += 1
+    if (t.hall === 'observe') obsN += 1
     xp += t.value || 0
     halls[t.hall] += t.value || 0
     dayValue.set(t.day, (dayValue.get(t.day) ?? 0) + (t.value || 0))
@@ -260,13 +269,6 @@ export function yearStats(year = new Date().getFullYear()): YearStats {
     if (!inYear(d.date)) continue
     focusMin += d.minutes
     if (d.minutes > 0) active.add(d.date)
-  }
-
-  let marks = 0
-  for (const [day, rec] of Object.entries(quality.dayMarks)) {
-    if (!inYear(day)) continue
-    marks += (rec.useful ?? 0) + (rec.useless ?? 0)
-    active.add(day)
   }
 
   let cards = 0
@@ -316,7 +318,7 @@ export function yearStats(year = new Date().getFullYear()): YearStats {
     year,
     activeDays: active.size,
     focusMin,
-    marks,
+    obsN,
     cards,
     answerDays,
     habitDone,

@@ -283,6 +283,92 @@
   color: $gz-ink-2;
 }
 
+/* ---- 节点树（2026-09-17 步骤嵌套 ≤5 层） ----
+ * 缩进由行内 style 的 padding-left 给（depth × NODE_INDENT_RPX），
+ * 这里只管行内的对齐与分隔 —— 5 层的层级关系靠留白表达，别再加边框和底色。 */
+.tree {
+  margin-top: 8rpx;
+}
+
+.tree__row {
+  padding-top: 16rpx;
+  padding-bottom: 14rpx;
+  border-top: 1rpx solid $gz-line-soft;
+}
+
+.tree__row:first-child {
+  border-top: none;
+}
+
+.tree__main {
+  display: flex;
+  align-items: center;
+  gap: 16rpx;
+}
+
+.tree__caret {
+  flex: none;
+  width: 40rpx;
+  text-align: center;
+  font-size: $gz-fs-caption;
+  color: $gz-ink-3;
+}
+
+.tree__check {
+  flex: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 40rpx;
+  height: 40rpx;
+  border: 2rpx solid $gz-line;
+  border-radius: 12rpx;
+  background: $gz-surface;
+}
+
+.tree__check.is-on {
+  border-color: $gz-accent;
+  background: $gz-accent;
+}
+
+.tree__tick {
+  font-size: 24rpx;
+  line-height: 1;
+  color: $gz-on-cta;
+}
+
+.tree__title {
+  flex: 1;
+  font-size: $gz-fs-body;
+  line-height: 1.6;
+  color: $gz-ink;
+  word-break: break-all;
+}
+
+.tree__title.is-done {
+  color: $gz-ink-3;
+  text-decoration: line-through;
+}
+
+/* 分组（父步骤）比叶子更"重"一点：一眼看出它不是任务 */
+.tree__title.is-group {
+  font-weight: 700;
+}
+
+.bar--leaf {
+  margin-top: 12rpx;
+  height: 8rpx;
+}
+
+/* 行内操作对齐到标题下面（58rpx ≈ 勾选框 40 + 间距 16） */
+.tree__ops {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12rpx;
+  margin-top: 14rpx;
+  padding-left: 58rpx;
+}
+
 /* ---- 底部动作 ---- */
 .acts {
   display: flex;

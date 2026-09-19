@@ -469,7 +469,7 @@ const dims = computed<Dim[]>(() => {
   /* 今日知识产出 = 新建卡片 + 今日拷问作答（答卡即时 Lv.3，未落库故并列计入） */
   const know = st.cards + (st.answered ? 1 : 0)
   return [
-    { label: dl('observe'), cur: st.marks, goal: 5, pct: Math.min(100, Math.round((st.marks / 5) * 100)), color: '#4E8FD4' },
+    { label: dl('observe'), cur: st.obsN, goal: 5, pct: Math.min(100, Math.round((st.obsN / 5) * 100)), color: '#4E8FD4' },
     { label: dl('pause'), cur: st.focusMin, goal: focusGoal, pct: Math.min(100, Math.round((st.focusMin / focusGoal) * 100)), color: '#84A268' },
     { label: dl('reflect'), cur: know, goal: 3, pct: Math.min(100, Math.round((know / 3) * 100)), color: '#9C8AC4' },
     { label: dl('action'), cur: daily.doneCount, goal: plan, pct: Math.round((daily.doneCount / plan) * 100), color: '#C4602E' },
@@ -587,7 +587,7 @@ const moreEntries = computed<MoreEntry[]>(() => [
     subtitle: '四维雷达 · 认知深度分布 · 知→行转化率 · 成长图谱',
     badge:
       trace.traces.length > 0
-        ? { text: `转化 ${conversionPct}%`, tone: 'accent' }
+        ? { text: `转化 ${conversionPct.value}%`, tone: 'accent' }
         : { text: '待积累', tone: 'muted' },
     url: ROUTES.meBoard,
   },

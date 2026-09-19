@@ -235,6 +235,112 @@
   white-space: pre-line;
 }
 
+/* ---- 书架分段（2026-09-17）：我的知识 / 专业知识 ---- */
+.domains {
+  display: flex;
+  gap: 14rpx;
+  margin-top: 18rpx;
+}
+
+.domain {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6rpx;
+  padding: 18rpx 0 16rpx;
+  background: $gz-surface;
+  border: 1rpx solid $gz-line;
+  border-radius: $gz-radius-md;
+}
+
+.domain.is-on {
+  border-color: $gz-accent;
+  background: $gz-accent-soft;
+}
+
+.domain__label {
+  font-size: $gz-fs-small;
+  font-weight: 600;
+  color: $gz-ink-2;
+}
+
+.domain.is-on .domain__label {
+  color: $gz-accent;
+}
+
+.domain__n {
+  font-size: $gz-fs-caption;
+  color: $gz-ink-3;
+}
+
+.domains__note {
+  display: block;
+  margin-top: 12rpx;
+  font-size: $gz-fs-caption;
+  color: $gz-ink-3;
+}
+
+/* 面板里的「存进哪一本」 */
+.seg {
+  display: flex;
+  gap: 12rpx;
+  margin-top: 20rpx;
+}
+
+.seg__item {
+  flex: 1;
+  padding: 14rpx 0;
+  text-align: center;
+  font-size: $gz-fs-caption;
+  background: $gz-surface;
+  border: 1rpx solid $gz-line;
+  border-radius: 999rpx;
+  color: $gz-ink-3;
+}
+
+.seg__item.is-on {
+  border-color: $gz-accent;
+  background: $gz-accent-soft;
+  color: $gz-accent;
+  font-weight: 600;
+}
+
+/* 专业卡的两格：要点与追问 */
+.sheet__qa {
+  margin-top: 16rpx;
+  padding: 16rpx 20rpx;
+  background: $gz-input-bg;
+  border-left: 4rpx solid $gz-accent;
+  border-radius: $gz-radius-md;
+}
+
+.sheet__qa-label {
+  display: block;
+  font-size: 20rpx;
+  letter-spacing: 0.08em;
+  color: $gz-ink-3;
+}
+
+.sheet__qa-text {
+  display: block;
+  margin-top: 6rpx;
+  font-size: $gz-fs-small;
+  line-height: 1.8;
+  color: $gz-ink;
+}
+
+/* 费曼检验里收下追问的小按钮 */
+.fy__use {
+  margin-top: 14rpx;
+  align-self: flex-start;
+  padding: 8rpx 22rpx;
+  border-radius: 999rpx;
+  font-size: $gz-fs-caption;
+  border: 1rpx solid $gz-accent;
+  color: $gz-accent;
+}
+
 /* 底部面板通用 */
 .mask {
   position: fixed;

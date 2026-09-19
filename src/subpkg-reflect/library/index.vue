@@ -9,6 +9,26 @@
       <view class="nav__side" />
     </view>
 
+    <!--
+      书架（2026-09-17）：自省/生活 与 工作/面试 分开检索，互不污染。
+      刻意用分段控件而不是再开一个入口页 —— 两本书的检索、深度、标签完全同构，
+      分成两个页面只是同一份代码抄两遍。
+    -->
+    <view class="domains">
+      <view
+        v-for="d in DOMAINS"
+        :key="d.id"
+        class="domain"
+        :class="{ 'is-on': domain === d.id }"
+        hover-class="gz-hover"
+        @click="switchDomain(d.id)"
+      >
+        <text class="domain__label">{{ d.label }}</text>
+        <text class="domain__n">{{ knowledge.countOf(d.id) }}</text>
+      </view>
+    </view>
+    <text class="domains__note">{{ DOMAIN_DESC[domain] }}</text>
+
     <!-- 顶部操作 -->
     <view class="ops">
       <view class="op op--main" hover-class="gz-hover" @click="openAdd">＋ 转述一条（Lv.1）</view>
@@ -37,6 +57,18 @@
         @click="depth = d.key"
       >
         {{ d.label }}
+      </view>
+    </view>
+    <!-- 按来源筛（2026-09-17）：行动回写这类混在卡片里会稀释质量，要能单独筛出来看 -->
+    <view v-if="kindOptions.length > 1" class="tag-row">
+      <view
+        v-for="k in kindOptions"
+        :key="k.id || 'all'"
+        class="tag"
+        :class="{ 'is-on': kind === k.id }"
+        @click="kind = k.id"
+      >
+        {{ k.label }}
       </view>
     </view>
     <view v-if="allTags.length" class="tag-row">
@@ -80,22 +112,51 @@
     <!-- 转述面板 -->
     <view v-if="addOpen" class="mask" @click="addOpen = false">
       <view class="sheet" @click.stop>
-        <text class="sheet__title">转述一条 · Lv.1</text>
-        <text class="sheet__sub">用你自己的话把想法讲一遍——转述是内化的第一步。</text>
+        <text class="sheet__title">{{ addDomain === 'work' ? '记一条专业卡 · Lv.1' : '转述一条 · Lv.1' }}</text>
+        <text class="sheet__sub">
+          {{
+            addDomain === 'work'
+              ? '题干写在标题、答案写在正文 —— 面试题、工作里没搞懂的问题都记这里。'
+              : '用你自己的话把想法讲一遍——转述是内化的第一步。'
+          }}
+        </text>
+
+        <!-- 存进哪一本（2026-09-17）：默认跟随当前书架，不用每次再想一次 -->
+        <view class="seg">
+          <view
+            v-for="d in DOMAINS"
+            :key="d.id"
+            class="seg__item"
+            :class="{ 'is-on': addDomain === d.id }"
+            hover-class="gz-hover"
+            @click="addDomain = d.id"
+          >
+            {{ d.label }}
+          </view>
+        </view>
+
         <input
           v-model="noteTitle"
           class="sheet__field"
-          placeholder="一句话标题（可选，默认截取首句）"
+          :placeholder="addDomain === 'work' ? '题干（面试题 / 工作里的问题）' : '一句话标题（可选，默认截取首句）'"
           placeholder-class="sheet__ph"
-          :maxlength="40"
+          :maxlength="60"
         />
         <textarea
           v-model="noteBody"
           class="sheet__area"
-          placeholder="转述正文…"
+          :placeholder="addDomain === 'work' ? '我的回答：把答案讲一遍（讲不顺，就是还没真懂）' : '转述正文…'"
           placeholder-class="sheet__ph"
-          :maxlength="400"
+          :maxlength="NOTE_MAX"
           auto-height
+        />
+        <input
+          v-if="addDomain === 'work'"
+          v-model="notePoint"
+          class="sheet__field"
+          placeholder="要点（可选 · 想记住的那几条）"
+          placeholder-class="sheet__ph"
+          :maxlength="200"
         />
         <!--
           语音转写（微信同声传译插件）：按住说话、松开出字。
@@ -177,6 +238,15 @@
           <text v-if="feynman.plainVersion" class="fy__plain">大白话：{{ feynman.plainVersion }}</text>
           <text v-for="(x, i) in feynman.issues" :key="i" class="fy__item">· {{ x }}</text>
           <text v-if="feynman.question" class="fy__ask">追问：{{ feynman.question }}</text>
+          <!-- 专业卡才收这句追问：面试题的"下一问"往往比答案本身更有复习价值 -->
+          <view
+            v-if="addDomain === 'work' && feynman.question"
+            class="fy__use"
+            hover-class="gz-hover"
+            @click="useFollow"
+          >
+            把这句追问存进卡里
+          </view>
         </view>
 
         <button class="sheet__btn" hover-class="gz-hover" @click="saveNote">存进知识库</button>
@@ -240,6 +310,15 @@
         </view>
         <text class="sheet__title">{{ activeDetail?.title }}</text>
         <text class="sheet__content">{{ activeDetail?.content }}</text>
+        <!-- 专业卡的两格（2026-09-17）：题干 = 标题、回答 = 正文，这里只补要点与追问 -->
+        <view v-if="activeDetail?.qa?.point" class="sheet__qa">
+          <text class="sheet__qa-label">要点</text>
+          <text class="sheet__qa-text">{{ activeDetail?.qa?.point }}</text>
+        </view>
+        <view v-if="activeDetail?.qa?.follow" class="sheet__qa">
+          <text class="sheet__qa-label">追问</text>
+          <text class="sheet__qa-text">{{ activeDetail?.qa?.follow }}</text>
+        </view>
         <view v-if="activeDetail?.tags.length" class="sheet__tag-row">
           <view v-for="t in activeDetail?.tags" :key="t" class="sheet__chip">{{ t }}</view>
         </view>
@@ -285,10 +364,15 @@ import { computed, ref } from 'vue'
 import { onLoad, onUnload } from '@dcloudio/uni-app'
 import GzDialog from '@/components/GzDialog/GzDialog.vue'
 import {
+  CARD_KIND_LABEL,
   DEPTH_LABEL,
+  DOMAIN_DESC,
+  DOMAIN_LABEL,
   depthColor,
   useKnowledgeStore,
   type CardDepth,
+  type CardDomain,
+  type CardKind,
   type KnowledgeCard,
 } from '@/stores/knowledge'
 import { useSeedStore, type Seed } from '@/stores/seed'
@@ -314,6 +398,25 @@ const SUGGEST_TAGS = ['认知', '方法', '关系', '身心', '观', '止', '行
 const kw = ref('')
 const depth = ref<'all' | CardDepth>('all')
 const tag = ref('')
+/** 当前书架（2026-09-17）：缺省「我的知识」，老数据都在那一本 */
+const domain = ref<CardDomain>('life')
+/** 来源类型筛选（空 = 全部） */
+const kind = ref<'' | CardKind>('')
+
+const DOMAINS: ReadonlyArray<{ id: CardDomain; label: string }> = (['life', 'work'] as CardDomain[]).map(
+  (id) => ({ id, label: DOMAIN_LABEL[id] }),
+)
+
+/**
+ * 换书架：顺手把只在"上一本"里成立的筛选条件清掉。
+ * 不清的话，用户会看到"我刚切过来怎么一条都没有" —— 那是个假空态。
+ */
+function switchDomain(d: CardDomain): void {
+  if (domain.value === d) return
+  domain.value = d
+  tag.value = ''
+  kind.value = ''
+}
 
 const depthFilters = [
   { key: 'all' as const, label: '全部深度' },
@@ -322,18 +425,51 @@ const depthFilters = [
   { key: 3 as const, label: 'Lv.3 内化' },
 ]
 
-const allTags = computed(() => knowledge.allTags().sort())
+/** 当前书架的卡（下面的标签与来源筛选项都只从这一本里长出来） */
+const domainCards = computed<KnowledgeCard[]>(() => knowledge.cardsOf(domain.value))
+
+/** 标签去重：只算当前书架 —— 在「专业知识」里列一堆自省标签是噪音 */
+const allTags = computed(() => {
+  const set = new Set<string>()
+  domainCards.value.forEach((c) => c.tags.forEach((t) => set.add(t)))
+  const list = [...set].sort()
+  /*
+   * 「省察」置顶（2026-09-17）：情境省察的作答散在止 / 行四个现场（答完即走、没有入口），
+   * 知识库的标签是它们**唯一的回看入口** —— 埋在几十个标签里等于没有。
+   */
+  const i = list.indexOf('省察')
+  if (i > 0) {
+    list.splice(i, 1)
+    list.unshift('省察')
+  }
+  return list
+})
+
+/**
+ * 来源筛选项（2026-09-17）：只列**这一本里真实存在**的来源类型，并始终带上「全部」。
+ * 一种来源都没有（或只有一种）时整行不显示 —— 一个只有"全部"的筛选器是装饰。
+ */
+const kindOptions = computed<Array<{ id: '' | CardKind; label: string }>>(() => {
+  const kinds = new Set(domainCards.value.map((c) => c.kind))
+  /* 顺序按"常看的排前面"：手记 → 拷问 → 每日一则 → 行动回写 → 播种 → 箴言 → 止念 */
+  const order: CardKind[] = ['note', 'question', 'daily', 'action', 'seed', 'proverb', 'thought']
+  const list = order.filter((k) => kinds.has(k)).map((k) => ({ id: k as '' | CardKind, label: CARD_KIND_LABEL[k] }))
+  return [{ id: '' as const, label: '全部来源' }, ...list]
+})
 
 type RowItem = KnowledgeCard & { color: string; colorSoft: string; depthLabel: string }
 
 const filtered = computed<RowItem[]>(() => {
   const q = kw.value.trim().toLowerCase()
-  return knowledge.cards
+  return domainCards.value
     .filter((c) => {
+      if (kind.value && c.kind !== kind.value) return false
       if (depth.value !== 'all' && c.depth !== depth.value) return false
       if (tag.value && !c.tags.includes(tag.value)) return false
       if (q) {
-        const hay = `${c.title} ${c.content} ${c.tags.join(' ')}`.toLowerCase()
+        /* 要点与追问也算正文的一部分：专业卡里那两句常常正是要搜的东西 */
+        const hay =
+          `${c.title} ${c.content} ${c.tags.join(' ')} ${c.qa?.point ?? ''} ${c.qa?.follow ?? ''}`.toLowerCase()
         if (!hay.includes(q)) return false
       }
       return true
@@ -351,6 +487,14 @@ const addOpen = ref(false)
 const noteTitle = ref('')
 const noteBody = ref('')
 const noteTags = ref<string[]>([])
+/** 正文上限：与语音转写共用同一口径（见 appendVoice）—— 超出就截断并如实说一句 */
+const NOTE_MAX = 1000
+/** 这一条存进哪一本（默认跟随当前书架） */
+const addDomain = ref<CardDomain>('life')
+/** 专业卡的要点（回答里想记住的那几条） */
+const notePoint = ref('')
+/** 从费曼检验收下的追问 */
+const follow = ref('')
 
 /**
  * 本次由 AI 给的标签 —— 只记**真正新加**的，用户自己点过的不算。
@@ -415,25 +559,48 @@ async function aiCheck(): Promise<void> {
 function openAdd(): void {
   feynman.value = null
   aiAddedTags.value = []
+  /* 默认跟随当前书架 —— 看着「专业知识」点「转述一条」，本来就该记进那一本 */
+  addDomain.value = domain.value
   addOpen.value = true
 }
 
 function saveNote(): void {
   const body = noteBody.value.trim()
   if (!body) {
-    uni.showToast({ title: '转述正文不能为空', icon: 'none' })
+    uni.showToast({ title: addDomain.value === 'work' ? '答案不能为空' : '转述正文不能为空', icon: 'none' })
     return
   }
+  const work = addDomain.value === 'work'
   const title = noteTitle.value.trim() || body.slice(0, 22)
-  const tags = noteTags.value.length ? noteTags.value : ['转述']
-  knowledge.add({ kind: 'note', title, content: body, tags, depth: 1, src: '手动转述 · Lv.1 起点' })
+  const tags = noteTags.value.length ? noteTags.value : [work ? '专业' : '转述']
+  knowledge.add({
+    kind: 'note',
+    title,
+    content: body,
+    tags,
+    depth: 1,
+    src: work ? '手记 · 专业卡 Lv.1' : '手动转述 · Lv.1 起点',
+    domain: addDomain.value,
+    /* 题干 = title、回答 = content（刻意不复制一份），这里只补正文装不下的两格 */
+    qa: work ? { point: notePoint.value.trim() || undefined, follow: follow.value.trim() || undefined } : undefined,
+  })
   addOpen.value = false
   noteTitle.value = ''
   noteBody.value = ''
+  notePoint.value = ''
+  follow.value = ''
   noteTags.value = []
   aiAddedTags.value = []
   feynman.value = null
-  uni.showToast({ title: '已存进知识库 · Lv.1', icon: 'none' })
+  uni.showToast({ title: `已存进${DOMAIN_LABEL[addDomain.value]} · Lv.1`, icon: 'none' })
+}
+
+/** 把费曼检验给的追问收进这张卡（专业卡专属） */
+function useFollow(): void {
+  const q = feynman.value?.question
+  if (!q) return
+  follow.value = q
+  uni.showToast({ title: '已收下 · 存卡时一并写进去', icon: 'none' })
 }
 
 /* ---------------- 语音转写：按住说话 → 松开出字（费曼速记的入口） ---------------- */
@@ -515,8 +682,11 @@ function onVoiceCancel(): void {
 function appendVoice(text: string): void {
   const prev = noteBody.value.trim()
   const merged = prev ? `${prev}${text}` : text
-  noteBody.value = merged.slice(0, 400)
-  voiceHint.value = merged.length > 400 ? '已转成文字 · 超出 400 字的部分已截断' : '已转成文字 · 再检验一下就更值'
+  noteBody.value = merged.slice(0, NOTE_MAX)
+  voiceHint.value =
+    merged.length > NOTE_MAX
+      ? `已转成文字 · 超出 ${NOTE_MAX} 字的部分已截断`
+      : '已转成文字 · 再检验一下就更值'
   /* 正文变了，上一条检验结论就作废 —— 理由同 openAdd()：旧结论会误导新内容 */
   feynman.value = null
 }

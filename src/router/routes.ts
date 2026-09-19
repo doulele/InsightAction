@@ -26,8 +26,12 @@ export const ROUTES = {
   settings: '/pages/settings/index',
   /** 批次 B · 观：稍后读 · 碎片回收（分包 subpkg-observe） */
   observeReadLater: '/subpkg-observe/readlater/index',
-  /** 批次 B · 观：信息源质量榜（分包 subpkg-observe） */
-  observeQualityBoard: '/subpkg-observe/qualityboard/index',
+  /**
+   * 观：来源账本 —— 从收件池派生「我把时间花在谁身上」。
+   * 前身是「信息源质量榜」（投票式），投票入口在极简报改每日一则后已无落点，故整页改造；
+   * 目录/路径一并从 qualityboard 改成 ledger，别再按旧名找。
+   */
+  observeLedger: '/subpkg-observe/ledger/index',
   /** 批次 E · 观：记一笔 · 统一录入（分包 subpkg-observe，可带 ?kind=thing|theory|mother&form=article|quote|video） */
   observeCompose: '/subpkg-observe/compose/index',
   /** 批次 E · 观：收件匣（事/理/道的统一落点，分包 subpkg-observe） */

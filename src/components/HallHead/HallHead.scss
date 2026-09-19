@@ -3,7 +3,18 @@
  * 由 HallHead.vue 通过 @import 引入；以后调大厅头的图/压暗/文字配色都改本文件。
  *
  * 一句话记住改哪：`--hh-*` 管"图上的字"，`.hall-head__veil` 管"图被压多暗"，
- * 两者都按皮肤（.gz-skin--tech / --dao）各给一套。
+ * 两者都按皮肤（`.hall-head.gz-skin--tech` / `--dao`）各给一套。
+ *
+ * ⚠️ 皮肤选择器为什么是**复合**（.hall-head.gz-skin--tech），不是后代（.gz-skin--tech .hall-head）：
+ * 本组件是小程序**自定义组件**，组件 wxss 只作用于组件内的节点 ——
+ * 「页面根节点上的 `.gz-skin--tech`」是组件外的祖先，后代选择器选不中，整条覆盖会静默失效。
+ * 失效症状（2026-09-18 修）：科技模式下图上文字仍是普通模式的浅黄绿（没变电光蓝）、
+ * 深色艺术画上还盖着一层黑（veil 没去掉，图不透亮）；修仙模式的暖米字色与薄雾压暗同样没生效。
+ *
+ * 皮肤类由 HallHead.vue 挂在卡片根节点上（与 GzDialog / PrivacyGate 同一做法）。
+ * 卡片因此同时带上全局 `.gz-skin`，它自带 `min-height: 100vh` —— 不用再补 `min-height: 0`：
+ * 本文件的 `.hall-head` 带 data-v 类、优先级高于全局的 `.gz-skin`，190rpx / 250rpx 稳稳盖住它。
+ * 另：`.gz-skin` 还会给卡片底色，但下面的 `background:` 简写在同一条规则里更具体，卡片渐变不受影响。
  */
 .hall-head {
   /*
@@ -66,11 +77,11 @@
   · 修仙：水墨底整体偏暗，按普通模式的强度压会发闷 → 收成一"薄雾"；
   · 普通：浅黄绿底最亮，沿用上面那组值。
 */
-.gz-skin--tech .hall-head__veil {
+.hall-head.gz-skin--tech .hall-head__veil {
   background: none;
 }
 
-.gz-skin--dao .hall-head__veil {
+.hall-head.gz-skin--dao .hall-head__veil {
   /*
     三档差值收窄：水墨底要的是一层"薄雾"，不是上亮下暗的断层。
     差值一拉开（例如 0.3 / 0.16 / 0.5）卡片里就会显出一条横的明暗分界，
@@ -92,14 +103,14 @@
   普通模式用 .hall-head 上那组默认值。
   取浅色版而不是直接用 --gz-accent：那三个值（橄榄 / 电光蓝 / 朱砂）里，橄榄与朱砂在各自的图上不够亮。
 */
-.gz-skin--tech .hall-head {
+.hall-head.gz-skin--tech {
   --hh-ink: #78c6ff;
   --hh-ink-2: rgba(120, 198, 255, 0.85);
   --hh-line: rgba(120, 198, 255, 0.3);
   --hh-mark-bg: rgba(63, 169, 255, 0.18);
 }
 
-.gz-skin--dao .hall-head {
+.hall-head.gz-skin--dao {
   --hh-ink: #f8ecdf;
   --hh-ink-2: rgba(248, 236, 223, 0.9);
   --hh-line: rgba(248, 236, 223, 0.32);
@@ -262,4 +273,20 @@
   font-size: $gz-fs-caption;
   color: var(--hh-ink-2);
   text-shadow: 0 2rpx 8rpx rgba(10, 12, 8, 0.5);
+}
+
+/*
+  排印语汇（规格 C4）：同一行标题，三模式三种读感 ——
+  科技收紧 0.02em（标签 / 读数感），修仙放宽 0.14em（题跋 / 卷轴感），普通用默认字距。
+  这几条原先写在 App.scss，选择器是 `.gz-skin--tech .hall-head__title` ——
+  两个毛病：类名不存在（这里有 __name、没有 __title），且组件外的祖先类也选不中组件内节点，
+  等于从未生效。迁到本文件、改成复合选择器后与上面几组同源。
+  （App.scss 里只剩子页顶栏 `.nav__title` 的同名规则 —— 那是页面内的节点，继续在那边生效。）
+*/
+.hall-head.gz-skin--tech .hall-head__name {
+  letter-spacing: 0.02em;
+}
+
+.hall-head.gz-skin--dao .hall-head__name {
+  letter-spacing: 0.14em;
 }

@@ -15,6 +15,7 @@
 import { defineStore } from 'pinia'
 import { computed, ref } from 'vue'
 import { logTrace } from '@/utils/traceLog'
+import { htmlToText, sanitizeHtml } from '@/utils/richText'
 import { dailyQuotaOf, dayKey } from '@/config/quota'
 import { useAssessmentStore } from '@/stores/assessment'
 import { useModeStore } from '@/stores/mode'
@@ -69,6 +70,25 @@ export interface ObsItem {
    *  - 一句话 → 那一句话（必填）。
    */
   content: string
+  /**
+   * 富文本正文（2026-09-17，可选）：从文件导入或手输时带简单样式（粗体 / 标题 / 列表）。
+   *
+   * **与 content 的关系是单向派生**：contentHtml 是正本（存前过白名单清洗），
+   * content 是它的可读副本（每次编辑由 htmlToText 重算）。
+   * 理由与清洗规则见 utils/richText.ts 的注释 —— 别在这里再加一份判断。
+   */
+  contentHtml?: string
+  /**
+   * 由文件导入（2026-09-17）。
+   * 两个用途：详情页标一个「导入」角标；以及**不占当日信息配额**（见 quotaUsed）。
+   */
+  imported?: boolean
+  /**
+   * 处理时写下的那一句话（2026-09-17 从 content 里挪出来单独存）。
+   * 原先是拼进正文的 —— 富文本化之后那会破坏 content = htmlToText(contentHtml) 的一致性，
+   * 而且分开本来就更对：原文归原文，你的话归你的话。
+   */
+  handleNote?: string
   /** 经典语句（可多条，能一键收进「我的箴言」） */
   golden: string[]
   /**
@@ -200,6 +220,13 @@ export const useObserveStore = defineStore(
       // 理：写了「为什么成立」即入册，否则只是草稿
       const state: ObserveState =
         input.kind === 'theory' ? (input.why?.trim() ? 'confirmed' : 'draft') : 'confirmed'
+      /*
+       * 富文本与纯文本的**单向派生**（见 utils/richText.ts）：
+       * contentHtml 是正本（清洗过），content 是可读副本。页面通常两份一起传，
+       * 但万一哪条入口只给了 HTML，这里兜住：由 HTML 抽出纯文本，绝不留一份空 content。
+       */
+      const contentHtml = input.contentHtml ? sanitizeHtml(input.contentHtml) : ''
+      const content = input.content.trim() || (contentHtml ? htmlToText(contentHtml) : '')
       const item: ObsItem = {
         ...input,
         id: nextId(),
@@ -207,7 +234,8 @@ export const useObserveStore = defineStore(
         topics: input.topics ?? [],
         tags: input.tags ?? [],
         summary: input.summary ?? '',
-        content: input.content.trim(),
+        content,
+        contentHtml: contentHtml || undefined,
         golden: (input.golden ?? []).filter((g) => g.trim()),
         depth: 0,
         state,
@@ -240,7 +268,10 @@ export const useObserveStore = defineStore(
     function update(id: string, patch: Partial<ObsInput>): void {
       const it = find(id)
       if (!it) return
-      Object.assign(it, patch)
+      const next: Partial<ObsInput> = { ...patch }
+      /* 富文本同样要过清洗：编辑页会传进来，但 store 才是唯一闸门（新入口绕不过去） */
+      if (typeof next.contentHtml === 'string') next.contentHtml = sanitizeHtml(next.contentHtml) || undefined
+      Object.assign(it, next)
       // 补写「为什么成立」→ 草稿自动入册
       if (it.kind === 'theory' && it.state === 'draft' && it.why?.trim()) it.state = 'confirmed'
     }
@@ -271,7 +302,12 @@ export const useObserveStore = defineStore(
     function quotaUsed(now = Date.now()): number {
       const key = dayKey(now)
       return items.value.filter(
-        (i) => i.handledAt && dayKey(i.createdAt) === key && dayKey(i.handledAt) === key,
+        (i) =>
+          /* 导入的文件不占配额（2026-09-17 定案）：一次导入常常是一整篇，不该一口吃掉当天名额 */
+          !i.imported &&
+          i.handledAt &&
+          dayKey(i.createdAt) === key &&
+          dayKey(i.handledAt) === key,
       ).length
     }
 
@@ -286,6 +322,8 @@ export const useObserveStore = defineStore(
     function canDeepRead(id: string): boolean {
       const it = find(id)
       if (!it) return false
+      /* 导入的永远可以读（同上：不占配额） */
+      if (it.imported) return true
       if (dayKey(it.createdAt) !== dayKey()) return true
       return quotaUsed() < quotaTotal()
     }

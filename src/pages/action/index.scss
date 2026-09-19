@@ -237,6 +237,18 @@
   color: $gz-ink-3;
 }
 
+/*
+ * 三本待办账的分工说明（2026-09-17）：三块标题下面各一行小字。
+ * 为什么不省掉：三个列表长得像，不点明"它管什么"，用户会以为重复了三遍。
+ */
+.block-hint {
+  display: block;
+  margin-top: 4rpx;
+  font-size: 20rpx;
+  letter-spacing: 0.02em;
+  color: $gz-ink-3;
+}
+
 .steps__quick {
   display: flex;
   gap: 14rpx;

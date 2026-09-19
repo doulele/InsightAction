@@ -168,6 +168,33 @@
   max-height: none;
 }
 
+/* 富文本正文（2026-09-17）：限高/展开与 .origin__text 同一套，只是内容带格式 */
+.origin__rich {
+  display: block;
+  margin-top: 12rpx;
+  max-height: 520rpx;
+  overflow: hidden;
+  font-size: $gz-fs-body;
+  line-height: 1.9;
+  color: $gz-ink;
+  word-break: break-all;
+}
+
+.origin__rich.is-open {
+  max-height: none;
+}
+
+/* 「导入」角标：让人一眼知道这段不是自己敲的 */
+.origin__tag {
+  flex: none;
+  margin-right: 12rpx;
+  padding: 4rpx 14rpx;
+  border-radius: 999rpx;
+  background: rgba(196, 96, 46, 0.12);
+  font-size: 20rpx;
+  color: #b25a2c;
+}
+
 /* 每个「你的话」字段：细分割线 + 主题色小竖条 + 标签 + 正文 —— 一眼认出"这段是我写的" */
 .block {
   margin-top: 22rpx;

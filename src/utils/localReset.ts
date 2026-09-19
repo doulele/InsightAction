@@ -6,7 +6,6 @@
  */
 import { useXpStore } from '@/stores/xp'
 import { useFocusStore } from '@/stores/focus'
-import { useQualityStore } from '@/stores/quality'
 import { useQuestionStore } from '@/stores/question'
 import { useKnowledgeStore } from '@/stores/knowledge'
 import { useSeedStore } from '@/stores/seed'
@@ -33,7 +32,6 @@ import { useCapsuleStore } from '@/stores/capsule'
 export function resetPracticeData(): void {
   useXpStore().$patch({ total: 0, maxLevel: 0 })
   useFocusStore().$patch({ days: [], dailyGoal: 60 })
-  useQualityStore().$patch({ sources: [], dayMarks: {} })
   useQuestionStore().$patch({ records: {}, lastIdx: 0 })
   useKnowledgeStore().$patch({ cards: [], seedImported: [], echoDay: '' })
   useSeedStore().$patch({ seeds: [] })

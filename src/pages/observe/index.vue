@@ -149,9 +149,12 @@
       <text class="cleandue__go">处理或删 ›</text>
     </view>
 
-    <!-- 记一笔：通栏主入口（不放右下角，避免与小枢浮层打架） -->
+    <!--
+      记一笔：通栏主入口（不放右下角，避免与小枢浮层打架）。
+      「＋」用两根细杆画（而非全角字形）—— 字形墨迹中心随字体漂移，与「记一笔」摆一起会看着没居中。
+    -->
     <view class="compose" hover-class="gz-hover" @click="goCompose">
-      <text class="compose__plus">＋</text>
+      <view class="compose__plus" />
       <text class="compose__text">记一笔</text>
       <text class="compose__hint">文章 / 一句话 / 视频</text>
     </view>
@@ -237,13 +240,13 @@ import { useModeStore } from '@/stores/mode'
 import { useSkinClass } from '@/composables/useSkin'
 import { syncTabBar } from '@/utils/skin'
 import { hallStatus } from '@/config/lexicon'
+import { ledgerSummary } from '@/utils/sourceLedger'
 import { dailyOf } from '@/config/daily'
 import type { DailyKind } from '@/config/daily'
 import { useContentStore } from '@/stores/content'
 import { useObserveStore } from '@/stores/observe'
 import { useKnowledgeStore } from '@/stores/knowledge'
 import { useReadLaterStore } from '@/stores/readLater'
-import { useQualityStore } from '@/stores/quality'
 import { useSettingsStore } from '@/stores/settings'
 import { DWELL_MS, dwellTip, poke } from '@/composables/useBuddy'
 import { navigateTo, ROUTES } from '@/router/routes'
@@ -255,7 +258,6 @@ import type { EntryBadge } from '@/components/EntryItem/EntryItem.vue'
 const modeStore = useModeStore()
 const skinClass = useSkinClass()
 const readLater = useReadLaterStore()
-const quality = useQualityStore()
 const observe = useObserveStore()
 const settings = useSettingsStore()
 
@@ -673,7 +675,7 @@ const stateText = computed(() => hallStatus('observe', modeStore.id, { read: use
 function explainQuota(): void {
   uni.showModal({
     title: '今日信息配额',
-    content: `今日 ${usedQuota.value}/${quota.value} 次。\n\n「一次」= 今天新存进来的内容，今天读完并写下自己的话。前几天存下的补处理不占额 —— 还债不受限。\n\n${observe.quotaNote()}`,
+    content: `今日 ${usedQuota.value}/${quota.value} 次。\n\n「一次」= 今天新存进来的内容，今天读完并写下自己的话。前几天存下的补处理不占额 —— 还债不受限。\n\n用「导入文件」进来的不占额：一篇长文常常要读好几天，不该一口吃掉当天的名额。\n\n${observe.quotaNote()}`,
     showCancel: false,
     confirmText: '知道了',
   })
@@ -791,8 +793,8 @@ interface MoreEntry {
   essential?: boolean
 }
 
-/** 已被标注过的来源数（质量榜入榜数） */
-const ratedSources = computed(() => quality.sources.filter((s) => s.useful + s.useless > 0).length)
+/** 来源账本小结（派生，见 utils/sourceLedger.ts）：来源数 + 收得多、处理得少的个数 */
+const ledger = computed(() => ledgerSummary(observe.items))
 
 /** 更深的观察：收件匣 / 理库 / 母题库 / 质量榜 / 稍后读 */
 const moreEntries = computed<MoreEntry[]>(() => {
@@ -829,14 +831,16 @@ const moreEntries = computed<MoreEntry[]>(() => {
       url: ROUTES.observeMotherLib,
     },
     {
-      mark: '理',
-      title: '信息源质量榜',
-      subtitle: '统计各来源历史有用率，留下真正值得读的少数',
+      mark: '账',
+      title: '来源账本',
+      subtitle: '你收下的东西都在谁那儿 · 收得多的，读完了吗',
       badge:
-        ratedSources.value > 0
-          ? { text: `${ratedSources.value} 源在榜`, tone: 'accent' }
-          : { text: '读后标一笔', tone: 'muted' },
-      url: ROUTES.observeQualityBoard,
+        ledger.value.sources > 0
+          ? ledger.value.backlog > 0
+            ? { text: `${ledger.value.sources} 个来源 · ${ledger.value.backlog} 个待消化`, tone: 'accent' }
+            : { text: `${ledger.value.sources} 个来源`, tone: 'accent' }
+          : { text: '记一笔时填来源', tone: 'muted' },
+      url: ROUTES.observeLedger,
     },
     {
       mark: '存',

@@ -10,6 +10,8 @@
  *  - `card-xxx`  知的一张卡片（卡片没有独立 id，用 createdAt 当，见 stores/knowledge.ts）
  *  - `urge-xxx`  止的一次冲动记录（见 stores/urge.ts）
  *  - `thought-xxx` 止念的一念（见 stores/thought.ts；2026-09-17 加）
+ *  - `plan-<id>` 行的一条计划 / 长路（**用计划 id，不用节点 id** —— 计划自己写 trace 时
+ *    用的就是 `plan-<planId>`，节点粒度在"一条路"里没有意义；2026-09-17 加）
  *
  * 注意：不要给 ref 换格式或加前缀后缀 —— 老数据里的 ref 是写死的，改了就串不起来。
  */
@@ -17,8 +19,9 @@ import { useObserveStore } from '@/stores/observe'
 import { useKnowledgeStore } from '@/stores/knowledge'
 import { useUrgeStore } from '@/stores/urge'
 import { useThoughtStore } from '@/stores/thought'
+import { usePlanStore } from '@/stores/plan'
 
-export type RefKind = 'theory' | 'card' | 'urge' | 'thought' | 'none'
+export type RefKind = 'theory' | 'card' | 'urge' | 'thought' | 'plan' | 'none'
 
 export interface RefOption {
   ref: string
@@ -34,6 +37,7 @@ export const REF_KIND_LABEL: Record<RefKind, string> = {
   card: '卡片',
   urge: '冲动',
   thought: '念头',
+  plan: '计划',
   none: '无出处',
 }
 
@@ -50,6 +54,10 @@ export function refOfUrge(id: number): string {
 
 export function refOfThought(id: number): string {
   return `thought-${id}`
+}
+
+export function refOfPlan(id: number): string {
+  return `plan-${id}`
 }
 
 /** 可关联的来源候选：理 / 卡片 / 冲动 / 念头，各取最近几条 */
@@ -96,6 +104,24 @@ export function refOptions(): RefOption[] {
       }),
     )
 
+  /*
+   * 「今天要走的步子」（2026-09-17 加）：让三件事能挂到某条路上，说明"我这是为哪条路在做"。
+   * 只出**今天排期、还没完成**的叶子（已完成的挂上去只是回顾，不是承诺）；
+   * ref 用计划 id（见文件头约定），于是周报的「一条路」能把"承诺 → 推进"串成一条链。
+   */
+  usePlanStore()
+    .stepsOf()
+    .filter((s) => !s.done)
+    .slice(0, CANDIDATE_CAP)
+    .forEach((s) =>
+      out.push({
+        ref: refOfPlan(s.planId),
+        kind: 'plan',
+        text: s.title,
+        sub: `计划 · ${s.planTitle}${s.path ? ` · ${s.path}` : ''}`,
+      }),
+    )
+
   return out
 }
 
@@ -126,6 +152,10 @@ export function refTitle(ref: string): string {
     const id = Number(ref.slice('thought-'.length))
     return useThoughtStore().records.find((r) => r.id === id)?.text ?? ''
   }
-  // vow- / plan- 等别的前缀不参与回指展示（它们有自己的页面）
+  if (ref.startsWith('plan-')) {
+    const id = Number(ref.slice('plan-'.length))
+    return usePlanStore().byId(id)?.title ?? ''
+  }
+  // vow- 等别的前缀不参与回指展示（它们有自己的页面）
   return ''
 }

@@ -507,10 +507,41 @@
   background: $gz-accent;
 }
 
+/*
+ * 「＋」：两根细杆画出来的十字，不用全角字形 ——
+ * 全角（U+FF0B）的墨迹中心随字体漂移（40rpx 下尤其明显），
+ * 父级 align-items: center 只对齐盒子、对不齐墨迹，看着就像"没居中"。
+ * 这样画出来的十字，几何中心就是盒子中心，任何机型都对得齐。
+ */
 .compose__plus {
-  font-size: 40rpx;
-  line-height: 1;
-  color: $gz-on-cta;
+  position: relative;
+  flex: none;
+  width: 30rpx;
+  height: 30rpx;
+}
+
+.compose__plus::before,
+.compose__plus::after {
+  content: '';
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  background: $gz-on-cta;
+  border-radius: 3rpx;
+}
+
+/* 横杆 */
+.compose__plus::before {
+  width: 30rpx;
+  height: 4rpx;
+  transform: translate(-50%, -50%);
+}
+
+/* 竖杆 */
+.compose__plus::after {
+  width: 4rpx;
+  height: 30rpx;
+  transform: translate(-50%, -50%);
 }
 
 .compose__text {

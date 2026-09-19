@@ -42,10 +42,44 @@ export type CardKind =
    */
   | 'thought'
 
+/**
+ * 卡片归属的**书架**（2026-09-17）。
+ *
+ * 为什么要有：工作 / 面试里的问题与"我对自己的省察"混在一个列表里，两边都会变得不好找 ——
+ * 而这两类东西的处理方式本来就不同（前者要能复述、能复习，后者要能重逢、能推翻）。
+ * 但**不拆 store**：拆了就得把旧卡重逢、成长曲线、成就、看板、归档导出、云备份全部再实现一遍。
+ * 加一个正交维度 + 分段控件就够了，检索时互不污染，成长统计仍然算全量（见页面注释）。
+ *
+ * 缺省 `life`（老数据全部如此，无需迁移）。
+ */
+export type CardDomain = 'life' | 'work'
+
+/**
+ * 专业卡的额外两格（可选）—— 面试题 / 工作里的问题。
+ *
+ * **题干就是卡片的 `title`、回答就是 `content`** —— 刻意不再复制一份，
+ * 免得同一条内容在两个字段里慢慢漂移。这里只放正文装不下的两样：
+ */
+export interface CardQa {
+  /** 要点：想记住的那几条 */
+  point?: string
+  /** 追问：费曼检验给的、或自己给自己留的 */
+  follow?: string
+}
+
 export interface KnowledgeCard {
   /** 建档时刻（Date.now()，兼作 id） */
   createdAt: number
   kind: CardKind
+  /** 归属书架：缺省 life（老数据全部按 life 处理，用 domainOf() 读，别直接读字段） */
+  domain?: CardDomain
+  /** 专业卡的结构化问答（可选，只有 work 书架会填） */
+  qa?: CardQa
+  /**
+   * 回链（2026-09-17）：这张卡是从哪件事长出来的 —— 如三件事的 `todo-<id>`。
+   * 只用于"从卡片回到现场"，不参与任何计分（计分永远看 trace）。
+   */
+  ref?: string
   title: string
   content: string
   tags: string[]
@@ -73,6 +107,38 @@ export const DEPTH_LABEL: Record<CardDepth, string> = {
   1: 'Lv.1 转述',
   2: 'Lv.2 重构',
   3: 'Lv.3 内化',
+}
+
+/** 书架的名字（分段控件与入口徽标共用） */
+export const DOMAIN_LABEL: Record<CardDomain, string> = {
+  life: '我的知识',
+  work: '专业知识',
+}
+
+/** 书架的一句话说明（页面顶部点明差别，别让人猜"这两本怎么分"） */
+export const DOMAIN_DESC: Record<CardDomain, string> = {
+  life: '自省、见识、做法 —— 会重逢、会被推翻的那些',
+  work: '工作与面试里的问题 —— 要能复述、要能复习的那些',
+}
+
+/**
+ * 来源类型的中文标签（知识库「按来源筛」用）。
+ * `note` 是一个伞形类：手动转述、情境省察、旧卡重逢派生、日课破了都落在这里，
+ * 想再细分就看标签（如 tags 里的「省察」）。
+ */
+export const CARD_KIND_LABEL: Record<CardKind, string> = {
+  question: '灵魂拷问',
+  seed: '概念播种',
+  action: '行动回写',
+  note: '手记',
+  proverb: '箴言',
+  daily: '每日一则',
+  thought: '止念',
+}
+
+/** 书架归一：老数据没有 domain → life（页面一律用它，不要直接读字段） */
+export function domainOf(card: KnowledgeCard): CardDomain {
+  return card.domain ?? 'life'
 }
 
 export function depthColor(depth: CardDepth): string {
@@ -164,6 +230,16 @@ export const useKnowledgeStore = defineStore(
 
     function byId(createdAt: number): KnowledgeCard | undefined {
       return cards.value.find((c) => c.createdAt === createdAt)
+    }
+
+    /** 某个书架的全部卡（新卡在前 —— cards 本来就是新在前） */
+    function cardsOf(domain: CardDomain): KnowledgeCard[] {
+      return cards.value.filter((c) => domainOf(c) === domain)
+    }
+
+    /** 某个书架的卡数（入口徽标用；别在两处各写一遍 filter） */
+    function countOf(domain: CardDomain): number {
+      return cards.value.filter((c) => domainOf(c) === domain).length
     }
 
     /** 全部标签去重列表 */
@@ -260,6 +336,9 @@ export const useKnowledgeStore = defineStore(
       byId,
       allTags,
       countOn,
+      /* 书架（2026-09-17） */
+      cardsOf,
+      countOf,
       seedImported,
       importSeedHarvest,
       importProverb,

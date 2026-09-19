@@ -165,7 +165,7 @@ export const dims = computed<BuddyDim[]>(() => {
   const done = daily.doneCount
   const plan = daily.planCount || 3
   return [
-    { key: 'observe', label: dl('observe'), value: `${st.value.marks} 次`, on: st.value.marks > 0, color: '#6D8B3F' },
+    { key: 'observe', label: dl('observe'), value: `${st.value.obsN} 条`, on: st.value.obsN > 0, color: '#6D8B3F' },
     { key: 'pause', label: dl('pause'), value: `${st.value.focusMin} 分`, on: st.value.focusMin > 0, color: '#C4602E' },
     {
       key: 'reflect',

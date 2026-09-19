@@ -38,6 +38,10 @@ export interface ComposeDraft {
   viewpoints: Viewpoint[]
   summary: string
   content: string
+  /** 富文本正文（2026-09-17）：草稿也要带着它，否则"接着写"会把格式丢光 */
+  contentHtml?: string
+  /** 这一笔是不是从文件导入来的（存库时带上，用于配额豁免与角标） */
+  imported?: boolean
   why: string
   insight: string
   golden: string[]

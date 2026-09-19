@@ -382,6 +382,73 @@
   color: $gz-ink-3;
 }
 
+/* ---- 省察回看层（2026-09-17） ---- */
+.sheet__note {
+  display: block;
+  margin-top: 10rpx;
+  font-size: $gz-fs-caption;
+  line-height: 1.8;
+  color: $gz-ink-3;
+}
+
+.probe {
+  max-height: 760rpx;
+  margin-top: 16rpx;
+}
+
+.probe__row {
+  padding: 20rpx 0;
+  border-top: 1rpx solid $gz-line-soft;
+}
+
+.probe__row:first-child {
+  border-top: none;
+}
+
+.probe__top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12rpx;
+}
+
+.probe__tag {
+  padding: 4rpx 14rpx;
+  border-radius: 999rpx;
+  background: $gz-accent-soft;
+  font-size: 20rpx;
+  color: $gz-accent;
+}
+
+.probe__day {
+  font-size: 20rpx;
+  color: $gz-ink-3;
+}
+
+.probe__q {
+  display: block;
+  margin-top: 10rpx;
+  font-size: $gz-fs-small;
+  line-height: 1.7;
+  color: $gz-ink-3;
+}
+
+.probe__a {
+  display: block;
+  margin-top: 8rpx;
+  font-size: $gz-fs-body;
+  line-height: 1.85;
+  color: $gz-ink;
+}
+
+.probe__empty {
+  display: block;
+  padding: 40rpx 0;
+  text-align: center;
+  font-size: $gz-fs-small;
+  color: $gz-ink-3;
+}
+
 /* ---- 自我画像（§9.4）：只摆形状，所以版式也压到最轻 ---- */
 /* 一张白卡托住整块 —— 之前直接铺在纸底上，和上面的卡片不搭，看着像没做完 */
 .pf {
@@ -406,6 +473,14 @@
 
 .pf__row {
   padding: 24rpx 0;
+}
+
+/* 可点的那一行（目前只有「知 · 省察」）：给一点"能点开"的暗示，但不做成按钮 */
+.pf__row.is-tap {
+  margin: 0 -16rpx;
+  padding-left: 16rpx;
+  padding-right: 16rpx;
+  border-radius: $gz-radius-md;
 }
 
 .pf__row + .pf__row {

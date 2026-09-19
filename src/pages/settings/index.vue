@@ -780,7 +780,7 @@ function exportToday(): void {
     '观止知行 · 今日概览',
     `修行语言：${modeMeta.value.label} · ${modeMeta.value.labelEn}`,
     `日期：${k}`,
-    `${dl('observe')}：${st.marks} 次标注`,
+    `${dl('observe')}：${st.obsN} 条`,
     `${dl('pause')}：${st.focusMin} 分钟`,
     `${dl('reflect')}：${st.cards} 张卡片${st.answered ? ' · 拷问已答' : ' · 拷问未答'}`,
     `${dl('action')}：${daily.doneCount}/${plan} 件 · 习惯打卡 ${st.habitDone} 次`,

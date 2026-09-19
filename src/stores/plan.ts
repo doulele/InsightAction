@@ -71,8 +71,19 @@ export interface DailyCheck {
 
 /** 日课目标天数的预设档 */
 export const DAILY_PRESETS = [7, 21, 30, 100] as const
-/** 同时在守的日课上限（与长路的 3 条分开算：两者的心智负担不是一回事） */
-export const MAX_DAILY_ACTIVE = 3
+/**
+ * 同时在守的日课上限（与长路分开算：两者的心智负担不是一回事）。
+ *
+ * 2026-09-17 由 3 提到 5：日课的每日成本极低（一天勾一次），而"每天要重复的事"
+ * 现实中常常 4~6 件（早睡 / 锻炼 / 阅读 / 冥想 / 戒糖…）。卡在 3 条不会让人少立，
+ * 只会把人推去「习惯打卡」—— 那里没有期限、不会收束、也没有回望，反而更差。
+ */
+export const MAX_DAILY_ACTIVE = 5
+/**
+ * 日课的**舒适线**：超过它只提示、不拦截。
+ * 与今日步子的 TODAY_STEP_COMFORT 同一套做法 —— 拦不住的欲望，不如让它被看见。
+ */
+export const DAILY_COMFORT = 3
 /** 目标天数的合理区间：低于 3 天谈不上"每天"，高于一年已不是日课 */
 export const DAILY_MIN_DAYS = 3
 export const DAILY_MAX_DAYS = 365
@@ -88,14 +99,30 @@ const CHALLENGE_TAG: Record<ChallengeType, string> = {
 
 export interface PlanNode {
   id: number
+  /**
+   * 父节点 id（2026-09-17 步骤嵌套）。
+   * 空 = 直接挂在计划下（第 1 层）—— **老数据全部如此**，所以没有迁移脚本：
+   * 没有父子关系的节点就是叶子，行为与嵌套之前完全一致。
+   */
+  parentId?: number
   /** 节点标题（必填） */
   title: string
   /** 节点内容：判定标准 / 怎么做 */
   note?: string
   done: boolean
   doneAt?: number
-  /** 派到哪一天做（YYYY-MM-DD）；空 = 未排期，滚在「待办池」 */
+  /** 派到哪一天做（YYYY-MM-DD）；空 = 未排期，滚在「待办池」。**只有叶子能排期** */
   dueDay?: string
+  /**
+   * 叶子的自评进度 0-100（2026-09-17）：中长期的路，最后一步常常是"做了六成"，
+   * 光有勾/不勾表达不了。
+   *
+   * 与 `done` 的关系定死成一句话：**拉满就是勾上，拉回来就是取消**（见 updateNodeProgress）——
+   * 于是"完成"永远只有一个真相（`done`），计分也永远只走一条路径，不会出现
+   * "自评 100% 却永不收束"或"进度给一次分、勾选再给一次"的裂缝。
+   * 有子节点的父节点忽略此字段（它是分组，不是任务）。
+   */
+  progress?: number
 }
 
 export interface Plan {
@@ -140,6 +167,18 @@ export const TODAY_SHELF_LIMIT = 3
 /** 长期计划多少天没动作 → 提示「还继续吗」 */
 export const LONG_STALE_DAYS = 30
 
+/* ---------------- 步骤嵌套（2026-09-17） ---------------- */
+
+/** 节点最深几层（根下第一层 = 1）。再深下去手机屏幕上就摆不下了，也说明这一步该拆成一条新路 */
+export const MAX_NODE_DEPTH = 5
+/** 树形列表每一层缩进（rpx）—— 详情页渲染用，写这里是为了"5 层最多缩多少"有个唯一出处 */
+export const NODE_INDENT_RPX = 24
+/**
+ * 开放**叶子自评进度**的期限档。
+ * 只给中长期：短期（一周内走得完）本来就能勾干净，给它一条进度条只是多一个要填的东西。
+ */
+export const PROGRESS_HORIZONS: readonly PlanHorizon[] = ['mid', 'long']
+
 /** 统一的「一条可勾的步子」视图模型（今天要走的步子 / 待办池共用） */
 export interface StepItem {
   /** 稳定 key：n-<planId>-<nodeId> / p-<planId> */
@@ -149,6 +188,11 @@ export interface StepItem {
   nodeId?: number
   title: string
   planTitle: string
+  /**
+   * 叶子在树里的父级路径（不含自己）—— 2026-09-17 步骤嵌套后，行大厅/待办池仍然**只吐叶子**
+   * 并平铺展示，靠这个字段说明"这是哪一段"，不必把整棵树搬进大厅。
+   */
+  path?: string
   done: boolean
   /** 逾期 / 搁置 */
   overdue: boolean
@@ -263,21 +307,127 @@ export const usePlanStore = defineStore(
         .sort((a, b) => Number(a.status !== 'active') - Number(b.status !== 'active') || b.updatedAt - a.updatedAt),
     )
 
-    /** 进度口径：steps = done / (nodes.length || 1)；daily = 已守住 / 目标天数 */
+    /* ---------------- 树的走法（2026-09-17 步骤嵌套） ----------------
+     * 节点可以挂子节点，最多 MAX_NODE_DEPTH 层。三条规矩：
+     *  1. **只有叶子是"任务"**：能排期、能勾选、能自评进度；父节点只是分组。
+     *     所以行大厅 / 今日步子 / 待办池**只吐叶子**，树形只在计划详情页出现；
+     *  2. **深度不落库**：由 parentId 链实时算（避免父子不一致的脏数据）；
+     *  3. **父节点不落库 done**：完成度由叶子派生 —— 否则会出现"父已完成、子又被取消"的怪状态。
+     */
+
+    /** 第 1 层节点（父节点为空） */
+    function rootsOf(plan: Plan): PlanNode[] {
+      return plan.nodes.filter((n) => n.parentId === undefined)
+    }
+
+    /** 直接子节点 */
+    function childrenOf(plan: Plan, parentId: number): PlanNode[] {
+      return plan.nodes.filter((n) => n.parentId === parentId)
+    }
+
+    /** 是不是分组（有子节点 = 不是任务） */
+    function hasChildren(plan: Plan, nodeId: number): boolean {
+      return plan.nodes.some((n) => n.parentId === nodeId)
+    }
+
+    /** 节点深度：根下第一层 = 1。找不到或成环时返回 MAX_NODE_DEPTH 兜底，不抛错 */
+    function depthOf(plan: Plan, nodeId: number): number {
+      let depth = 0
+      let current = plan.nodes.find((n) => n.id === nodeId)
+      const seen = new Set<number>()
+      while (current) {
+        if (seen.has(current.id)) return MAX_NODE_DEPTH
+        seen.add(current.id)
+        depth += 1
+        if (depth > MAX_NODE_DEPTH) return MAX_NODE_DEPTH
+        const parentId: number | undefined = current.parentId
+        current = parentId === undefined ? undefined : plan.nodes.find((n) => n.id === parentId)
+      }
+      return depth
+    }
+
+    /**
+     * 深度优先的全部叶子（顺序 = nodes 数组顺序：用户怎么排，就怎么走）。
+     * `seen` 是防环的 —— 正常写入路径不会产生环，但读的时候必须扛得住脏数据。
+     */
+    function leavesOf(plan: Plan): PlanNode[] {
+      const out: PlanNode[] = []
+      const seen = new Set<number>()
+      const walk = (list: PlanNode[]): void => {
+        for (const n of list) {
+          if (seen.has(n.id)) continue
+          seen.add(n.id)
+          const kids = childrenOf(plan, n.id)
+          if (kids.length) walk(kids)
+          else out.push(n)
+        }
+      }
+      walk(rootsOf(plan))
+      return out
+    }
+
+    /** 某节点的整棵子树（含自己）—— 删除时级联用 */
+    function subtreeIds(plan: Plan, nodeId: number): number[] {
+      const out: number[] = []
+      const walk = (id: number): void => {
+        if (out.includes(id)) return
+        out.push(id)
+        for (const kid of childrenOf(plan, id)) walk(kid.id)
+      }
+      walk(nodeId)
+      return out
+    }
+
+    /** 单个叶子的完成度 0-100：勾上了就是 100，否则看自评进度 */
+    function leafPct(node: PlanNode): number {
+      if (node.done) return 100
+      return Math.min(100, Math.max(0, node.progress ?? 0))
+    }
+
+    /** 叶子在树里的父级路径（不含自己）—— 平铺展示时说明"这是哪一段" */
+    function nodePath(plan: Plan, node: PlanNode): string {
+      const names: string[] = []
+      const seen = new Set<number>()
+      let parentId: number | undefined = node.parentId
+      while (parentId !== undefined && !seen.has(parentId)) {
+        seen.add(parentId)
+        const p: PlanNode | undefined = plan.nodes.find((n) => n.id === parentId)
+        if (!p) break
+        names.unshift(p.title)
+        parentId = p.parentId
+      }
+      return names.join(' · ')
+    }
+
+    /** 收束判定：**叶子**全勾上（父节点不落库 done，所以只认叶子） */
+    function isPlanDone(plan: Plan): boolean {
+      const leaves = leavesOf(plan)
+      return leaves.length > 0 && leaves.every((n) => n.done)
+    }
+
+    /**
+     * 进度口径：
+     *  - daily = 已守住 / 目标天数（不变）；
+     *  - steps = **叶子**的平均完成度。`done/total` 报的是"几步走完"，
+     *    `pct` 是含自评进度的整体完成度 —— 两者不必然相等（自评 60% 的叶子算 0.6 步），
+     *    所以 pct 可能高于 done/total，这是对的。
+     */
     function progressOf(plan: Plan): { done: number; total: number; pct: number } {
       if (isDaily(plan)) {
         const total = plan.targetDays ?? DAILY_DEFAULT_DAYS
         const done = keptCountOf(plan)
         return { done, total, pct: Math.min(100, Math.round((done / Math.max(1, total)) * 100)) }
       }
-      const total = plan.nodes.length || 1
-      const done = plan.nodes.filter((n) => n.done).length
-      return { done, total, pct: Math.round((done / total) * 100) }
+      const leaves = leavesOf(plan)
+      if (!leaves.length) return { done: 0, total: 1, pct: 0 }
+      const done = leaves.filter((n) => n.done).length
+      const sum = leaves.reduce((acc, n) => acc + leafPct(n), 0)
+      return { done, total: leaves.length, pct: Math.round(sum / leaves.length) }
     }
 
-    /** 「下一节点」：第一个未完成节点（全完成返回 null） */
+    /** 「下一节点」：深度优先的第一个未完成**叶子**（全完成返回 null） */
     function nextNodeOf(plan: Plan): PlanNode | null {
-      return plan.nodes.find((n) => !n.done) ?? null
+      return leavesOf(plan).find((n) => !n.done) ?? null
     }
 
     /** 剩余天数（无目标日返回 null；已过返回负数） */
@@ -479,7 +629,8 @@ export const usePlanStore = defineStore(
           continue
         }
         if (plan.status !== 'active') continue
-        for (const node of plan.nodes) {
+        /* 只吐叶子：父节点是分组，没有"今天做这一步"这回事（见「树的走法」） */
+        for (const node of leavesOf(plan)) {
           if (node.dueDay !== day) continue
           out.push({
             key: `n-${plan.id}-${node.id}`,
@@ -488,6 +639,7 @@ export const usePlanStore = defineStore(
             nodeId: node.id,
             title: node.title,
             planTitle: plan.title,
+            path: nodePath(plan, node),
             done: node.done,
             overdue: false,
             shelfDays: 0,
@@ -519,7 +671,8 @@ export const usePlanStore = defineStore(
           })
           continue
         }
-        for (const node of plan.nodes) {
+        /* 只吐叶子（同上）；未完成的叶子才进池 */
+        for (const node of leavesOf(plan)) {
           if (node.done) continue
           const overdue = Boolean(node.dueDay && node.dueDay < day)
           if (node.dueDay && !overdue) continue // 已排到未来 → 不进池
@@ -530,6 +683,7 @@ export const usePlanStore = defineStore(
             nodeId: node.id,
             title: node.title,
             planTitle: plan.title,
+            path: nodePath(plan, node),
             done: false,
             overdue,
             shelfDays: overdue && node.dueDay ? diffDays(node.dueDay, day) : 0,
@@ -703,16 +857,42 @@ export const usePlanStore = defineStore(
       return true
     }
 
-    function addNode(planId: number, node: { title: string; note?: string; dueDay?: string }): boolean {
+    /**
+     * 加一个节点（2026-09-17 支持挂在 `parentId` 下）。
+     *
+     * 两处校验：
+     *  1. **深度上限**：父节点已在第 MAX_NODE_DEPTH 层 → 拒绝（返回 false，页面给提示）；
+     *  2. **排期下移**：给一个已排期的节点加**第一个**子步骤时，把 `dueDay` 移给这个子步骤 ——
+     *     排期的意思是"这一步哪天做"，而它变成分组之后就没有"做"这回事了。
+     *     下移（而不是静默丢掉）是因为那个日期是用户自己定的，不能凭空消失。
+     */
+    function addNode(
+      planId: number,
+      node: { title: string; note?: string; dueDay?: string },
+      parentId?: number,
+    ): boolean {
       const plan = byId(planId)
       const title = node.title.trim()
       if (!plan || !title) return false
+
+      let dueDay = node.dueDay
+      if (parentId !== undefined) {
+        const parent = plan.nodes.find((n) => n.id === parentId)
+        if (!parent) return false
+        if (depthOf(plan, parentId) >= MAX_NODE_DEPTH) return false
+        if (!hasChildren(plan, parentId) && parent.dueDay) {
+          dueDay = parent.dueDay
+          parent.dueDay = undefined
+        }
+      }
+
       plan.nodes.push({
         id: nextId(),
+        parentId,
         title,
         note: node.note?.trim() || undefined,
         done: false,
-        dueDay: node.dueDay,
+        dueDay,
       })
       touch(plan)
       return true
@@ -737,15 +917,27 @@ export const usePlanStore = defineStore(
       return true
     }
 
-    function removeNode(planId: number, nodeId: number): void {
+    /**
+     * 删一个节点：**连它下面的整棵树一起删**（不然子节点会变成挂在空里的孤儿）。
+     * 返回实际删掉的条数（含自己），页面据此在确认弹框里如实报数。
+     */
+    function removeNode(planId: number, nodeId: number): number {
       const plan = byId(planId)
-      if (!plan) return
-      plan.nodes = plan.nodes.filter((n) => n.id !== nodeId)
+      if (!plan) return 0
+      const ids = subtreeIds(plan, nodeId)
+      if (!ids.length) return 0
+      plan.nodes = plan.nodes.filter((n) => !ids.includes(n.id))
       touch(plan)
+      return ids.length
     }
 
-    /** 把节点派到今天（也用于「今天要走的步子」里的快速排期） */
+    /**
+     * 把节点派到某天（也用于「今天要走的步子」里的快速排期）。
+     * **只对叶子有意义**：分组没有"哪天做"这回事。
+     */
     function scheduleNode(planId: number, nodeId: number, day: string): boolean {
+      const plan = byId(planId)
+      if (!plan || hasChildren(plan, nodeId)) return false
       return updateNode(planId, nodeId, { dueDay: day })
     }
 
@@ -792,32 +984,79 @@ export const usePlanStore = defineStore(
 
       const node = plan.nodes.find((n) => n.id === nodeId)
       if (!node) return { done: false, closed: false }
+      /* 父节点不是任务：页面上不给它勾选框，这里再兜一道（不静默改状态） */
+      if (hasChildren(plan, nodeId)) return { done: false, closed: false }
 
       if (node.done) {
-        // 取消勾选：留痕但不给分；已收束的计划退回进行中
-        node.done = false
-        node.doneAt = undefined
-        if (plan.status === 'done') {
-          plan.status = 'active'
-          plan.doneAt = undefined
-        }
-        logOnly({ kind: 'action.todo', text: `${plan.title} · ${node.title}（撤销）`, ref: `plan-${plan.id}` })
-        touch(plan)
+        uncompleteNode(plan, node)
         return { done: false, closed: false }
       }
 
+      completeNode(plan, node, day)
+      if (isPlanDone(plan)) {
+        closePlan(plan.id, '')
+        return { done: true, closed: true }
+      }
+      return { done: true, closed: false }
+    }
+
+    /**
+     * 勾上一个叶子 —— 计分与留痕的**唯一路径**。
+     * 勾选与"自评进度拉满"都走这里，保证同一个动作永远只拿一次分、痕迹格式也永远一致。
+     */
+    function completeNode(plan: Plan, node: PlanNode, day: string): void {
       node.done = true
       node.doneAt = Date.now()
       touch(plan)
       const value = scoredToday(plan.id, day) ? 0 : undefined
       logTrace({ kind: 'action.todo', text: `${plan.title} · ${node.title}`, ref: `plan-${plan.id}`, value })
+    }
 
-      const allDone = plan.nodes.length > 0 && plan.nodes.every((n) => n.done)
-      if (allDone) {
-        closePlan(plan.id, '')
-        return { done: true, closed: true }
+    /** 取消勾选：留痕但不给分；已收束的计划退回进行中 */
+    function uncompleteNode(plan: Plan, node: PlanNode): void {
+      node.done = false
+      node.doneAt = undefined
+      if (plan.status === 'done') {
+        plan.status = 'active'
+        plan.doneAt = undefined
       }
-      return { done: true, closed: false }
+      logOnly({ kind: 'action.todo', text: `${plan.title} · ${node.title}（撤销）`, ref: `plan-${plan.id}` })
+      touch(plan)
+    }
+
+    /**
+     * 叶子自评进度（只在 mid / long 上开放，见 PROGRESS_HORIZONS）。
+     *
+     * 与勾选的关系定死成一句话：**拉满就是勾上，拉回来就是取消** ——
+     * 于是"完成"永远只有一个真相（node.done），也就不会出现"自评 100% 却永不收束"，
+     * 或者"自评给一次分、勾选再给一次分"这类裂缝。
+     */
+    function updateNodeProgress(
+      planId: number,
+      nodeId: number,
+      pct: number,
+      day = todayKey(),
+    ): { ok: boolean; closed: boolean } {
+      const plan = byId(planId)
+      if (!plan || isDaily(plan)) return { ok: false, closed: false }
+      if (!PROGRESS_HORIZONS.includes(horizonOf(plan))) return { ok: false, closed: false }
+      const node = plan.nodes.find((n) => n.id === nodeId)
+      if (!node || hasChildren(plan, nodeId)) return { ok: false, closed: false }
+
+      const v = Math.min(100, Math.max(0, Math.round(Number(pct) || 0)))
+      node.progress = v
+      if (v >= 100 && !node.done) {
+        completeNode(plan, node, day)
+        if (isPlanDone(plan)) {
+          closePlan(plan.id, '')
+          return { ok: true, closed: true }
+        }
+      } else if (v < 100 && node.done) {
+        uncompleteNode(plan, node)
+      } else {
+        touch(plan)
+      }
+      return { ok: true, closed: false }
     }
 
     /** 该计划是否已经入过「完成挑战」的分（防取消勾选后重复收束刷分） */
@@ -911,6 +1150,17 @@ export const usePlanStore = defineStore(
       progressOf,
       nextNodeOf,
       remainDaysOf,
+      /* 树的走法（2026-09-17 步骤嵌套） */
+      rootsOf,
+      childrenOf,
+      hasChildren,
+      depthOf,
+      leavesOf,
+      subtreeIds,
+      leafPct,
+      nodePath,
+      isPlanDone,
+      updateNodeProgress,
       /* 日课（2026-09-17） */
       keptCountOf,
       checkOf,

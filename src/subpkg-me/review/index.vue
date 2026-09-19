@@ -140,7 +140,7 @@ const hallRows = computed(() => {
 /* —— 明细：只放能一眼读懂的绝对数 —— */
 const metrics = computed(() => [
   { label: '静修分钟', value: s.focusMin },
-  { label: '辨源标注', value: `${s.marks} 次` },
+  { label: '观 · 收下与处理', value: `${s.obsN} 条` },
   { label: '知识卡片', value: `${s.cards} 张` },
   { label: '拷问作答', value: `${s.answerDays} 天` },
   { label: '习惯打卡', value: `${s.habitDone} 次` },
@@ -163,7 +163,7 @@ const bestText = computed(() => {
   const d = dayStats(b.date)
   const parts: string[] = []
   if (d.focusMin > 0) parts.push(`静修 ${d.focusMin} 分钟`)
-  if (d.marks > 0) parts.push(`标注 ${d.marks} 次`)
+  if (d.obsN > 0) parts.push(`观 ${d.obsN} 条`)
   if (d.cards > 0) parts.push(`写了 ${d.cards} 张卡`)
   if (d.traces > 0) parts.push(`留下 ${d.traces} 条痕迹`)
   if (d.answered) parts.push('答了今天的拷问')

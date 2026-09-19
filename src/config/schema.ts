@@ -7,11 +7,11 @@
  *  - 恢复时若 `备份.schema > SCHEMA_VERSION` → **拒绝恢复**并明确提示
  *    （这是「换机后脊椎变脏数据」的最后一道防线，宁可不让恢复，也不能让界面错乱）。
  *
- * 当前 = 8：新增 stores/capsule.ts（时间胶囊）与 stores/closing.ts（今日收功），
- * plan 加 cadence / checks / targetDays（日课型），knowledge 加 echoDay 与卡的 echo 三字段，
- * settings 加 sabbathWeekday（安息日）。
+ * 当前 = 9：步骤嵌套（plan 的 PlanNode 增 parentId / progress）与两份正文（observe 增
+ * contentHtml / imported / handleNote），knowledge 增 domain / qa / ref，
+ * 并删掉 stores/quality.ts（信息源质量榜 → 派生的来源账本）。
  */
-export const SCHEMA_VERSION = 8
+export const SCHEMA_VERSION = 9
 
 /** 结构升级记录：给未来的自己看「哪一版改了什么」 */
 export const SCHEMA_HISTORY: ReadonlyArray<{ version: number; note: string }> = [
@@ -25,5 +25,9 @@ export const SCHEMA_HISTORY: ReadonlyArray<{ version: number; note: string }> = 
   {
     version: 8,
     note: '日课与五项体验补充：新增 stores/capsule.ts（时间胶囊，只在本机、不入云备份）与 stores/closing.ts（今日收功）；plan 增 cadence（steps/daily）/ checks / targetDays；knowledge 增 echoDay 与卡片 echoCount / lastEchoAt / changedAt（旧卡重逢）；settings 增 sabbathWeekday（安息日）。老数据一律按 steps 与"未收功"兼容，无需迁移',
+  },
+  {
+    version: 9,
+    note: '步骤嵌套与两份正文：plan 的 PlanNode 增 parentId（≤5 层）与 progress（叶子自评进度，拉满等于勾上）；knowledge 增 domain（我的知识 / 专业知识）、qa（要点与追问）、ref（回链三件事）；observe 增 contentHtml（富文本正本）、imported（由文件导入，不占信息配额）、handleNote（处理时那句从正文里挪出来）；删除 stores/quality.ts —— 信息源质量榜改成从收件池派生的「来源账本」，观维度日指标由"辨源标注次数"改为数 observe 环痕迹。老数据一律按"无父子 / life 书架 / 无富文本 / 未导入"兼容，无需迁移脚本',
   },
 ]

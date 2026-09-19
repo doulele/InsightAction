@@ -1,5 +1,12 @@
 <template>
-  <view class="hall-head" :class="{ 'hall-head--with-cap': hasCap }">
+  <!--
+    ⚠️ 皮肤类（gz-skin gz-skin--<模式>）挂在卡片**自己**身上，不能省：
+    本组件是小程序自定义组件，其 wxss 只作用于组件内的节点 ——
+    页面根节点上的 `.gz-skin--tech` 属于**组件外**的祖先，后代选择器选不中它。
+    原先靠「页面根节点的皮肤类」来给图上文字配色 / 去掉压暗，结果科技模式下字仍是普通模式的
+    浅黄绿、深色艺术画还被压着一层黑（2026-09-18 修）。详见 HallHead.scss 头部注释。
+  -->
+  <view class="hall-head" :class="[skinClass, { 'hall-head--with-cap': hasCap }]">
     <!--
       ⚠️ 必须走 modeStore.art（后端 /skins 下发 → 带版本号 → 命中本地缓存读盘），
       不能用 modeMeta.art：那是构建期变量 VITE_SKIN_BASE_URL 拼的静态地址，
@@ -71,6 +78,7 @@
 import { computed } from 'vue'
 import { useModeStore } from '@/stores/mode'
 import { useImageStore } from '@/stores/images'
+import { useSkinClass } from '@/composables/useSkin'
 import { getModeMeta } from '@/config/modes'
 
 const props = withDefaults(
@@ -105,6 +113,12 @@ function onMarkTap(): void {
 }
 
 const modeStore = useModeStore()
+/**
+ * 卡片自己的皮肤类（与 GzDialog / PrivacyGate 同一做法）：
+ * 组件的 wxss 只作用于组件内节点，`--hh-*` 的字色与 veil 的压暗都按皮肤覆盖，
+ * 这些覆盖规则的判据只能是"卡片自己带没带 gz-skin--xxx"。
+ */
+const skinClass = useSkinClass()
 const meta = computed(() => getModeMeta(modeStore.id))
 
 /**

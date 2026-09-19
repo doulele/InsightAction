@@ -1,5 +1,5 @@
 /**
- * index.vue 的样式（超过 100 行，按项目约定外置到同目录 index.scss）。
+ * 来源账本（index.vue）的样式 —— 超过 100 行，按项目约定外置到同目录。
  * 由 index.vue 通过 @import 引入；以后改样式改本文件。
  */
 .page {
@@ -68,34 +68,46 @@
   white-space: pre-line;
 }
 
-/* 筛选 */
-.filters {
+/* 总览三格 */
+.sum {
   display: flex;
-  gap: 14rpx;
-  margin: 24rpx 0 20rpx;
-}
-
-.filter {
-  padding: 10rpx 30rpx;
-  border-radius: 999rpx;
+  margin-top: 22rpx;
+  padding: 22rpx 0;
   background: $gz-surface;
   border: 1rpx solid $gz-line;
+  border-radius: $gz-radius-md;
+}
+
+.sum__item {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8rpx;
+}
+
+.sum__n {
+  font-size: 40rpx;
+  font-weight: 800;
+  line-height: 1;
+  color: $gz-ink;
+}
+
+.sum__n.is-warn {
+  color: #c4602e;
+}
+
+.sum__cap {
   font-size: $gz-fs-caption;
   color: $gz-ink-3;
 }
 
-.filter.is-on {
-  color: $gz-accent;
-  border-color: $gz-accent;
-  font-weight: 600;
-  background: $gz-accent-soft;
-}
-
-/* 榜单行 */
+/* 账本 */
 .list {
   display: flex;
   flex-direction: column;
   gap: 18rpx;
+  margin-top: 22rpx;
 }
 
 .row {
@@ -103,11 +115,6 @@
   background: $gz-surface;
   border: 1rpx solid $gz-line;
   border-radius: $gz-radius-md;
-  transition: opacity 0.2s ease;
-}
-
-.row.is-off {
-  opacity: 0.72;
 }
 
 .row__top {
@@ -117,37 +124,32 @@
 }
 
 .row__name {
+  flex: 1;
   font-size: $gz-fs-body;
   font-weight: 700;
   color: $gz-ink;
 }
 
-.row__watch {
-  padding: 6rpx 18rpx;
+.row__tag {
+  padding: 4rpx 14rpx;
   border-radius: 999rpx;
   font-size: $gz-fs-caption;
-  border: 1rpx solid $gz-line;
-  color: $gz-ink-3;
-}
-
-.row__watch.is-on {
-  background: $gz-accent-soft;
-  border-color: $gz-accent;
-  color: $gz-accent;
+  background: rgba(196, 96, 46, 0.14);
+  color: #b25a2c;
 }
 
 .row__body {
   margin-top: 18rpx;
   display: flex;
   align-items: baseline;
-  gap: 14rpx;
+  gap: 12rpx;
 }
 
 .row__rate-num {
   font-size: 44rpx;
   font-weight: 800;
-  color: $gz-accent;
   line-height: 1;
+  color: $gz-accent;
 }
 
 .row__rate-cap {
@@ -155,22 +157,24 @@
   color: $gz-ink-3;
 }
 
-.row__advice {
+.row__rate {
   margin-left: auto;
+  font-size: $gz-fs-caption;
+  color: $gz-ink-2;
+}
+
+.row__topics {
+  margin-top: 16rpx;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10rpx;
+}
+
+.topic {
   padding: 4rpx 14rpx;
   border-radius: 999rpx;
   font-size: $gz-fs-caption;
-  background: rgba(132, 162, 104, 0.2);
-  color: #6d8b3f;
-}
-
-.row__advice.is-bad {
-  background: rgba(196, 96, 46, 0.14);
-  color: #b25a2c;
-}
-
-.row__rate-empty {
-  font-size: $gz-fs-caption;
+  border: 1rpx solid $gz-line;
   color: $gz-ink-3;
 }
 
@@ -183,41 +187,14 @@
   justify-content: space-between;
 }
 
-.row__count {
+.row__time {
   font-size: $gz-fs-caption;
   color: $gz-ink-3;
 }
 
-.row__count-n {
-  color: #6d8b3f;
-}
-
-.row__count-n.is-no {
-  color: #b25a2c;
-}
-
-.row__acts {
-  display: flex;
-  gap: 12rpx;
-}
-
-.act {
-  padding: 8rpx 22rpx;
-  border-radius: 999rpx;
+.row__go {
   font-size: $gz-fs-caption;
-  border: 1rpx solid $gz-line;
-  color: $gz-ink-2;
-}
-
-.act--yes {
-  background: $gz-accent-soft;
-  border-color: $gz-accent;
   color: $gz-accent;
-}
-
-.act--no {
-  border-color: $gz-line;
-  color: $gz-ink-3;
 }
 
 /* 空态 */
@@ -266,5 +243,6 @@
 .foot__text {
   font-size: $gz-fs-caption;
   letter-spacing: 0.08em;
+  text-align: center;
   color: $gz-ink-3;
 }

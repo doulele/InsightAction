@@ -328,12 +328,15 @@ button {
   font-variant-numeric: tabular-nums;
 }
 
-.gz-skin--tech .hall-head__title,
+/*
+ * 大厅头（.hall-head__name）的同名规则**不在这里** —— 它在组件内，全局/页面样式选不中它，
+ * 见 components/HallHead/HallHead.scss 末尾那两条（皮肤类挂在组件根节点上）。
+ * 这里只留子页顶栏：它由各页面模板直接渲染，是本文件的势力范围。
+ */
 .gz-skin--tech .nav__title {
   letter-spacing: 0.02em;
 }
 
-.gz-skin--dao .hall-head__title,
 .gz-skin--dao .nav__title {
   letter-spacing: 0.14em;
 }

@@ -194,6 +194,22 @@ export const HORIZON_DESC: Record<PlanHorizonKey, string> = {
   long: '一个月以上，或者干脆不定日子',
 }
 
+/**
+ * 行大厅三本待办账的**分工说明**（2026-09-17）。
+ *
+ * 为什么必须有这一行：行这一环同时摆着三份长得像待办清单的东西（三件事 / 日课 / 今天要走的步子），
+ * 用户第一反应是"这不是重复了吗"。所以每块标题下面都要有一句"它管什么" ——
+ * 承诺 / 重复 / 推进，三者不重叠，但不说清就看不出来。
+ */
+export const ACTION_SPLIT = {
+  /** 今日三件事 */
+  three: '今天最重要的三件 · 跨天清零',
+  /** 日课 */
+  daily: '每天重复一次 · 勾满就收束',
+  /** 今天要走的步子 */
+  step: '跨天目标派到今天的一段',
+} as const
+
 /** 未标挑战类型的普通计划，收束时的通用回望提问 */
 export const PLAN_REFLECT_DEFAULT = '这段路走完，最想留下的一句话是什么？'
 
@@ -294,7 +310,7 @@ const LOCAL_PLAN_WORDS: Record<ModeId, PlanWords> = {
     dailyNote: '不是「分几步走完」，而是每天重复一次。勾满目标天数就收束，中途随时能改。',
     emptyDaily: '还没有在守的日课。\n把「每天做一次」的事立在这，一天一勾，勾满就收束。',
     newDaily: '立一条日课',
-    dailyCap: '在守的日课上限 3 条 —— 与长路分开算',
+    dailyCap: '在守的日课上限 5 条（舒适线 3 条）—— 与长路分开算',
     targetLabel: '目标天数',
     days: (n) => `${n} 天`,
     dailyProgress: (done, total) => `守住 ${done} 天 / 共 ${total} 天`,
@@ -329,7 +345,7 @@ const LOCAL_PLAN_WORDS: Record<ModeId, PlanWords> = {
     dailyNote: '不是里程碑式拆分，而是每日重复执行。完成天数达到目标即关闭，中途可随时调整。',
     emptyDaily: '暂无进行中的每日任务。\n把需要每天执行的事项登记在此，一天一勾，达到目标天数即关闭。',
     newDaily: '新建每日任务',
-    dailyCap: '每日任务上限 3 条 —— 与计划分开计数',
+    dailyCap: '每日任务上限 5 条（舒适线 3 条）—— 与计划分开计数',
     targetLabel: '周期天数',
     days: (n) => `${n} 天`,
     dailyProgress: (done, total) => `已完成 ${done} / ${total} 天`,
@@ -364,7 +380,7 @@ const LOCAL_PLAN_WORDS: Record<ModeId, PlanWords> = {
     dailyNote: '非以步计，而是日复一日。守满即收，中途可改。',
     emptyDaily: '尚无在守之日行。\n把每日必做之事立于此处，一日一勾，守满则收。',
     newDaily: '立一条日行',
-    dailyCap: '在守日行上限三条 —— 与长路分计',
+    dailyCap: '在守日行上限五条（舒适线三条）—— 与长路分计',
     targetLabel: '期限',
     days: (n) => `${n} 日`,
     dailyProgress: (done, total) => `已守 ${done} 日 / 共 ${total} 日`,

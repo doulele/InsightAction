@@ -1,0 +1,75 @@
+/**
+ * RichEditor 的样式（外置，由 RichEditor.vue @import 引入）。
+ * 结构：工具栏一行 + 编辑区（固定高度）+ 底部字数/说明。
+ */
+.re {
+  margin-top: 16rpx;
+  border: 1rpx solid $gz-line;
+  border-radius: $gz-radius-md;
+  background: $gz-input-bg;
+  overflow: hidden;
+}
+
+.re__bar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10rpx;
+  padding: 14rpx 16rpx;
+  border-bottom: 1rpx solid $gz-line-soft;
+}
+
+.re__btn {
+  padding: 6rpx 18rpx;
+  border-radius: 999rpx;
+  border: 1rpx solid $gz-line;
+  background: $gz-surface;
+  font-size: $gz-fs-caption;
+  color: $gz-ink-3;
+}
+
+.re__btn.is-on {
+  border-color: $gz-accent;
+  background: $gz-accent-soft;
+  color: $gz-accent;
+  font-weight: 600;
+}
+
+/*
+ * 编辑区必须有一个确定的高度：`<editor>` 是原生组件，
+ * 高度塌成 0 时在真机上直接看不见（工具里可能还正常，最坑的一种差异）。
+ */
+.re__area {
+  width: 100%;
+  height: 420rpx;
+  padding: 18rpx 20rpx;
+  box-sizing: border-box;
+  font-size: $gz-fs-small;
+  line-height: 1.85;
+  color: $gz-ink;
+}
+
+.re__foot {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16rpx;
+  padding: 10rpx 18rpx 14rpx;
+  border-top: 1rpx solid $gz-line-soft;
+}
+
+.re__count {
+  font-size: 20rpx;
+  color: $gz-ink-3;
+  flex-shrink: 0;
+}
+
+.re__count.is-over {
+  color: #b25a2c;
+  font-weight: 700;
+}
+
+.re__hint {
+  font-size: 20rpx;
+  color: $gz-ink-3;
+  text-align: right;
+}

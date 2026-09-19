@@ -22,6 +22,8 @@
         <!-- 安息日不报完成度：那天没有"还差几件"这回事 -->
         <text class="today__count">{{ sabbath ? '—' : `${daily.doneCount}/${daily.planCount || 3}` }}</text>
       </view>
+      <!-- 三本待办账的分工说明（见 config/lexicon.ts 的 ACTION_SPLIT）：不说清就像重复了三遍 -->
+      <text class="block-hint">{{ ACTION_SPLIT.three }}</text>
 
       <!--
         每条三件事的「出处」（规格 §4.4 回应式行动）：
@@ -72,6 +74,7 @@
         <text class="dailies__label">{{ planW.daily }} · 今天</text>
         <text class="dailies__n">{{ dailyKept }}/{{ dailyItems.length }}</text>
       </view>
+      <text class="block-hint">{{ ACTION_SPLIT.daily }}</text>
       <view
         v-for="d in dailyItems"
         :key="d.planId"
@@ -99,6 +102,7 @@
         <text class="steps__label">{{ planW.today }}</text>
         <text class="steps__n">{{ stepDone }}/{{ todaySteps.length }}</text>
       </view>
+      <text class="block-hint">{{ ACTION_SPLIT.step }}</text>
 
       <view v-if="todaySteps.length" class="steps__list">
         <PlanStep v-for="s in todaySteps" :key="s.key" :item="s" @toggle="onToggleStep" />
@@ -232,7 +236,7 @@ import { poke } from '@/composables/useBuddy'
 import { useXpStore } from '@/stores/xp'
 import { useWishStore } from '@/stores/wish'
 import { syncTabBar } from '@/utils/skin'
-import { CHALLENGE_LABEL, HORIZON_LABEL, hallLine, planWords } from '@/config/lexicon'
+import { ACTION_SPLIT, CHALLENGE_LABEL, HORIZON_LABEL, hallLine, planWords } from '@/config/lexicon'
 import { navigateTo, ROUTES } from '@/router/routes'
 import type { RoutePath } from '@/router/routes'
 import type { EntryBadge } from '@/components/EntryItem/EntryItem.vue'

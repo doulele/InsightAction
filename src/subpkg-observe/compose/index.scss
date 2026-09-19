@@ -104,6 +104,22 @@
   opacity: 0.75;
 }
 
+/*
+ * 事 / 理 / 道 的解释（随选中的那张签换，文案见页面里的 KIND_NOTES）。
+ * 放在签的下面、常驻不藏：三分看似直白，实际最容易混（一条新闻里既有事也有理），
+ * 而它是这一页第一个要做的判断。左侧一道主色竖条，表示"这是你刚选的那一类的说明"。
+ */
+.kinds__note {
+  margin-top: 12rpx;
+  padding: 16rpx 20rpx;
+  border-left: 4rpx solid $gz-accent;
+  border-radius: $gz-radius-sm;
+  background: $gz-surface-2;
+  font-size: $gz-fs-caption;
+  line-height: 1.75;
+  color: $gz-ink-2;
+}
+
 /* 形态：轨道式分段控件（选中那颗像被按进去的按钮） */
 .forms {
   display: flex;
@@ -137,6 +153,130 @@
 .forms__pill.is-on .forms__text {
   color: $gz-accent;
   font-weight: 600;
+}
+
+/*
+ * 导入文件（2026-09-17，2026-09-18 改版）：
+ * **整块只有一行** —— 「导入文件」按钮 + 格式清单 + 问号圆标（三者同一行，两个入口都打开格式说明）。
+ * 按钮不带箭头：会跟富文本工具栏的图标抢注意力。
+ *
+ * 这一行是压出来的，动字号 / 往里加东西之前先看这笔宽度账（卡片内可用 ≈618rpx）：
+ *   按钮 ≈130rpx（「导入文件」4 字 × 22rpx + 两侧 20rpx 内边距）
+ *   + 间距 10rpx
+ *   + 清单 ≈390rpx（「JSON 最准」20rpx ＋ 「（或MD/TXT/Word/Excel/PDF/图片）」18rpx）
+ *   + 间距 10rpx
+ *   + 问号 ≈60rpx（44rpx 圆标 + 两侧 8rpx 内边距，点击区比圆大一圈）
+ *   ≈ 600rpx，余量 18rpx —— 已经贴着地板了。
+ * 所以：清单字号取 18rpx（括号里）/ 20rpx（被强调的「JSON 最准」，比 caption 22rpx 小一档）、
+ * 分隔用「/」不留空格、括号里只说一个"或"字、卡片左右内边距收到 18rpx —— 少一样就会折行
+ * （折行后退回两行排版：清单整段落到第二行，可接受但不理想）。
+ */
+.import {
+  display: flex;
+  align-items: center;
+  gap: 10rpx;
+  margin-top: 22rpx;
+  padding: 16rpx 18rpx;
+  background: $gz-surface;
+  border: 1rpx dashed $gz-line;
+  border-radius: $gz-radius-md;
+}
+
+.import__btn {
+  flex: none;
+  display: flex;
+  align-items: center;
+  padding: 8rpx 20rpx;
+  border-radius: 999rpx;
+  background: $gz-accent-soft;
+  border: 1rpx solid $gz-accent;
+}
+
+/* 解析中：按钮整体压暗（禁用连点，也让人知道正在等） */
+.import__btn.is-off {
+  opacity: 0.5;
+}
+
+.import__text {
+  font-size: $gz-fs-caption;
+  font-weight: 600;
+  color: $gz-accent;
+}
+
+/*
+ * 格式清单：18rpx 是一行放得下的最小档。
+ * 那根虚线细下划线是"这里可以点（打开格式说明）"的唯一提示 ——
+ * 用 $gz-line-soft 压到几乎看不见：给的是可供性，不抢字。
+ */
+.import__hint {
+  min-width: 0;
+  padding-bottom: 2rpx;
+  border-bottom: 1rpx dashed $gz-line-soft;
+  font-size: 18rpx;
+  line-height: 1.5;
+  color: $gz-ink-3;
+}
+
+/*
+ * 「JSON 最准」：清单里唯一被突出的那一截 —— 20rpx（比括号里的 18rpx 大一档）
+ * + 主题色 + 加粗，三层一起把它从括号里拎出来。它是最准的一条路（字段与表单一一对应）。
+ * 注意：这截字号一动就要重算宽度账（见文件头），它是这条线上最贵的一段。
+ */
+.import__k {
+  font-size: 20rpx;
+  font-weight: 700;
+  color: $gz-accent;
+  letter-spacing: 0.04em;
+}
+
+/*
+ * 问号圆标（格式说明的入口；清单点了也是它）：本体 44rpx，
+ * 外面留 8rpx 内边距把点击区撑到 60rpx —— 圆小、点得中，也不多占宽度。
+ * margin-left: auto 让它始终贴着卡片右缘，与清单之间空多少随屏宽自适应。
+ */
+.import__help {
+  margin-left: auto;
+  flex: none;
+  padding: 8rpx;
+}
+
+.import__help-q {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 44rpx;
+  height: 44rpx;
+  border: 1rpx solid $gz-line;
+  border-radius: 50%;
+  font-size: 24rpx;
+  line-height: 1;
+  color: $gz-ink-3;
+}
+
+/* 填完后的提示条：不做成"告警横幅"，用一段安静的引用块 —— 它的意思是"过一遍再存"，不是出错 */
+.import__notice {
+  display: flex;
+  align-items: flex-start;
+  gap: 12rpx;
+  margin-top: 12rpx;
+  padding: 14rpx 18rpx;
+  background: $gz-surface-2;
+  border-left: 4rpx solid $gz-accent;
+  border-radius: $gz-radius-sm;
+}
+
+.import__notice-text {
+  flex: 1;
+  font-size: 20rpx;
+  line-height: 1.7;
+  color: $gz-ink-2;
+}
+
+.import__notice-x {
+  flex: none;
+  padding: 0 8rpx;
+  font-size: $gz-fs-body;
+  color: $gz-ink-3;
 }
 
 /* 草稿条：挂在最上面，点「继续写」才填回表单（不自动覆盖当前输入） */

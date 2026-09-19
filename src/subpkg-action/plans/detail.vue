@@ -121,20 +121,70 @@
         </view>
       </view>
 
-      <!-- long 型：节点列表 -->
+      <!--
+        long 型：节点**树**（2026-09-17 支持嵌套 ≤5 层）。
+        只有叶子是任务：能勾、能排期、能自评进度；父步骤只是分组 ——
+        所以这里不写递归组件，而是把树拍平成带 depth 的行（缩进靠 padding-left），
+        小程序里递归组件成本高，长列表也更容易卡（见 stores/plan.ts 的「树的走法」）。
+      -->
       <view v-else class="card">
         <view class="card__head">
           <text class="card__title">{{ w.node }}</text>
-          <text class="card__n">{{ progress.done }}/{{ progress.total }}</text>
+          <text class="card__n">{{ progress.done }}/{{ progress.total }}{{ progress.pct !== ratioPct ? ` · ${progress.pct}%` : '' }}</text>
         </view>
+        <text class="card__sub">
+          最多 {{ MAX_NODE_DEPTH }} 层：父步骤是分组，只有最末一层能勾选、能排期{{ canProgressPlan ? '、能自评进度' : '' }}。
+        </text>
 
-        <view v-if="nodeSteps.length" class="steps">
-          <PlanStep v-for="s in nodeSteps" :key="s.key" :item="s" @toggle="onToggleNode">
-            <view v-if="!s.done" class="mini" hover-class="gz-hover" @click="schedule(s)">
-              {{ scheduledToday(s) ? '取消排期' : '排到今天' }}
+        <view v-if="treeRows.length" class="tree">
+          <view
+            v-for="r in treeRows"
+            :key="r.node.id"
+            class="tree__row"
+            :class="{ 'is-leaf': !r.hasChildren }"
+            :style="{ paddingLeft: `${(r.depth - 1) * NODE_INDENT_RPX}rpx` }"
+          >
+            <view class="tree__main">
+              <text
+                v-if="r.hasChildren"
+                class="tree__caret"
+                hover-class="gz-hover"
+                @click="toggleOpen(r.node.id)"
+              >
+                {{ r.open ? '▾' : '▸' }}
+              </text>
+              <view
+                v-else
+                class="tree__check"
+                :class="{ 'is-on': r.node.done }"
+                hover-class="gz-hover"
+                @click="onToggleRow(r)"
+              >
+                <text v-if="r.node.done" class="tree__tick">✓</text>
+              </view>
+              <text class="tree__title" :class="{ 'is-done': r.node.done, 'is-group': r.hasChildren }">
+                {{ r.node.title }}
+              </text>
             </view>
-            <view class="mini" hover-class="gz-hover" @click="dropNode(s)">删除</view>
-          </PlanStep>
+
+            <!-- 叶子的自评进度（只有中长期的叶子有；拉满等于勾上，见 store.updateNodeProgress） -->
+            <view v-if="!r.hasChildren && canProgressPlan" class="bar bar--leaf">
+              <view class="bar__fill" :style="{ width: `${rowPct(r.node)}%` }" />
+            </view>
+
+            <view class="tree__ops" @click.stop>
+              <text v-if="r.depth < MAX_NODE_DEPTH" class="mini" hover-class="gz-hover" @click="addChild(r)">
+                ＋ 子{{ w.node }}
+              </text>
+              <template v-if="!r.hasChildren">
+                <text class="mini" hover-class="gz-hover" @click="scheduleNode(r)">
+                  {{ scheduledTodayNode(r) ? '取消排期' : '排到今天' }}
+                </text>
+                <text v-if="canProgressPlan" class="mini" hover-class="gz-hover" @click="pickProgress(r)">进度</text>
+              </template>
+              <text class="mini" hover-class="gz-hover" @click="dropNodeRow(r)">删除</text>
+            </view>
+          </view>
         </view>
         <text v-else class="card__sub">还没有{{ w.node }}。把它拆成能一步步走完的样子，再开始。</text>
 
@@ -142,7 +192,7 @@
           <input
             v-model="newNode"
             class="quick__input"
-            :placeholder="`加一个${w.node}`"
+            :placeholder="`加一个${w.node}（之后再往下拆）`"
             placeholder-class="quick__ph"
             :maxlength="30"
             confirm-type="done"
@@ -228,10 +278,13 @@ import {
   DAILY_PRESETS,
   DAILY_MIN_DAYS,
   DAILY_MAX_DAYS,
+  MAX_NODE_DEPTH,
+  NODE_INDENT_RPX,
+  PROGRESS_HORIZONS,
   type ChallengeType,
   type PlanHorizon,
   type Plan,
-  type StepItem,
+  type PlanNode,
 } from '@/stores/plan'
 import { CHALLENGE_LABEL, HORIZON_LABEL, planWords } from '@/config/lexicon'
 import { useModeStore } from '@/stores/mode'
@@ -253,6 +306,15 @@ onLoad((query) => {
 
 const item = computed<Plan | undefined>(() => plan.byId(id.value))
 const progress = computed(() => (item.value ? plan.progressOf(item.value) : { done: 0, total: 0, pct: 0 }))
+/**
+ * done/total 的百分比。
+ * 用来和 `progress.pct` 对比：pct 是**含叶子自评进度**的整体完成度，
+ * 两者相等时说明没有自评进度，页面上就不多显示一个百分比（少一个数字少一分噪音）。
+ */
+const ratioPct = computed(() => {
+  const p = progress.value
+  return p.total > 0 ? Math.round((p.done / p.total) * 100) : 0
+})
 const nextTitle = computed(() => (item.value ? plan.nextNodeOf(item.value)?.title ?? '' : ''))
 const challengeLabel = computed(() => (item.value?.challenge ? CHALLENGE_LABEL[item.value.challenge] : ''))
 /** 期限档：老数据没有存档，按目标日的跨度推（store 里同一个口径） */
@@ -404,25 +466,64 @@ function applyCustom(): void {
   if (item.value?.status === 'done') reflectOn.value = item.value
 }
 
-/* ---------------- 节点 ---------------- */
-const nodeSteps = computed<StepItem[]>(() => {
+/* ---------------- 节点树（2026-09-17 支持嵌套 ≤5 层） ---------------- */
+
+/** 展开态：只记"手动折过/展开过"的那几个节点，默认规则见 openOf */
+const expanded = ref<Record<number, boolean>>({})
+
+interface TreeRow {
+  node: PlanNode
+  /** 根下第一层 = 1 */
+  depth: number
+  hasChildren: boolean
+  open: boolean
+}
+
+/** 默认展开第 1 层、更深的收起 —— 5 层全展开会把页面撑成一张密不透风的表 */
+function openOf(node: PlanNode, depth: number): boolean {
+  const manual = expanded.value[node.id]
+  return manual === undefined ? depth <= 1 : manual
+}
+
+/** 树 → 拍平的行（只含"当前可见"的节点；折叠的分支不进数组） */
+const treeRows = computed<TreeRow[]>(() => {
   const p = item.value
   if (!p) return []
-  return p.nodes.map((n) => ({
-    key: `n-${p.id}-${n.id}`,
-    kind: 'node' as const,
-    planId: p.id,
-    nodeId: n.id,
-    title: n.title,
-    planTitle: p.title,
-    done: n.done,
-    overdue: Boolean(n.dueDay && n.dueDay < todayK && !n.done),
-    shelfDays: n.dueDay && n.dueDay < todayK && !n.done
-      ? Math.round((Date.parse(`${todayK}T12:00:00`) - Date.parse(`${n.dueDay}T12:00:00`)) / 86400000)
-      : 0,
-    challenge: p.challenge,
-  }))
+  const rows: TreeRow[] = []
+  const walk = (parentId: number | undefined, depth: number): void => {
+    const kids = parentId === undefined ? plan.rootsOf(p) : plan.childrenOf(p, parentId)
+    for (const node of kids) {
+      const has = plan.hasChildren(p, node.id)
+      const open = has ? openOf(node, depth) : false
+      rows.push({ node, depth, hasChildren: has, open })
+      if (has && open) walk(node.id, depth + 1)
+    }
+  }
+  walk(undefined, 1)
+  return rows
 })
+
+/** 这一档的路开放叶子自评进度（短期不给进度条 —— 一周内走得完的事，勾干净就够了） */
+const canProgressPlan = computed(() =>
+  Boolean(item.value && PROGRESS_HORIZONS.includes(plan.horizonOf(item.value))),
+)
+
+function rowPct(node: PlanNode): number {
+  return plan.leafPct(node)
+}
+
+function toggleOpen(nodeId: number): void {
+  const row = treeRows.value.find((r) => r.node.id === nodeId)
+  expanded.value = { ...expanded.value, [nodeId]: !(row?.open ?? false) }
+}
+
+/** 勾选：只对叶子有效（父节点在 store 里也会被拒，页面这里先不响应） */
+function onToggleRow(r: TreeRow): void {
+  const p = item.value
+  if (!p || r.hasChildren) return
+  const res = plan.toggleStep(p.id, r.node.id)
+  if (res.closed) reflectOn.value = p
+}
 
 const newNode = ref('')
 
@@ -434,31 +535,69 @@ function addNode(): void {
   }
 }
 
-function onToggleNode(s: StepItem): void {
-  if (s.nodeId === undefined) return
-  const res = plan.toggleStep(s.planId, s.nodeId)
-  if (res.closed && item.value) reflectOn.value = item.value
-}
-
-function scheduledToday(s: StepItem): boolean {
-  if (!item.value || s.nodeId === undefined) return false
-  return item.value.nodes.find((n) => n.id === s.nodeId)?.dueDay === todayK
-}
-
-function schedule(s: StepItem): void {
-  if (!item.value || s.nodeId === undefined) return
-  plan.scheduleNode(item.value.id, s.nodeId, scheduledToday(s) ? '' : todayK)
-}
-
-function dropNode(s: StepItem): void {
-  if (!item.value || s.nodeId === undefined) return
+/** 加子步骤：到第 MAX_NODE_DEPTH 层就拦下并说明原因（不静默失败） */
+function addChild(r: TreeRow): void {
+  const p = item.value
+  if (!p) return
+  if (r.depth >= MAX_NODE_DEPTH) {
+    uni.showToast({ title: `最多 ${MAX_NODE_DEPTH} 层 —— 再往下拆，不如另立一条路`, icon: 'none' })
+    return
+  }
   uni.showModal({
-    title: '拿掉这一步？',
+    title: `在「${r.node.title}」下面加一步`,
+    editable: true,
+    placeholderText: '这一步要做什么（它下面还能再拆）',
+    confirmText: '加',
+    cancelText: '算了',
+    success: (res) => {
+      if (!res.confirm) return
+      const title = (res.content ?? '').trim()
+      if (!title) return
+      if (plan.addNode(p.id, { title }, r.node.id)) {
+        expanded.value = { ...expanded.value, [r.node.id]: true }
+        uni.showToast({ title: '已加一步', icon: 'none' })
+      }
+    },
+  })
+}
+
+/** 自评进度：五档比滑块准、也比手填快（拉满等于勾上，见 store.updateNodeProgress） */
+function pickProgress(r: TreeRow): void {
+  const p = item.value
+  if (!p) return
+  const options = [0, 25, 50, 75, 100]
+  uni.showActionSheet({
+    itemList: options.map((n) => (n >= 100 ? '做完了（勾上）' : `${n}%`)),
+    success: (res) => {
+      const v = options[res.tapIndex] ?? 0
+      const out = plan.updateNodeProgress(p.id, r.node.id, v)
+      if (out.closed) reflectOn.value = p
+    },
+  })
+}
+
+function scheduledTodayNode(r: TreeRow): boolean {
+  return r.node.dueDay === todayK
+}
+
+function scheduleNode(r: TreeRow): void {
+  const p = item.value
+  if (!p) return
+  plan.scheduleNode(p.id, r.node.id, scheduledTodayNode(r) ? '' : todayK)
+}
+
+/** 删除：父节点会**连子树一起删**，所以确认框里如实报数（不吓人，也不骗人） */
+function dropNodeRow(r: TreeRow): void {
+  const p = item.value
+  if (!p) return
+  const n = r.hasChildren ? plan.subtreeIds(p, r.node.id).length : 1
+  uni.showModal({
+    title: n > 1 ? `拿掉「${r.node.title}」和它下面的 ${n - 1} 步？` : '拿掉这一步？',
     content: '其余步骤与进度不受影响。',
     confirmText: '拿掉',
     cancelText: '留着',
     success: (res) => {
-      if (res.confirm && item.value && s.nodeId !== undefined) plan.removeNode(item.value.id, s.nodeId)
+      if (res.confirm) plan.removeNode(p.id, r.node.id)
     },
   })
 }

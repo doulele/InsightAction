@@ -36,6 +36,13 @@
       </view>
     </view>
 
+    <!-- 来源筛选（从「来源账本」点进来时才有）：复用筛选胶囊的样式，看得见、点得掉 -->
+    <view v-if="srcFilter" class="filters">
+      <view class="filter is-on" hover-class="gz-hover" @click="srcFilter = ''">
+        <text class="filter__text">来源 · {{ srcFilter }} ×</text>
+      </view>
+    </view>
+
     <!-- 清理提示：存了 7 天没动的东西 -->
     <view v-if="dueCount > 0" class="due" hover-class="gz-hover" @click="filter = 'due'">
       <text class="due__text">{{ dueCount }} 条存了 7 天还没处理</text>
@@ -143,6 +150,7 @@
 import { computed, ref } from 'vue'
 import { onLoad, onShow } from '@dcloudio/uni-app'
 import { useObserveStore, type ObsItem } from '@/stores/observe'
+import { LEDGER_UNNAMED } from '@/config/ledger'
 import { useSkinClass } from '@/composables/useSkin'
 import { navigateTo, ROUTES } from '@/router/routes'
 
@@ -160,15 +168,24 @@ const FILTERS: Array<{ id: FilterId; label: string }> = [
 
 const filter = ref<FilterId>('all')
 const kw = ref('')
+/**
+ * 来源筛选（2026-09-17）：从「来源账本」点一行进来时带 `?src=`。
+ * 它是一层**附加**筛选（与类型筛选、搜索叠加），所以页面上必须看得见、点得掉 ——
+ * 否则用户会以为"我存的东西怎么少了"。
+ */
+const srcFilter = ref('')
 
 const dueList = computed(() => store.dueForCleanup())
 const dueCount = computed(() => dueList.value.length)
 
 const shown = computed<ObsItem[]>(() => {
   const base = kw.value.trim() ? store.search(kw.value) : store.items
-  if (filter.value === 'all') return base
-  if (filter.value === 'due') return base.filter((i) => isDue(i))
-  return base.filter((i) => i.kind === filter.value)
+  const ofSrc = srcFilter.value
+    ? base.filter((i) => (i.sourceName?.trim() || LEDGER_UNNAMED) === srcFilter.value)
+    : base
+  if (filter.value === 'all') return ofSrc
+  if (filter.value === 'due') return ofSrc.filter((i) => isDue(i))
+  return ofSrc.filter((i) => i.kind === filter.value)
 })
 
 function isDue(it: ObsItem): boolean {
@@ -287,8 +304,11 @@ function goBack(): void {
 }
 
 onLoad((query) => {
+  const q = (query ?? {}) as Record<string, string>
   // 从大厅的「N 条存了 7 天没处理」进来时直接落到待清理
-  if ((query as Record<string, string>)?.filter === 'due') filter.value = 'due'
+  if (q.filter === 'due') filter.value = 'due'
+  // 从「来源账本」点一行进来时只看那个来源（页面上有胶囊可一键取消）
+  if (q.src) srcFilter.value = decodeURIComponent(q.src)
 })
 </script>
 

@@ -30,8 +30,8 @@
         <text class="sum__cap">静修分钟</text>
       </view>
       <view class="sum__item">
-        <text class="sum__n">{{ monthAgg.marks }}</text>
-        <text class="sum__cap">辨源次数</text>
+        <text class="sum__n">{{ monthAgg.obsN }}</text>
+        <text class="sum__cap">观 · 条数</text>
       </view>
       <view class="sum__item">
         <text class="sum__n">{{ monthAgg.traces }}</text>
@@ -91,9 +91,9 @@
       </view>
       <view class="detail">
         <view class="detail__col">
-          <view class="detail__box" :class="{ 'is-on': d.marks > 0 }">
+          <view class="detail__box" :class="{ 'is-on': d.obsN > 0 }">
             <text class="detail__label">{{ dl('observe') }}</text>
-            <text class="detail__value">{{ d.marks }} 次</text>
+            <text class="detail__value">{{ d.obsN }} 条</text>
           </view>
           <view class="detail__box" :class="{ 'is-on': d.focusMin > 0 }">
             <text class="detail__label">{{ dl('pause') }}</text>
@@ -208,14 +208,14 @@ const cells = computed<Cell[]>(() => {
 
 /* 月汇总（只统计到今天为止，未来不计） */
 const monthAgg = computed(() => {
-  const agg = { active: 0, focusMin: 0, marks: 0, traces: 0, rest: 0 }
+  const agg = { active: 0, focusMin: 0, obsN: 0, traces: 0, rest: 0 }
   cells.value.forEach((c) => {
     if (c.future) return
     if (c.sabbath) agg.rest += 1
     if (!c.stats) return
     if (c.level > 0) agg.active += 1
     agg.focusMin += c.stats.focusMin
-    agg.marks += c.stats.marks
+    agg.obsN += c.stats.obsN
     agg.traces += c.stats.traces
   })
   return agg
@@ -236,7 +236,7 @@ const selected = computed<Cell | null>(() => {
 const d = computed<DayStats>(() => {
   const s = selected.value?.stats
   if (s) return s
-  return { date: selectedKey.value, focusMin: 0, marks: 0, traces: 0, habitDone: 0, cards: 0, answered: false }
+  return { date: selectedKey.value, focusMin: 0, obsN: 0, traces: 0, habitDone: 0, cards: 0, answered: false }
 })
 
 const selectedLabel = computed(() => {
@@ -254,7 +254,7 @@ const detailNote = computed(() => {
   }
   if (selected.value.level === 0) return '这一天没有留下修行痕迹 —— 也可以是，那天你歇了歇。'
   const groups: string[] = []
-  if (d.value.marks > 0) groups.push('观')
+  if (d.value.obsN > 0) groups.push('观')
   if (d.value.focusMin > 0) groups.push('止')
   if (d.value.cards > 0 || d.value.answered) groups.push('知')
   if (d.value.traces > 0 || d.value.habitDone > 0) groups.push('行')

@@ -247,13 +247,17 @@ export function buildArchive(now = new Date()): ArchiveResult {
   const d1 = cards.filter((c) => c.depth === 1).length
   const d2 = cards.filter((c) => c.depth === 2).length
   const d3 = cards.filter((c) => c.depth === 3).length
-  L.push(`### 我的卡片（共 ${cards.length} 张 · Lv.1 ${d1} / Lv.2 ${d2} / Lv.3 ${d3}）`)
+  /* 书架（2026-09-17）：导出的档案里也分开报一声，免得回头看时不知道"这堆卡怎么混在一起" */
+  const workN = cards.filter((c) => c.domain === 'work').length
+  L.push(
+    `### 我的卡片（共 ${cards.length} 张 · 我的 ${cards.length - workN} / 专业 ${workN} · Lv.1 ${d1} / Lv.2 ${d2} / Lv.3 ${d3}）`,
+  )
   L.push('')
   if (!cards.length) {
     L.push('（还没有卡片）')
   } else {
     for (const c of [...cards].sort((a, b) => b.createdAt - a.createdAt)) {
-      L.push(`- [Lv.${c.depth}] ${oneLine(c.title)} —— ${clip(c.content, 60)}`)
+      L.push(`- [Lv.${c.depth}]${c.domain === 'work' ? '[专业]' : ''} ${oneLine(c.title)} —— ${clip(c.content, 60)}`)
     }
   }
   L.push('')

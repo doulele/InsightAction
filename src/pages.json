@@ -75,10 +75,10 @@
           }
         },
         {
-          "path": "qualityboard/index",
+          "path": "ledger/index",
           "style": {
             "navigationStyle": "custom",
-            "navigationBarTitleText": "信息源质量榜"
+            "navigationBarTitleText": "来源账本"
           }
         },
         {
