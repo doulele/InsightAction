@@ -68,6 +68,13 @@
       （MD / TXT）与要上传解析的二进制格式（Word / Excel / PDF / 图片）。
     -->
     <view class="import">
+      <!--
+        第一行：三个等宽按钮（2026-09-20 用户定版）。
+        前两个是"把清单拿进来"的两条路；第三个是"把格式拿出去"（转发 JSON / MD 模板、复制契约示例、
+        看格式说明 —— 见 showContract 的动作表）。它原来是个 44rpx 的「?」圆标：一个问号兜不住
+        背后四件事，用户也看不出它是什么。之所以也是**按钮**而不是一行小字：这三个控件是同一层
+        的入口（都在回答"清单从哪来、格式往哪去"），长得一样才不会被当成脚注略过。
+      -->
       <view class="import__row">
         <view class="import__btn import__btn--main" hover-class="gz-hover" @click="openPaste">
           <text class="import__text">粘贴清单</text>
@@ -75,14 +82,16 @@
         <view class="import__btn" :class="{ 'is-off': importing }" hover-class="gz-hover" @click="doImport">
           <text class="import__text">{{ importing ? '解析中…' : '导入文件' }}</text>
         </view>
-        <view class="import__help" hover-class="gz-hover" @click="showContract">
-          <text class="import__help-q">?</text>
+        <view class="import__btn" hover-class="gz-hover" @click="showContract">
+          <text class="import__text import__text--help">格式转发/说明</text>
         </view>
       </view>
-      <!-- 格式清单与右端的问号是同一个入口（都打开契约说明；契约按当前形态给，见 showContract） -->
-      <text class="import__hint" hover-class="gz-hover" @click="showContract">
-        <text class="import__k">JSON 粘进来最准</text>（选文件支持 {{ importOtherExts }}/Word/Excel/PDF/图片）
-      </text>
+      <!--
+        说明一行（2026-09-20 用户定的版式：收回一行）：格式清单回到这一行里。
+        它**不是入口**（没有下划线、不挂 hover）—— 三个按钮已经把话说清了，这行只作信息，
+        所以折行也无所谓。
+      -->
+      <text class="import__hint"><text class="import__k">JSON 粘进来最准</text><text class="import__c">· 选文件：{{ importOtherExts }}/Word/Excel/PDF/图片</text></text>
     </view>
     <view v-if="importNotice" class="import__notice">
       <!-- 谁整理的要说清：AI 整理过就标 AI，图片识别标图片识别，别混着说 -->
@@ -466,7 +475,7 @@
         <textarea
           v-model="pasteText"
           class="sheet__area"
-          placeholder='长按这里 → 粘贴，例如 {"title": "…", "summary": "…"}'
+          placeholder="长按这里 → 粘贴，例如 { title: …, summary: … } 这样一份 JSON"
           placeholder-class="sheet__ph"
           :maxlength="20000"
           :focus="pasteFocused"
@@ -629,10 +638,10 @@ const imported = ref(false)
 /** 导入结果的一句话交代（成功填了什么 / 哪里没读到），可手动关掉 */
 const importNotice = ref('')
 /**
- * 括号里那句"其余格式"：JSON 单独提到括号外突出（粘进来最省事的那条路），剩下的都进括号。
- * 本机那几类从白名单派生，二进制那几类给中文说法（别在页面里手写扩展名）；
- * markdown 不列 —— 它和 md 是同一个东西，列出来只增噪（仍在白名单里可选）。
- * 分隔符用「/」且两边不留空格：这一行越短越好读（宽度账见 index.scss 的 .import 注释）。
+ * 说明那一行后半句"选文件支持什么"：本机那几类从白名单派生（别在页面里手写扩展名），
+ * 二进制那几类给中文说法；滤掉两种 —— json（前半句已经在说 JSON）与 markdown
+ * （它和 md 是同一个东西，列出来只增噪，仍在白名单里可选）。
+ * 分隔符用「/」且两边不留空格：这一行越短越好读（版式见 index.scss 的 .import 注释）。
  */
 const importOtherExts = LOCAL_EXTS.filter((e) => e !== 'json' && e !== 'markdown')
   .map((e) => e.toUpperCase())
@@ -1129,7 +1138,7 @@ function applyImport(f: ImportedForm): void {
 }
 
 /* ---------------- 格式说明 / 契约与模板（2026-09-18 建立，2026-09-19 改成按形态给） ----------------
- * 「?」与那行格式清单点开同一个动作表，四项各对应一件事：
+ * 第一行第三个按钮「格式转发/说明」打开这个动作表（2026-09-20 由「?」圆标改来），四项各对应一件事：
  *   复制契约示例 —— 手机上的 AI：文本粘过去就行；
  *   转发 JSON 模板 —— 电脑上的 AI：文件发过去，让它照它填（最推荐）；
  *   转发 MD 模板 —— 电脑上人工填，或 AI 只会写「字段：值」时用；
