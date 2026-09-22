@@ -119,8 +119,11 @@ const weeks = computed<WeekRow[]>(() => {
   const curMon = mondayOf(now)
   const out: WeekRow[] = []
   for (let i = 0; i < 8; i++) {
-    const start = new Date(curMon.getTime() - i * 7 * 24 * 60 * 60 * 1000)
-    const end = new Date(start.getTime() + 7 * 24 * 60 * 60 * 1000)
+    /* 按「日」推进，不加毫秒 —— 夏令时地区的一天不总等于 24 小时，加毫秒会让日 key 错一天 */
+    const start = new Date(curMon)
+    start.setDate(start.getDate() - i * 7)
+    const end = new Date(start)
+    end.setDate(end.getDate() + 7)
     const startKey = dateKeyOf(start)
     const endKey = dateKeyOf(end) // 开区间用
     const inRange = (createdAt: number) => {
@@ -135,7 +138,9 @@ const weeks = computed<WeekRow[]>(() => {
     Object.entries(question.records).forEach(([key, rec]) => {
       if (rec.answer && key >= startKey && key < endKey) c3 += 1
     })
-    const endDate = new Date(end.getTime() - 86400000)
+    /* 末日是 end 的前一天（end 是开区间），同样按日回退 */
+    const endDate = new Date(end)
+    endDate.setDate(endDate.getDate() - 1)
     const row: WeekRow = {
       label: i === 0 ? '本周' : i === 1 ? '上周' : `${i} 周前`,
       range: `${start.getMonth() + 1}.${start.getDate()} - ${endDate.getMonth() + 1}.${endDate.getDate()}`,

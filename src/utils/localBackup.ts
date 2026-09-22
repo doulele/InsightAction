@@ -16,6 +16,7 @@ import { STORE_PREFIX, normalizePersisted } from '@/stores/index'
 import { useAccountStore } from '@/stores/account'
 import { useAppStore } from '@/stores/app'
 import { useAssessmentStore } from '@/stores/assessment'
+import { useBadgeStore } from '@/stores/badges'
 import { useImageStore } from '@/stores/images'
 import { useBodyStore } from '@/stores/body'
 import { useBoxStore } from '@/stores/box'
@@ -101,6 +102,12 @@ const HYDRATORS: Array<{ key: string; use: () => Patchable }> = [
   { key: 'images', use: () => useImageStore() },
   { key: 'app', use: () => useAppStore() },
   { key: 'assessment', use: () => useAssessmentStore() },
+  /*
+   * badges（2026-09-22）：徽章点亮的留痕。它必须跟着备份走 ——
+   * 换机之后如果只剩实时判定，「持恒」「守七」这类依赖当下连续状态的徽章会默默熄灭，
+   * 看上去就像换了个手机把成就弄丢了。留痕在前，判定在后，两者取并集。
+   */
+  { key: 'badges', use: () => useBadgeStore() },
   { key: 'body', use: () => useBodyStore() },
   { key: 'box', use: () => useBoxStore() },
   /*

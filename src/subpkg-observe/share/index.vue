@@ -20,57 +20,121 @@
     </view>
 
     <template v-else>
-      <view class="head">
-        <text class="head__kind">{{ kindLabel }}</text>
-        <text class="head__title">{{ snap.title || '一条分享' }}</text>
-        <view v-if="snap.summary" class="brief">
-          <text class="brief__label">一句话总结</text>
-          <text class="brief__text">{{ snap.summary }}</text>
+      <!--
+        卡一「这一段是什么」：与详情页第一张卡同构 ——
+        卡头（小竖条 + 形态 + 右侧日期）→ 主题标签 → 标题 → 正文块 → 各内容块。
+        来源挪到末尾的卡二（详情页那边它也是单独一张「来源」卡）。
+      -->
+      <view class="card">
+        <view class="card__head">
+          <view class="card__mark" />
+          <text class="card__title">{{ kindLabel }}</text>
+          <text v-if="dateText" class="card__hint">{{ dateText }}</text>
         </view>
-        <view v-if="snap.sourceName || dateText" class="meta">
-          <text v-if="snap.sourceName" class="meta__item">来源 · {{ snap.sourceName }}</text>
-          <text v-if="dateText" class="meta__item">{{ dateText }}</text>
+        <view v-if="snap.topics?.length" class="topics">
+          <text v-for="t in snap.topics" :key="t" class="topic">{{ t }}</text>
         </view>
+        <text class="title">{{ snap.title || '一条分享' }}</text>
+        <!-- 来源名摆在标题下面一行 —— 它本身不是"可点开的东西"，不该为它单开一张卡 -->
+        <text v-if="snap.sourceName" class="src">来源 · {{ snap.sourceName }}</text>
+
+      <!--
+        正文（2026-09-22 改成与详情页同构）：灰底一块 + 卡头小竖条 + 「正文 · 原文 / 视频里讲的」，
+        于是"这段是别人的字"与详情页看到的是同一个东西。
+        内容在**服务端**洗过一遍（白名单标签、丢弃所有属性、图一律不留），
+        这里再过 decorate() 注入内联样式 —— 小程序 rich-text 不吃外部 class（见 utils/richText.ts）。
+      -->
+      <view v-if="hasHtml || snap.content" class="origin">
+        <view class="origin__head">
+          <text class="origin__label">{{ originLabel }}</text>
+          <!-- 与详情页同一套：正文超长时限高九行，就地「展开全文 / 收起」 -->
+          <text v-if="contentLong" class="origin__toggle" hover-class="gz-hover" @click="contentOpen = !contentOpen">
+            {{ contentOpen ? '收起' : '展开全文' }}
+          </text>
+        </view>
+        <view v-if="hasHtml" class="origin__rich" :class="{ 'is-open': contentOpen }">
+          <rich-text :nodes="richNodes" />
+        </view>
+        <text v-else class="origin__text" :class="{ 'is-open': contentOpen }">{{ snap.content }}</text>
       </view>
 
       <!--
-        正文：内容在**服务端**洗过一遍（白名单标签、丢弃所有属性、图一律不留），
-        这里再过 decorate() 注入内联样式 —— 小程序 rich-text 不吃外部 class（见 utils/richText.ts）。
+        块顺序照抄**详情页**（2026-09-22 用户指出分享页与原文对不上）：
+        标题 → 正文 → 摘要 → 重要观点 → 经典语句 → 一句话总结 → 感悟 → 为什么成立。
+        摘要（digest）与一句话总结（summary）是两格：旧快照没有 digest，那一块就不出现。
       -->
-      <view v-if="hasHtml" class="body body--rich">
-        <rich-text :nodes="richNodes" />
-      </view>
-      <view v-else-if="snap.content" class="body">
-        <text class="body__text">{{ snap.content }}</text>
-      </view>
-
-      <view v-if="snap.golden?.length" class="golden">
-        <text v-for="(g, i) in snap.golden" :key="i" class="golden__line">「{{ g }}」</text>
+      <view v-if="snap.digest" class="block">
+        <view class="block__head">
+          <view class="block__tick" />
+          <text class="block__label">摘要</text>
+        </view>
+        <text class="block__text">{{ snap.digest }}</text>
       </view>
 
       <view v-if="snap.viewpoints?.length" class="block">
-        <text class="block__label">重要观点</text>
-        <view v-for="(p, i) in snap.viewpoints" :key="i" class="point">
-          <text v-if="p.title" class="point__title">{{ p.title }}</text>
-          <text v-if="p.text" class="point__text">{{ p.text }}</text>
+        <view class="block__head">
+          <view class="block__tick" />
+          <text class="block__label">重要观点</text>
+        </view>
+        <view v-for="(p, i) in snap.viewpoints" :key="i" class="vp">
+          <text v-if="p.title" class="vp__title">{{ p.title }}</text>
+          <text v-if="p.text" class="vp__text">{{ p.text }}</text>
         </view>
       </view>
 
+      <view v-if="snap.golden?.length" class="block">
+        <view class="block__head">
+          <view class="block__tick" />
+          <text class="block__label">经典语句</text>
+        </view>
+        <view class="golden">
+          <text v-for="(g, i) in snap.golden" :key="i" class="golden__line">「{{ g }}」</text>
+        </view>
+      </view>
+
+      <view v-if="snap.summary" class="block">
+        <view class="block__head">
+          <view class="block__tick" />
+          <text class="block__label">一句话总结</text>
+        </view>
+        <text class="block__text">{{ snap.summary }}</text>
+      </view>
+
       <view v-if="snap.insight" class="block">
-        <text class="block__label">感悟</text>
+        <view class="block__head">
+          <view class="block__tick" />
+          <text class="block__label">感悟</text>
+        </view>
         <text class="block__text">{{ snap.insight }}</text>
       </view>
 
       <view v-if="snap.why" class="block">
-        <text class="block__label">为什么成立</text>
+        <view class="block__head">
+          <view class="block__tick" />
+          <text class="block__label">为什么成立</text>
+        </view>
         <text class="block__text">{{ snap.why }}</text>
       </view>
 
-      <view v-if="snap.link" class="link" hover-class="gz-hover" @click="copyText(snap.link, '原文链接已复制')">
-        <text class="link__text">原文链接 ›</text>
       </view>
-      <view v-if="snap.videoUrl" class="link" hover-class="gz-hover" @click="copyText(snap.videoUrl, '视频链接已复制')">
-        <text class="link__text">视频链接 ›</text>
+
+      <!--
+        卡二「来源」= **可点开的东西的容器**：
+        没有链接就整张卡不出现（原先只有一行「来源 · 视频号」的空卡还写着「点一下复制链接」，是句空话）；
+        有链接时那行**直接显示标题**，点一下复制地址（个人主体没有业务域名，小程序里打不开外站）。
+      -->
+      <view v-if="snap.link || snap.videoUrl" class="card">
+        <view class="card__head">
+          <view class="card__mark" />
+          <text class="card__title">来源</text>
+          <text class="card__hint">点一下复制链接</text>
+        </view>
+        <view v-if="snap.link" class="link" hover-class="gz-hover" @click="copyText(snap.link, '原文链接已复制')">
+          <text class="link__text">{{ linkLabel('原文') }} ›</text>
+        </view>
+        <view v-if="snap.videoUrl" class="link" hover-class="gz-hover" @click="copyText(snap.videoUrl, '视频链接已复制')">
+          <text class="link__text">{{ linkLabel('视频') }} ›</text>
+        </view>
       </view>
 
       <view class="acts">
@@ -133,6 +197,28 @@ const kindLabel = computed(() => {
 
 const hasHtml = computed(() => hasMarkup(snap.value?.contentHtml))
 const richNodes = computed(() => decorate(snap.value?.contentHtml ?? ''))
+
+/** 正文限高与展开（与详情页同一口径：纯文本超过 240 字才算长） */
+const contentOpen = ref(false)
+const CONTENT_LONG = 240
+const contentLong = computed(() => (snap.value?.content?.length ?? 0) > CONTENT_LONG)
+
+/**
+ * 链接那一行显示**标题**（用户点它就是"去看这一条"，标题比"原文链接"这种通用词有用得多）；
+ * 没有标题时才退回一句通用文案（`原文` / `视频`）。
+ */
+function linkLabel(kind: string): string {
+  const t = (snap.value?.title || '').trim()
+  return t ? `${kind} · ${t}` : kind
+}
+
+/** 正文那一块的标签：三种形态读法不同 —— 与 detail/index.vue 的 originLabel 一字不差（两页要一致） */
+const originLabel = computed(() => {
+  const f = snap.value?.form
+  if (f === 'quote') return '那一句话'
+  if (f === 'video') return '正文 · 视频里讲的'
+  return '正文 · 原文'
+})
 
 const dateText = computed(() => {
   const iso = snap.value?.publishedAt

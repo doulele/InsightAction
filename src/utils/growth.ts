@@ -5,9 +5,11 @@
  * 注意：本模块的函数在组件 setup 求值期内调用（内部即时取 Pinia store）。
  */
 import type { BadgeContext } from '@/config/badges'
+import { BADGE_RULES } from '@/config/badges'
 import type { HallId } from '@/config/lexicon'
 import { dateKeyOf } from '@/utils/dateKey'
 import { useAssessmentStore } from '@/stores/assessment'
+import { useBadgeStore } from '@/stores/badges'
 import { useBodyStore } from '@/stores/body'
 import { useFocusStore } from '@/stores/focus'
 import { useHabitStore } from '@/stores/habit'
@@ -51,10 +53,15 @@ export function buildBadgeContext(): BadgeContext {
     proverbTotal: proverb.items.length,
     proverbEchoed: proverb.items.filter(reviewFinished).length,
     todoDone: trace.countKind('action.todo'),
-    boxDone: trace.list.filter((t) => t.kind === 'action.box' && t.text.includes('完成')).length,
+    boxDone: countBoxDone(trace.list),
     /* 「走完一条长路」只认收束态：立 flag 不算，节点全走完才算（对齐 action.challenge 的给分口径） */
     challengeCount: plan.plans.filter((p) => p.kind === 'long' && p.status === 'done').length,
-    challengeCogCount: plan.plans.filter((p) => p.status === 'done' && p.challenge === 'cog').length,
+    /*
+     * 认知型同样只认长期档（2026-09-22 修正）：这一枚与上面的「破局」是同一句话的两种问法，
+     * 漏掉 kind 筛选就成了"今日这一步也算推翻了一个判断"，与「破局」的口径装不到一起去。
+     */
+    challengeCogCount: plan.plans.filter((p) => p.kind === 'long' && p.status === 'done' && p.challenge === 'cog')
+      .length,
 
     /* ↓ 规格 §12.4 新增：观的四类计数 + 知的「用上了」 */
     dailyReadCount: trace.countKind('observe.daily'),
@@ -73,6 +80,94 @@ export function buildBadgeContext(): BadgeContext {
     bodyReadDays: body.readDays,
     bodyGoalHit: body.goalHitCount > 0,
   }
+}
+
+/** 「盲盒达成」这条痕迹的 ref：写痕时必须带上，之后才能把"开出那只盒"与"走出那一步"分开 */
+export const BOX_DONE_REF = 'box-done'
+/** 老版本没有 ref，靠这句文案兜底；换新文案**必须**同步这里，否则历史记录会集体漏算 */
+export const BOX_DONE_TEXT = '完成今日微行动'
+
+/** 一条 action.box 痕迹是不是「达成」（而不是开出那只盒本身） */
+export function isBoxDone(t: Trace): boolean {
+  return t.ref === BOX_DONE_REF || t.text.includes(BOX_DONE_TEXT)
+}
+
+/**
+ * 「盲盒达成」的计数口径 —— 只认 HOME 页面上那一次「完成今日微行动」。
+ *
+ * 这里为什么不用 `t.value > 0`：安息日与配额会让 value 归零而**行为照常发生**
+ * （见 config/trace.ts 的 DAY_CAP 与 utils/sabbath.ts），那样会把真实的一次达成漏掉。
+ * 也不要再写在调用处 —— `text.includes('完成')` 这种匹配一旦文案动一个字就全线失效，
+ * 之前它在 utils 与 weekly 页里各写了一份（两份口径已经开始分叉）。
+ */
+export function countBoxDone(traces: Trace[]): number {
+  return traces.filter((t) => t.kind === 'action.box' && isBoxDone(t)).length
+}
+
+/**
+ * 当下命中的徽章 id。
+ *
+ * 判定规则仍然只有 `config/badges.ts` 一份，这里不过是把它跑一遍 —— 别在此处补第二个真相。
+ */
+export function hitBadgeIds(ctx: BadgeContext = buildBadgeContext()): string[] {
+  return BADGE_RULES.filter((r) => r.hit(ctx)).map((r) => r.id)
+}
+
+/**
+ * 把当下命中的徽章并入点亮留痕，返回**本次新点亮**的 id 列表（无新增则为空数组）。
+ *
+ * 有副作用（写 `stores/badges`），所以只在页面 `onShow` 里调一次，**不要放进 computed** ——
+ * 渲染期写 store 会把"看一眼"变成"每帧都在记账"。
+ */
+export function syncBadgeLedger(silent = false): string[] {
+  return useBadgeStore().syncUnlocked(hitBadgeIds(), silent)
+}
+
+/** 一枚徽章的三态 —— 成就墙要能把「此刻仍满足」与「曾经点亮」分开讲 */
+export interface BadgeState {
+  /** 此刻仍然满足达成条件 */
+  now: boolean
+  /** 点亮过（当下命中 or 有留痕）—— 这才是"是否已解锁"的口径 */
+  ever: boolean
+  /** 首次点亮的时刻；从没点亮过为 0 */
+  at: number
+}
+
+/**
+ * 三态一次算清（2026-09-22 加 `now` 与 `at`）。
+ *
+ * 为什么要分开：并集解决了"点亮被收回"，但也把两种不同的处境糊成了一句「已解锁」——
+ * 一种是"你此刻正走在这条路上"，另一种是"你走过，后来断了"。
+ * 前者值得留着热度，后者不该被判成没发生过（规格 §12.4 删掉的正是惩罚性徽章）。
+ * 判定规则仍然只有 `config/badges.ts` 一份，这里只负责补上"什么时候点亮的"。
+ */
+export function badgeStates(ctx: BadgeContext = buildBadgeContext()): Record<string, BadgeState> {
+  const ledger = useBadgeStore()
+  const out: Record<string, BadgeState> = {}
+  for (const r of BADGE_RULES) {
+    const now = r.hit(ctx)
+    const at = ledger.atOf(r.id)
+    out[r.id] = { now, ever: now || at > 0, at }
+  }
+  return out
+}
+
+/**
+ * 徽章墙 / 入口计数的**统一口径**：当下命中 ∪ 已留痕。
+ *
+ * 取并集的理由（2026-09-22）：持恒与守七这类依赖"当下连续状态"的徽章，
+ * 一旦漏了一天就会实时熄灭 —— 那是把"结束了一段连胜"罚成"这段连胜没发生过"。
+ */
+export function badgeUnlockedMap(ctx: BadgeContext = buildBadgeContext()): Record<string, boolean> {
+  const states = badgeStates(ctx)
+  const out: Record<string, boolean> = {}
+  for (const id of Object.keys(states)) out[id] = states[id].ever
+  return out
+}
+
+/** 按上面的口径数出已点亮枚数（顺手把留痕同步回来，省一次全量扫描） */
+export function badgeUnlockedCount(ctx: BadgeContext = buildBadgeContext()): number {
+  return Object.values(badgeUnlockedMap(ctx)).filter(Boolean).length
 }
 
 /** 单日走完四环的天数：四个环在同一天都留下痕迹才算一天 */

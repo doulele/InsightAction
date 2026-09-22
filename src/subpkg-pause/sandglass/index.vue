@@ -298,6 +298,11 @@ onShow(() => {
   ticker = setInterval(tick, 250)
 })
 
+/*
+ * 切后台：只是**停掉定时器**，不是停表（2026-09-22 注明，免得后来人修错方向）。
+ * 进度按 targetTs 这个墙上时刻算，后台那段时间照数；回前台由上面的 onShow 结算，
+ * 声音也不在这儿收 —— App 层统一管（见 App.vue 的 onHide/onShow）。
+ */
 onHide(() => {
   clearTicker()
 })

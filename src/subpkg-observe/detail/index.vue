@@ -44,7 +44,7 @@
               <!-- 收听（2026-09-19）：有正文、插件可用才出现；正在读时控件挪到下面那条收听条上 -->
               <text v-if="canListen && !listening" class="origin__listen" hover-class="gz-hover" @click="startListen">{{ SPEECH_TEXT.start }}</text>
               <text v-if="contentLong" class="origin__toggle" hover-class="gz-hover" @click="contentOpen = !contentOpen">
-                {{ contentOpen ? '收起' : '展开全文' }}
+                {{ contentOpen ? '收起' : '展开' }}
               </text>
             </view>
           </view>
@@ -268,6 +268,14 @@
       <view class="sheet" @click.stop>
         <text class="sheet__title">分享这一条</text>
         <text class="sheet__sub">卡片上显示标题与一句话总结，点开是全文（网页链接在外面的浏览器里也能读）。</text>
+        <!--
+          已分享过的那一条要交代清楚（2026-09-22）：快照是"发布那一刻"的副本，
+          之后再改这一条，链接里的内容**不会**跟着变 —— 用户就是为这个困惑过
+          （他发布之后补了视频链接，打开链接却没有）。
+        -->
+        <text v-if="sharedRecord" class="sheet__sub">
+          链接里是发布当时的那一份 —— 之后再改这一条（补视频链接、改摘要…）它不会跟着变；要更新就撤回后重新分享。
+        </text>
         <button class="sheet__row sheet__row--main" open-type="share" @click="shareOpen = false">
           <text class="sheet__row-text">转发给好友</text>
         </button>
@@ -302,7 +310,7 @@
  * 处理与删除沿用收件匣同一套规矩（配额、二次确认）。
  *
  * 版式上把两类东西分开，免得一屏文字糊成一片：
- *  - 「正文 / 原文」= 灰底一块，限高 520rpx，长了就地「展开全文」—— 别人的字；
+ *  - 「正文 / 原文」= 灰底一块，限高 520rpx，长了就地「展开」—— 别人的字；
  *  - 「摘要 / 重要观点 / 经典语句 / 一句话总结 / 感悟 / 为什么成立」= 细分割线 +
  *    主题色小竖条 —— 你写的字。
  *
@@ -350,7 +358,7 @@ const headTitle = computed(() => {
 /** 今天还能不能深度处理（配额用完只有「今天新存」的会被拦，见 store.canDeepRead） */
 const canRead = computed(() => (item.value ? store.canDeepRead(item.value.id) : false))
 
-/** 正文默认限高（九行上下），超了给一个「展开全文」开关 —— 不让一篇长逐字稿把下面全顶走 */
+/** 正文默认限高（九行上下），超了给一个「展开」开关 —— 不让一篇长逐字稿把下面全顶走 */
 const contentOpen = ref(false)
 const CONTENT_LONG = 240
 /** 限高按**纯文本**长度算：HTML 的标签长度不该影响"算不算长" */
@@ -775,8 +783,13 @@ function shareBodyOf(it: ObsItem): ShareBody {
     kind: it.kind,
     form: it.form,
     title: it.title,
-    /* 卡片上那句"一句话总结"：摘要优先（那是用户自己压出来的），没有就用 summary */
-    summary: it.digest || it.summary,
+    /*
+     * 摘要与一句话总结**分两格传**（2026-09-22）：分享页要按详情页的块顺序摆
+     * （正文 → 摘要 → 重要观点 → 经典语句 → 一句话总结 → …），合并成一个字段就摆不出来。
+     * 聊天卡片上那句仍由页面 `shareTitle` 取 `digest || summary`，与本字段无关。
+     */
+    digest: it.digest,
+    summary: it.summary,
     content: it.content,
     contentHtml: it.contentHtml,
     golden: it.golden,
@@ -797,9 +810,11 @@ function confirmShare(): Promise<boolean> {
     showModal({
       title: '分享这一条？',
       content:
-        '会把这一条（标题、一句话总结、正文，以及你写的金句 / 观点 / 感悟）放到服务器上生成链接，'
+        '会把这一条（标题、摘要、一句话总结、正文，以及你写的金句 / 观点 / 感悟）放到服务器上生成链接，'
         + '默认 30 天后自动删除，你可以随时撤回。\n\n'
-        + '注意：链接谁拿到都能打开 —— 分享前想一下里面有没有不该给别人看的。',
+        + '注意：链接谁拿到都能打开 —— 分享前想一下里面有没有不该给别人看的。\n\n'
+        + '还有一点：链接里是「发布当时」的那一份，之后再改这一条（补上视频链接、改摘要…），'
+        + '链接不会跟着变；要更新就撤回后重新分享（会得到一条新链接）。',
       confirmText: '生成链接',
       cancelText: '再想想',
       success: (res) => resolve(res.confirm),

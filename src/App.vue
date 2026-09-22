@@ -14,7 +14,7 @@ import { applySkin } from '@/utils/skin'
 import { initUpdateManager } from '@/utils/update'
 import { initPrivacyGuard } from '@/utils/privacy'
 import { autoBackupIfDue } from '@/utils/cloudBackup'
-import { initAudioOption, resumeAudio, setSoundEnabled, suspendAudio } from '@/utils/audio'
+import { initAudioOption, resumeAudio, setSoundEnabled } from '@/utils/audio'
 import { suspendSpeech } from '@/utils/speech'
 import { installRouterGuard, ROUTES } from '@/router/routes'
 
@@ -132,17 +132,19 @@ watch(
 )
 
 /*
- * 切后台 / 回前台：普通 innerAudioContext 会被微信挂起，这里主动收干净，
- * 回前台再按记录把环境音续上。页面不用管这件事 ——
- * 计时按墙上时间照走（沙漏/茶室的规则不变），只是声音断一下。
+ * 切后台 / 回前台。
  *
- * 收听（正文朗读）**先暂停**再收音频：朗读是一段一段排着队的，
- * 后台回来不能自动接着念（用户可能已经切走了），让他自己按「继续」；
- * 顺序不能反 —— 先 suspendAudio 会把实例硬停，朗读器那时才收到通知，界面会闪一下。
+ * 收听（正文朗读）**先暂停**：朗读是一段一段排着队的，后台回来不能自动接着念
+ * （用户可能已经切走了），让他自己按「继续」。
+ *
+ * 环境音**不再主动收**（2026-09-22 改）：早先是 onHide 调 suspendAudio() 停干净、
+ * onShow 再重起，也就是"切出去声音就断了"。用户明确要求切后台既不停计时也不停声音 ——
+ * 计时本来就按墙上时间走（沙漏 / 茶室 / 呼吸暂停三处同一个口径），声音这里交还系统：
+ * 系统没挂起就继续响，真断了回前台由 resumeAudio() 续上（它会先确认不是还在播）。
+ * 页面不用管这件事。
  */
 onHide(() => {
   suspendSpeech()
-  suspendAudio()
 })
 onShow(() => resumeAudio())
 </script>

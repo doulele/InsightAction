@@ -1,12 +1,17 @@
 /**
- * 一条分享的只读页样式（2026-09-21 建立）。
+ * 一条分享的只读页样式（2026-09-21 建立，2026-09-22 与原文对齐）。
  *
  * 这一页的作者可能是**第一次打开这个应用的人**（好友从聊天里点进来），所以：
- *  · 版式走"像一篇文章"而不是"像一张卡片列表"—— 大标题、宽行距、少边框；
  *  · 不出现任何本机数据（收件匣状态、处理按钮、标签筛选都没有）；
  *  · 底部只留两个出口（打开应用 / 复制网页链接）。
- * 样式只认 tokens（$gz-*），三套皮肤自动跟随 —— 与网页版那份独立 CSS 刻意不同：
- * 那边是给"微信外的人"看的，不需要跟着你的皮肤走。
+ *
+ * **2026-09-22 改口径**：原先这里刻意"像一篇文章而不是像一张卡片列表"（大标题、宽行距、少边框，
+ * 每个块各有一种长相）。用户要求"点开分享看到的和原文一样"，于是这一页改成与
+ * `subpkg-observe/detail` **同一套块语言**：小竖条 + 700 标签 + 内容；正文是灰底块 + 卡头；
+ * 重要观点是左竖线 + 浅底。突出层次靠这套骨架，不再靠"每块换一种视觉"。
+ *
+ * 样式只认 tokens（$gz-*），三套皮肤自动跟随 —— 与网页版（后端 services/sharePage.js）那份
+ * 独立 CSS 刻意不同：那边是给"微信外的人"看的，不跟着你的皮肤换色（但它同样对齐了这套块语言）。
  */
 .page {
   min-height: 100vh;
@@ -24,91 +29,192 @@
   color: $gz-ink-2;
 }
 
-/* ---- 头部：形态 / 标题 / 一句话总结 ---- */
-.head {
-  margin-top: 18rpx;
+/* ---- 卡片：与详情页 .card 同值（这一页也从"平铺"改成"分组"）---- */
+.card {
+  margin-top: 24rpx;
+  padding: 24rpx 26rpx 28rpx;
+  background: $gz-surface;
+  border: 1rpx solid $gz-line;
+  border-radius: $gz-radius-lg;
 }
 
-.head__kind {
-  display: inline-block;
-  margin-bottom: 14rpx;
-  padding: 4rpx 16rpx;
+/*
+ * 卡头：小竖条 + 30rpx/700 的标签 + 右侧小字 —— 与详情页 .card__head 同值。
+ * （原来是描边胶囊装形态 / 药丸装来源年月，两处都与详情页对不上，也互相撞车：
+ *   胶囊在小程序里是"主题标签"的语言，见下面的 .topic。）
+ */
+.card__head {
+  display: flex;
+  align-items: center;
+  gap: 12rpx;
+  padding-bottom: 18rpx;
+  border-bottom: 1rpx solid $gz-line-soft;
+}
+
+.card__mark {
+  width: 6rpx;
+  height: 26rpx;
+  border-radius: 3rpx;
+  background: $gz-accent;
+}
+
+.card__title {
+  font-size: 30rpx;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  color: $gz-ink;
+}
+
+.card__hint {
+  flex: 1;
+  min-width: 0;
+  text-align: right;
+  font-size: $gz-fs-caption;
+  color: $gz-ink-2;
+}
+
+/* 主题标签：与详情页 .topics / .topic 同值 */
+.topics {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10rpx;
+  margin-top: 20rpx;
+}
+
+.topic {
+  padding: 6rpx 20rpx;
   border: 1rpx solid $gz-line;
   border-radius: 999rpx;
+  background: $gz-input-bg;
   font-size: $gz-fs-caption;
-  letter-spacing: 0.08em;
-  color: $gz-ink-3;
+  color: $gz-ink-2;
 }
 
-.head__title {
+.title {
   display: block;
-  font-size: 40rpx;
+  margin-top: 20rpx;
+  font-size: 36rpx;
   font-weight: 700;
   line-height: 1.5;
   color: $gz-ink;
 }
 
 /*
- * 一句话总结：这一页最先被读到的一段（也是分享卡片上带的那句），
- * 用左侧主题色细条 + 浅底把它从正文里拎出来 —— 与理库 / 母题库卡片上的"摘要"是同一套视觉。
+ * 区块骨架（2026-09-22 改）：小竖条 + 700 的标签 —— 与详情页（subpkg-observe/detail）**同一套**。
+ * 分享页原先每个块各有一种长相（一句话总结是左竖线浅底、观点没有底、感悟只有一行浅灰小字），
+ * 而用户要的是"点开分享看到的，和原文长得一样"。所以统一走这一套：
+ *   小竖条 + 标签（28rpx/700/ink） + 内容。
  */
-.brief {
-  margin-top: 20rpx;
-  padding: 18rpx 22rpx;
-  border-left: 4rpx solid $gz-accent;
-  background: $gz-accent-soft;
-  border-radius: 0 $gz-radius-sm $gz-radius-sm 0;
+/* 块之间的细线：与详情页 .block 同值（那边是卡片内的分隔，这里没有卡片容器，用同一套反而更近） */
+.block {
+  margin-top: 22rpx;
+  padding-top: 20rpx;
+  border-top: 1rpx solid $gz-line-soft;
 }
 
-.brief__label {
-  display: block;
-  font-size: $gz-fs-caption;
-  color: $gz-ink-3;
-}
-
-.brief__text {
-  display: block;
-  margin-top: 6rpx;
-  font-size: $gz-fs-small;
-  line-height: 1.85;
-  color: $gz-ink-2;
-}
-
-.meta {
+.block__head {
   display: flex;
-  flex-wrap: wrap;
-  gap: 8rpx 20rpx;
-  margin-top: 18rpx;
+  align-items: center;
+  gap: 12rpx;
 }
 
-.meta__item {
+.block__tick {
+  width: 6rpx;
+  height: 26rpx;
+  border-radius: 3rpx;
+  background: $gz-accent;
+}
+
+.block__label {
+  font-size: 28rpx;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  color: $gz-ink;
+}
+
+.block__text {
+  display: block;
+  margin-top: 10rpx;
+  font-size: $gz-fs-small;
+  line-height: 1.9;
+  color: $gz-ink-2;
+}
+
+/* 来源名（卡二里那一行，对应详情页"来源"卡里的说明） */
+.src {
+  display: block;
+  margin-top: 16rpx;
+  font-size: $gz-fs-small;
+  color: $gz-ink-2;
+}
+
+/* ---- 正文（与详情页 .origin 同一套：灰底一块 + 小竖条 + 「正文 · 原文 / 视频里讲的」） ---- */
+.origin {
+  margin-top: 24rpx;
+  padding: 20rpx 22rpx 22rpx;
+  border-radius: $gz-radius-md;
+  background: $gz-surface-2;
+}
+
+.origin__head {
+  display: flex;
+  align-items: center;
+  gap: 12rpx;
+}
+
+.origin__head::before {
+  content: '';
+  flex: none;
+  width: 6rpx;
+  height: 26rpx;
+  border-radius: 3rpx;
+  background: $gz-accent;
+}
+
+.origin__label {
+  flex: 1;
+  min-width: 0;
+  font-size: $gz-fs-small;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  color: $gz-ink-2;
+}
+
+/* 「展开全文 / 收起」：与详情页同一套（主题色描边 + 浅底的小药丸） */
+.origin__toggle {
+  flex: none;
+  padding: 4rpx 20rpx;
+  border: 1rpx solid $gz-line;
+  border-radius: 999rpx;
+  background: $gz-surface;
   font-size: $gz-fs-caption;
-  color: $gz-ink-2;
+  color: $gz-accent;
 }
 
-/* ---- 正文 ---- */
-.body {
-  margin-top: 30rpx;
-}
-
-.body__text {
+/*
+ * 正文限高九行上下（520rpx，与详情页同值），超了由上面的开关展开。
+ * 富文本容器同理：rich-text 自带节点样式，这里只管外层间距、断词与限高。
+ */
+.origin__text,
+.origin__rich {
+  display: block;
+  margin-top: 12rpx;
+  max-height: 520rpx;
+  overflow: hidden;
   font-size: $gz-fs-body;
-  line-height: 1.95;
-  color: $gz-ink-2;
+  line-height: 1.9;
+  color: $gz-ink;
   word-break: break-all;
 }
 
-/* 富文本容器：rich-text 自带节点样式，这里只管外层间距与断词 */
-.body--rich {
-  font-size: $gz-fs-body;
-  line-height: 1.95;
-  color: $gz-ink-2;
-  word-break: break-all;
+.origin__text.is-open,
+.origin__rich.is-open {
+  max-height: none;
 }
 
 /* ---- 金句 / 观点 / 感悟 / 为什么成立 ---- */
 .golden {
-  margin-top: 30rpx;
+  margin-top: 12rpx;
   padding: 20rpx 24rpx;
   background: $gz-surface-2;
   border-radius: $gz-radius-sm;
@@ -125,39 +231,26 @@
   margin-top: 10rpx;
 }
 
-.block {
-  margin-top: 30rpx;
+/* 重要观点：一条 = 结论（粗） + 解释 —— 与详情页 .vp 同一套（左竖线 + 浅底 + 右侧圆角） */
+.vp {
+  margin-top: 12rpx;
+  padding: 16rpx 18rpx;
+  border-left: 4rpx solid $gz-line;
+  border-radius: 0 $gz-radius-sm $gz-radius-sm 0;
+  background: $gz-surface-2;
 }
 
-.block__label {
-  display: block;
-  margin-bottom: 10rpx;
-  font-size: $gz-fs-caption;
-  letter-spacing: 0.1em;
-  color: $gz-ink-3;
-}
-
-.block__text {
+.vp__title {
   display: block;
   font-size: $gz-fs-small;
-  line-height: 1.9;
-  color: $gz-ink-2;
+  font-weight: 700;
+  line-height: 1.7;
+  color: $gz-ink;
 }
 
-.point + .point {
-  margin-top: 14rpx;
-}
-
-.point__title {
+.vp__text {
   display: block;
-  font-size: $gz-fs-small;
-  font-weight: 600;
-  color: $gz-ink-2;
-}
-
-.point__text {
-  display: block;
-  margin-top: 4rpx;
+  margin-top: 6rpx;
   font-size: $gz-fs-small;
   line-height: 1.9;
   color: $gz-ink-2;
@@ -168,11 +261,16 @@
  * （与详情页同一口径，见 detail/index.vue 的 copyThenTip）。
  */
 .link {
-  margin-top: 26rpx;
-  padding: 16rpx 0;
+  margin-top: 10rpx;
+  padding: 12rpx 0;
 }
 
+/* 链接文字是标题（可能很长）：一行、超出省略，别把卡片撑变形 */
 .link__text {
+  display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
   font-size: $gz-fs-small;
   color: $gz-accent;
 }

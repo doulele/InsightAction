@@ -315,6 +315,7 @@
  * 与沙漏 / 茶室 / 呼吸干预共用同一套开关（设置 → 静修声音）。
  */
 import { computed, ref } from 'vue'
+/* 页面生命周期（onShow / onLoad…）一律从 @dcloudio/uni-app 引入 —— 见 thought 尾註 */
 import { onLoad, onUnload } from '@dcloudio/uni-app'
 import {
   MAP_NEED,
@@ -543,7 +544,12 @@ function remove(id: number): void {
   })
 }
 
-/* 离页收干净：落定那一记不该跟着回到大厅还在响 */
+/*
+ * 离页收干净：落定那一记不该跟着回到大厅还在响。
+ *
+ * 切后台**不收**（2026-09-22 定）：用户要求切后台既不停计时也不停声音 ——
+ * 那一记本来就短，放完自己就结束了；切出去接个消息回来还在响，才是"没被掐断"。
+ */
 onUnload(() => teardownAudio())
 
 </script>

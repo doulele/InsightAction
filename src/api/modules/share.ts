@@ -25,6 +25,12 @@ export interface ShareBody {
   kind: string
   form: string
   title?: string
+  /**
+   * 「摘要」与「一句话总结」是**两格**（2026-09-22 拆开）：
+   * 详情页里它们各占一块，而先前发布时把两格合成了一个 summary（`digest || summary`），
+   * 于是分享出去的页面少一块、顺序也和原文对不上。旧快照没有 digest，按"不显示"兼容。
+   */
+  digest?: string
   summary?: string
   content?: string
   contentHtml?: string

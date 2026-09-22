@@ -290,7 +290,13 @@ function sabbathIn(from: string, to: string): string[] {
   while (cur.getTime() <= end && guard < 400) {
     const k = todayKey(cur)
     if (isSabbathDay(k)) out.push(k)
-    cur = new Date(cur.getTime() + 86_400_000)
+    /*
+     * 按「日」推进，而不是加 86_400_000 毫秒（2026-09-22）：
+     * 一天并不总是 24 小时 —— 实行夏令时的地区有 23 小时与 25 小时的日子，
+     * 加毫秒会让正午偏移到前一天的后半夜，日 key 因此错位一整天。
+     * 与 utils/dateKey.ts 的口径保持一致：跨天一律走 setDate。
+     */
+    cur.setDate(cur.getDate() + 1)
     guard += 1
   }
   return out

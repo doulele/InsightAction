@@ -40,9 +40,11 @@
  *  · **环境音**会顺手 toast 一次「这段声音还没到位」—— 那时是用户主动选了它，
  *    没声不解释会被当成坏了。同一个文件只提示一次。
  *
- * 切后台：微信会挂起普通音频，这里在 App 的 onHide 主动停、onShow 按记录续上
- * （页面自己不管这事，见 App.vue）。**息屏后没有声音是平台限制**，
- * 与本项目「息屏时间仍在流」的计时规则并不冲突 —— 计时照走，只是没声。
+ * 切后台：微信会挂起普通音频。**这里不再主动停**（2026-09-22 改，用户要求切后台不停声）——
+ * 系统没挂起就继续响，真断了回前台由 App.onShow 调 resumeAudio() 续上
+ * （它会先确认不是还在播，免得叠成两轨）。页面自己不管这事，见 App.vue。
+ * **息屏后没有声音是平台限制**，与本项目「息屏时间仍在流」的计时规则并不冲突 ——
+ * 计时照走，声音交给系统。
  */
 
 import { audioUrl, CUE_SOURCES, type CueKind, type CueSource } from '@/config/audio'
@@ -731,7 +733,7 @@ export function stopSpeech(): void {
 }
 
 /**
- * 注册"朗读被外部强停"的通知（关声音 / `suspendAudio` 时触发）。
+ * 注册"朗读被外部强停"的通知（关声音、或音频被强停时触发）。
  * 由 utils/speech.ts 在模块加载时挂一次 —— 它据此把收听条从"正在朗读"改成"已暂停"。
  */
 export function setSpeechInterruptHandler(cb: () => void): void {
@@ -873,21 +875,19 @@ export function prefetchAmbient(files: string[]): void {
  * ------------------------------------------------------------------ */
 
 /**
- * 切后台（App.onHide）：主动停掉全部声音，但**保留"该有什么环境音"的记录**，
- * 回前台按它续上。
+ * 回前台（App.onShow）：按记录续上环境音（一记不重放）。
+ *
+ * 2026-09-22 两处变化：
+ *  1. **切后台不再主动停声** —— 原先 App.onHide 会调 suspendAudio() 收干净再回前台重起，
+ *     等于"切出去声音就断了"。用户要求切后台不停计时也不停声音，那一层已去掉；
+ *     计时三处（沙漏 / 茶室 / 呼吸暂停）本来就按墙上时间走，声音交给系统。
+ *  2. 因此这里要先确认"**不是还在播**"才续 —— 部分机型切后台并不挂起音频，
+ *     不看这一眼就会重新起一轨，两轨环境音叠着响。
  */
-export function suspendAudio(): void {
-  ambientToken += 1
-  const deferred = ambientDeferred
-  silentStop()
-  /* 原先是"等一记放完再起"，回前台不再等 —— 直接起 */
-  ambientDeferred = deferred
-}
-
-/** 回前台（App.onShow）：按记录续上环境音（一记不重放） */
 export function resumeAudio(): void {
   const wanted = ambientWanted
   if (!soundOn || !wanted) return
+  if (ctx && !ctx.paused) return
   ambientDeferred = false
   playChain(wanted, ambientToken)
 }

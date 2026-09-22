@@ -13,6 +13,7 @@ import { useHabitStore } from '@/stores/habit'
 import { useBoxStore } from '@/stores/box'
 import { useTraceStore } from '@/stores/trace'
 import { useAssessmentStore } from '@/stores/assessment'
+import { useBadgeStore } from '@/stores/badges'
 import { useDailyStore, freshTodos, todayKey } from '@/stores/daily'
 import { useReminderStore } from '@/stores/reminder'
 import { useReadLaterStore } from '@/stores/readLater'
@@ -40,6 +41,11 @@ export function resetPracticeData(): void {
   useBoxStore().$patch({ drawn: null })
   useTraceStore().$patch({ traces: [] })
   useAssessmentStore().$patch({ results: {}, history: {}, skipped: {}, promptSnoozeUntil: 0 })
+  /*
+   * 徽章点亮留痕（2026-09-22）：属于修行记录，跟着一起清。
+   * 数据清了之后判定自然回到"未点亮"，留痕留着反而是个谎 —— 它会把一枚徽章挂在空数据上。
+   */
+  useBadgeStore().$patch({ items: [], fresh: [] })
   const daily = useDailyStore()
   daily.$patch({ dateKey: todayKey(), todos: freshTodos() })
   useReminderStore().$patch({ reminders: [] })

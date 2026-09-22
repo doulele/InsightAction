@@ -7,14 +7,14 @@
  *  - 恢复时若 `备份.schema > SCHEMA_VERSION` → **拒绝恢复**并明确提示
  *    （这是「换机后脊椎变脏数据」的最后一道防线，宁可不让恢复，也不能让界面错乱）。
  *
- * 当前 = 11：observe 的「道」增 daoLine（凝练句，≤24 字）—— 母题名是那个问句，
- * 这一句才是会被端到「观」大厅头部与开屏的那句主张（取用规则见 config/dao.ts）。
- * 上一版（10）：新增 stores/share.ts（我发出去的分享的本机留痕：token / itemId / 标题 / 到期时间）。
+ * 当前 = 12：新增 stores/badges.ts（徽章点亮的留痕 id + 点亮时刻）—— 徽章原先是纯实时判定，
+ * 「持恒 / 守七」这类依赖当下连续状态的会在断掉之后熄灭；现在以留痕为准取并集，点亮不再被收回。
+ * 上一版（11）：observe 的「道」增 daoLine（凝练句，≤24 字）。
  * 再上一版（9）：步骤嵌套（plan 的 PlanNode 增 parentId / progress）与两份正文（observe 增
  * contentHtml / imported / handleNote），knowledge 增 domain / qa / ref，
  * 并删掉 stores/quality.ts（信息源质量榜 → 派生的来源账本）。
  */
-export const SCHEMA_VERSION = 11
+export const SCHEMA_VERSION = 12
 
 /** 结构升级记录：给未来的自己看「哪一版改了什么」 */
 export const SCHEMA_HISTORY: ReadonlyArray<{ version: number; note: string }> = [
@@ -40,5 +40,9 @@ export const SCHEMA_HISTORY: ReadonlyArray<{ version: number; note: string }> = 
   {
     version: 11,
     note: 'observe 的「道」增 daoLine（凝练句，≤24 字，只在 kind=\'mother\' 上成立）：它是「观」大厅头部那句主张与开屏「今日一签」的来源（config/dao.ts 按天轮换）。写入入口三处 —— 详情页「凝练成道」、母题库认领流程、母题库卡片补写；写入时 store 统一 trim + 截断。老数据没有这一格，按"还没凝练"兼容，无需迁移脚本',
+  },
+  {
+    version: 12,
+    note: '新增 stores/badges.ts：徽章点亮的**留痕**（id + 点亮时刻）。此前徽章是纯实时判定，依赖当下连续状态的「持恒」（习惯连续打卡 7 天）与「守七」（连续 7 天立约守住）会在断掉之后熄灭；现在显示取「当下命中 ∪ 已留痕」，点亮不再被收回。判定规则仍然只有 config/badges.ts 一份。老备份没有这个 store，按"未点亮"兼容，首次进入「我」页会自动把当前该得的那几枚补记下来',
   },
 ]

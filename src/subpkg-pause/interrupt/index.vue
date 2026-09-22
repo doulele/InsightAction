@@ -124,6 +124,8 @@
  * 走完全程记一次守住（+修为），中途退出只诚实计数不惩罚。数据本地（stores/interrupt.ts）。
  */
 import { computed, onUnmounted, ref, watch } from 'vue'
+/* 页面生命周期（onShow / onLoad…）一律从 @dcloudio/uni-app 引入 */
+import { onShow } from '@dcloudio/uni-app'
 import GzDialog from '@/components/GzDialog/GzDialog.vue'
 import { useInterruptStore, PRESET_SCENARIOS } from '@/stores/interrupt'
 import { logTrace } from '@/utils/traceLog'
@@ -170,8 +172,15 @@ function saveCustom(): void {
 
 /* ---- 呼吸暂停计时 ---- */
 const running = ref(false)
+/** 目标时刻（墙上时间）—— 切后台时定时器会被系统挂起，只有按目标时刻算，那几分钟才不丢 */
+const targetTs = ref(0)
 const remain = ref(0)
 let timer: ReturnType<typeof setInterval> | null = null
+
+/** 剩余秒数由目标时刻反推（不再逐秒递减：递减在后台等于把表停了） */
+function syncRemain(): void {
+  remain.value = Math.max(0, Math.ceil((targetTs.value - Date.now()) / 1000))
+}
 
 const pad = (n: number): string => String(n).padStart(2, '0')
 
@@ -224,23 +233,32 @@ function clearTimer(): void {
   }
 }
 
+/** 每 250ms 对表；跑满瞬间结算（与沙漏 / 茶寮同一口径：对表而不是数拍子） */
+function tick(): void {
+  syncRemain()
+  if (Date.now() >= targetTs.value) {
+    clearTimer()
+    settle(true)
+  }
+}
+
+/** 秒表本身：抽出来是为了 installation 与「回前台接着走」共用同一条口径 */
+function startTicker(): void {
+  clearTimer()
+  timer = setInterval(tick, 250)
+}
+
 function start(): void {
   running.value = true
-  remain.value = minutes.value * 60
-  clearTimer()
+  targetTs.value = Date.now() + minutes.value * 60 * 1000
+  syncRemain()
   /*
    * 一声「吸」起手：显式放，不靠 watch ——
    * 1 分钟档（60 秒）的起手相位和上一轮的落点可能恰好相同，watch 就不会触发。
    */
   lastCued = ''
   cuePhase('in', true)
-  timer = setInterval(() => {
-    remain.value -= 1
-    if (remain.value <= 0) {
-      clearTimer()
-      settle(true)
-    }
-  }, 1000)
+  startTicker()
 }
 
 function settle(held: boolean): void {
@@ -281,6 +299,26 @@ onUnmounted(() => {
   clearTimer()
   /* 离页收干净：呼吸引导音不该跟着回到大厅还在响 */
   teardownAudio()
+})
+
+/*
+ * 切后台**不停表也不停声**（2026-09-22 定）。
+ *
+ * 这一处曾短暂改成"onHide 停表 + 回前台接着走"，理由是"替人结算一次守住，等于替他说了假话"。
+ * 但用户的口径更硬：切后台既不停计时也不停声音 —— 定力这件事不该因为回了一条消息就断。
+ * 所以按墙上时间走（targetTs），后台那几分钟真真切切算数，回前台由下方 onShow 结算。
+ * 与沙漏 / 茶寮完全同一口径，三处不再各说各话。
+ */
+onShow(() => {
+  if (!running.value) return
+  if (Date.now() >= targetTs.value) {
+    /* 切走期间其实已经念完 → 回前台诚实结算 */
+    settle(true)
+    uni.showToast({ title: '后台亦在计时 · 定力已入账', icon: 'none' })
+    return
+  }
+  syncRemain()
+  startTicker()
 })
 
 </script>

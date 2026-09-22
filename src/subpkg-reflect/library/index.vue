@@ -153,10 +153,10 @@
           :maxlength="200"
         />
         <!--
-          语音转写（微信同声传译插件）：按住说话、松开出字。
-          识别在微信侧完成，音频不出微信 —— 我们连录音文件都不读（见 utils/voice.ts）。
-          插件不可用（没在后台添加 / 基础库过低）时整条不渲染：宁可没有按钮，
-          也不给一个按下去没反应的按钮。
+          语音转写：按住说话、松开出字。两个引擎，插件优先、后端兜底 ——
+          插件在时识别在微信侧完成（音频不出设备，边说边出字）；插件不在时录音会上传到
+          我们的服务器转写（为过审必须走的那条路，口径见 PRIVACY.md 第 5.1 节与 utils/voice.ts）。
+          两个都用不了就整条不渲染：宁可没有按钮，也不给一个按下去没反应的按钮。
         -->
         <view v-if="voiceOk" class="voice">
           <view
@@ -168,9 +168,9 @@
             @touchcancel.prevent="onVoiceCancel"
           >
             <text class="voice__dot">●</text>
-            <text class="voice__label">{{ recording ? '松开 · 出字' : '按住说话' }}</text>
+            <text class="voice__label">{{ recording ? VOICE_TEXT.release : VOICE_TEXT.hold }}</text>
           </view>
-          <text class="voice__hint">{{ voiceHint || '说一遍就等于转述一遍 · 最长 60 秒' }}</text>
+          <text class="voice__hint">{{ voiceHint || voiceIdleHint }}</text>
         </view>
         <view class="sheet__tag-row">
           <view
@@ -374,6 +374,7 @@ import { useSkinClass } from '@/composables/useSkin'
 import AiBadge from '@/components/AiBadge/AiBadge.vue'
 import { useAi } from '@/composables/useAi'
 import { startVoice, voiceAvailable, type VoiceSession } from '@/utils/voice'
+import { RECORD, VOICE_TEXT, voiceText } from '@/config/voice'
 import { ROUTES } from '@/router/routes'
 import type { DigestResult, FeynmanResult } from '@/api/modules/ai'
 import { showModal } from '@/utils/dialog'
@@ -601,22 +602,26 @@ function useFollow(): void {
 /* ---------------- 语音转写：按住说话 → 松开出字（费曼速记的入口） ---------------- */
 
 /**
- * 插件可用性在**进页面时探一次**即可：
- * 不可用（没在后台添加插件 / 基础库过低）就整条不渲染 ——
- * 宁可没有按钮，也不给一个按下去没反应的按钮。
+ * 可用性在**进页面时探一次**即可：两个引擎都不可用（插件没声明、服务端也没开转写）
+ * 就整条不渲染 —— 宁可没有按钮，也不给一个按下去没反应的按钮。
+ * 注意「服务端没开转写」只有第一次真用时才知道，那一轮的 onFail 会给 unsupported，
+ * 这里同样把 voiceOk 收起来（见 utils/voice.ts 的 backendDead）。
  */
 const voiceOk = ref(voiceAvailable())
 const recording = ref(false)
 const voiceHint = ref('')
 let voiceSession: VoiceSession | null = null
 
+/** 提示行的默认文案：最长多少秒取自 config/voice.ts，别在这里再写一个 60 */
+const voiceIdleHint = voiceText(VOICE_TEXT.idle, { sec: Math.round(RECORD.maxMs / 1000) })
+
 function onVoiceStart(): void {
   if (recording.value) return
-  voiceHint.value = '正在听…'
+  voiceHint.value = VOICE_TEXT.listening
   voiceSession = startVoice({
     onPartial: (t) => {
       /* 只做"正在听"的即时反馈，不回写正文 —— 边说边改会让整段字在眼前跳 */
-      voiceHint.value = `正在听：${t.slice(-10)}`
+      voiceHint.value = voiceText(VOICE_TEXT.listeningTail, { tail: t.slice(-10) })
     },
     onDone: (text) => {
       recording.value = false
@@ -627,21 +632,22 @@ function onVoiceStart(): void {
       recording.value = false
       voiceSession = null
       if (f.reason === 'unsupported') {
+        /* 两个引擎都用不了 → 收起整条按钮，别再让用户按了没反应 */
         voiceOk.value = false
         return
       }
       if (f.reason === 'empty') {
-        voiceHint.value = '没听清 · 按住再说一遍'
+        voiceHint.value = VOICE_TEXT.hintEmpty
         return
       }
       voiceHint.value = ''
       if (f.reason === 'denied') {
         /* 不硬讨授权：给一条同样走得通的路（手打字），别把用户堵在门口 */
         showModal({
-          title: '需要麦克风权限',
-          content: '语音转写要用麦克风。可以在设置里打开权限，也可以直接手打 —— 两条路都通向同一张卡片。',
-          confirmText: '去设置',
-          cancelText: '手打字',
+          title: VOICE_TEXT.deniedDialog.title,
+          content: VOICE_TEXT.deniedDialog.content,
+          confirmText: VOICE_TEXT.deniedDialog.confirm,
+          cancelText: VOICE_TEXT.deniedDialog.cancel,
           success: (r) => {
             if (r.confirm) uni.openSetting({})
           },
@@ -657,7 +663,7 @@ function onVoiceStart(): void {
 
 function onVoiceStop(): void {
   if (!recording.value || !voiceSession) return
-  voiceHint.value = '正在转成文字…'
+  voiceHint.value = VOICE_TEXT.working
   voiceSession.stop()
 }
 
@@ -679,9 +685,7 @@ function appendVoice(text: string): void {
   const merged = prev ? `${prev}${text}` : text
   noteBody.value = merged.slice(0, NOTE_MAX)
   voiceHint.value =
-    merged.length > NOTE_MAX
-      ? `已转成文字 · 超出 ${NOTE_MAX} 字的部分已截断`
-      : '已转成文字 · 再检验一下就更值'
+    merged.length > NOTE_MAX ? voiceText(VOICE_TEXT.doneTruncated, { n: NOTE_MAX }) : VOICE_TEXT.done
   /* 正文变了，上一条检验结论就作废 —— 理由同 openAdd()：旧结论会误导新内容 */
   feynman.value = null
 }

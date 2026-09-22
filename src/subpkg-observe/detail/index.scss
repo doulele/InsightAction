@@ -32,10 +32,14 @@
   background: $gz-accent;
 }
 
+/*
+ * 卡头标签（2026-09-22 提一档）：$gz-fs-small → 30rpx。
+ * 它是页面上唯一"这块是什么"的坐标，原来与正文同档（26）时，一屏卡片读起来全是平头。
+ */
 .card__title {
-  font-size: $gz-fs-small;
+  font-size: 30rpx;
   font-weight: 700;
-  letter-spacing: 0.1em;
+  letter-spacing: 0.08em;
   color: $gz-ink;
 }
 
@@ -66,7 +70,7 @@
 .title {
   display: block;
   margin-top: 20rpx;
-  font-size: 34rpx;
+  font-size: 36rpx;
   font-weight: 700;
   line-height: 1.5;
   color: $gz-ink;
@@ -88,15 +92,30 @@
   gap: 12rpx;
 }
 
+/*
+ * 「正文」这一行的坐标（2026-09-22）：与「摘要 / 重要观点」那几块共用一枚主题色小竖条，
+ * 于是"这段是别人的字、那段是你的字"整页同一套语言 —— 原来它只是一行浅灰小字，
+ * 和右边的按钮混在一起，用户看不出这是正文块的标题（见用户截图）。
+ */
+.origin__head::before {
+  content: '';
+  flex: none;
+  width: 6rpx;
+  height: 26rpx;
+  border-radius: 3rpx;
+  background: $gz-accent;
+}
+
 .origin__label {
   flex: 1;
   min-width: 0;
-  font-size: $gz-fs-caption;
-  letter-spacing: 0.06em;
-  color: $gz-ink-3;
+  font-size: $gz-fs-small;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  color: $gz-ink-2;
 }
 
-/* 卡头右侧那一撮：导入角标 / 听 / 展开全文 —— 统一用 gap 排，别各自赖 margin */
+/* 卡头右侧那一撮：导入角标 / 听 / 展开 —— 统一用 gap 排，别各自赖 margin */
 .origin__ops {
   flex: none;
   display: flex;
@@ -105,7 +124,7 @@
 }
 
 /*
- * 「听」（正文收听，2026-09-19）：与「展开全文」同一档大小，
+ * 「听」（正文收听，2026-09-19）：与「展开」同一档大小，
  * 但用主题色描边 + 浅底把它从右边那一撮里拎出来 —— 它是这一段正文的新主操作。
  */
 .origin__listen {
@@ -264,15 +283,33 @@
   gap: 12rpx;
 }
 
+/*
+ * 区块标题（2026-09-22 重做）：原来的标签是 22rpx 的浅灰小字，比正文还轻 ——
+ * 「摘要 / 重要观点 / 经典语句」这些本该是这一页的骨架，却读起来像脚注。
+ * 现在：竖条加高、字号提到 28rpx、700、颜色收到 ink，与正文拉开一眼可见的层级。
+ */
 .block__tick {
   width: 6rpx;
-  height: 22rpx;
+  height: 26rpx;
   border-radius: 3rpx;
   background: $gz-accent;
 }
 
 .block__label {
+  font-size: 28rpx;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  color: $gz-ink;
+}
+
+/*
+ * 归档卡里那两个"没有小竖条"的字段标签（处理时写下的一句 / 处理）保持轻一档。
+ * 它们不是这一页的骨架，只是卡片里的小字段 —— 不该跟着上面的区块标题一起变重。
+ * 判据是结构而不是另加类名：带 head 的块（内容骨架）与不带 head 的（小字段）本就分得开。
+ */
+.block > .block__label:first-child {
   font-size: $gz-fs-caption;
+  font-weight: 400;
   letter-spacing: 0.08em;
   color: $gz-ink-2;
 }

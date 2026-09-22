@@ -236,8 +236,9 @@ import { applySkin, syncTabBar } from '@/utils/skin'
 import { requirePrivacyAuthorize } from '@/utils/privacy'
 import { getAssessmentBank, tierIndex } from '@/config/assessment'
 import { LEVEL_NAMES, LEVEL_THRESHOLDS, levelIndexFromXp, levelProgress } from '@/config/levels'
-import { BADGE_RULES, unlockedCount } from '@/config/badges'
-import { buildBadgeContext, dayStats, monthActiveCount, yearStats } from '@/utils/growth'
+import { BADGE_RULES } from '@/config/badges'
+import { useBadgeStore } from '@/stores/badges'
+import { badgeUnlockedCount, dayStats, monthActiveCount, syncBadgeLedger, yearStats } from '@/utils/growth'
 import { useContentStore } from '@/stores/content'
 import { getModeMeta, MODES } from '@/config/modes'
 import type { ModeId } from '@/config/modes'
@@ -275,6 +276,22 @@ onShow(() => {
   poke()
   /* tabBar 原生样式/图标只能在本类大厅页上同步 */
   syncTabBar(modeStore.id)
+  /*
+   * 徽章点亮留痕（2026-09-22）。
+   * 这一步只做一件事：把"此刻该得的徽章"记进 store —— 之后哪怕连胜断了、习惯删了，
+   * 已经点亮的那几枚也不会在墙上熄灭（口径见 stores/badges.ts）。
+   * 第一次同步走 silent：那是把历史欠的点亮**补记**回来，不是刚刚发生的事，不值得敲锣。
+   */
+  const fresh = syncBadgeLedger(badgeLedger.items.length === 0)
+  if (fresh.length) {
+    const head =
+      fresh.length === 1 ? BADGE_RULES.find((r) => r.id === fresh[0])?.name ?? '徽章' : `${fresh.length} 枚`
+    uni.showToast({
+      title: `${head} · ${p('badge.lit')} · ${p('badge.litHint')}`,
+      icon: 'none',
+      duration: 2600,
+    })
+  }
 })
 
 /* —— 个人名号：昵称与头像（微信头像昵称填写能力；只存本机） —— */
@@ -518,8 +535,12 @@ const assessmentEntry = computed<{ subtitle: string; badge: EntryBadge }>(() => 
   }
 })
 
-/* 成就 / 活跃天数 / 痕迹：同源真实计数，入口文案随之跳动 */
-const badgeUnlocked = computed(() => unlockedCount(buildBadgeContext()))
+/*
+ * 成就 / 活跃天数 / 痕迹：同源真实计数，入口文案随之跳动。
+ * 2026-09-22 起取「当下命中 ∪ 已留痕」—— 详见 stores/badges.ts。
+ */
+const badgeLedger = useBadgeStore()
+const badgeUnlocked = computed(() => badgeUnlockedCount())
 
 /**
  * 知 → 行 转化率（本周）：写了多少条卡片、其中多少条点过「我用上了」。

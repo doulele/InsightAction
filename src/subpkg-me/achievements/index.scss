@@ -8,6 +8,38 @@
   box-sizing: border-box;
 }
 
+/*
+ * 本次点亮的回执（2026-09-22）：进墙时出现一次，名单被取走即消失。
+ * 版式取「下一枚」那张卡的同族语言（accent 描边 + 浅底），但横向排 ——
+ * 它是一句回执，不是一张要读两行的卡。
+ */
+.lit {
+  margin-top: 16rpx;
+  display: flex;
+  align-items: center;
+  padding: 18rpx 24rpx;
+  background: $gz-accent-soft;
+  border: 1rpx solid $gz-accent;
+  border-radius: $gz-radius-md;
+}
+
+.lit__mark {
+  flex: none;
+  /* 用 margin 而不是 flex gap：gap 在老基础库上不生效，图标会贴到字上 */
+  margin-right: 14rpx;
+  padding: 2rpx 12rpx;
+  font-size: 20rpx;
+  line-height: 1.6;
+  color: $gz-on-cta;
+  background: $gz-accent;
+  border-radius: 999rpx;
+}
+
+.lit__text {
+  font-size: $gz-fs-caption;
+  color: $gz-ink;
+}
+
 /* 总况 */
 .head {
   margin-top: 16rpx;
@@ -106,6 +138,7 @@
 }
 
 .tile {
+  position: relative;
   width: calc((100% - 32rpx) / 3);
   box-sizing: border-box;
   display: flex;
@@ -120,6 +153,23 @@
 
 .tile.is-locked {
   opacity: 0.45;
+}
+
+/*
+ * 「新」角标（2026-09-22）：点亮的回执，不是徽章的属性 —— 看一眼就被 takeFresh 取走。
+ * 位置压在 tile 右上角，靠 position 而不是 flex 排，避免挤动下面的徽章名。
+ */
+.tile__new {
+  position: absolute;
+  top: 10rpx;
+  right: 10rpx;
+  padding: 2rpx 12rpx;
+  font-size: 20rpx;
+  line-height: 1.6;
+  /* accent 上的字色：三套皮肤各自给 --gz-on-cta，别写死 #fff（科技模式下对比度不够） */
+  color: $gz-on-cta;
+  background: $gz-accent;
+  border-radius: 999rpx;
 }
 
 .tile__mark {
@@ -155,6 +205,16 @@
   margin-top: 6rpx;
   font-size: 20rpx;
   color: $gz-ink-3;
+}
+
+/*
+ * 「曾经点亮、此刻未延续」那一档（2026-09-22）：给一点 accent 的余温，
+ * 但不写"已失效 / 未保持" —— 它要说的不是"你不行了"，而是"这一枚已经是你的了"。
+ * 也不复用 .is-locked 的整块 grayscale：徽章没有熄灭，只是那条路暂时不在脚下。
+ */
+.tile__state.is-past {
+  color: $gz-accent;
+  opacity: 0.72;
 }
 
 .foot {

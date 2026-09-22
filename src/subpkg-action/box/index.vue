@@ -74,6 +74,8 @@ import { BOX_IDEAS, useBoxStore } from '@/stores/box'
 import { useDailyStore } from '@/stores/daily'
 import { useBodyStore } from '@/stores/body'
 import { logTrace } from '@/utils/traceLog'
+/* 盲盒达成这条痕迹的标识：与 utils/growth 的计数口径同源，别在页面里另写一个串 */
+import { BOX_DONE_REF, BOX_DONE_TEXT } from '@/utils/growth'
 import { useSkinClass } from '@/composables/useSkin'
 import { navigateTo, ROUTES } from '@/router/routes'
 
@@ -124,7 +126,11 @@ function doRedraw(): void {
 
 function finish(): void {
   box.markDone()
-  logTrace({ kind: 'action.box', text: '完成今日微行动' })
+  /*
+   * ref 必须带上（2026-09-22）：痕迹里同时有"开出那只盒"与"走出那一步"两种 action.box，
+   * 剩下的 proving 只能靠 ref 区分 —— 靠 text 模糊匹配迟早被一句新文案打断。
+   */
+  logTrace({ kind: 'action.box', text: BOX_DONE_TEXT, ref: BOX_DONE_REF })
   uni.showToast({ title: '完成。回来给身体鼓个掌', icon: 'none' })
 }
 

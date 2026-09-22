@@ -61,6 +61,9 @@ export const PHRASE_KEYS = [
   'toast.copied',
   'toast.resetDone',
   'toast.restored',
+  /* 徽章点亮的那一刻（2026-09-22）：接在徽章名后面，如「持恒 · 点亮了 · 去成就墙看看」 */
+  'badge.lit',
+  'badge.litHint',
   /* 测评：耗时说明 */
   'assess.cost',
   /* 测评：跳过建档的确认弹窗（讲清「不测也能用 + 缺什么 + 随时可补」） */
@@ -117,7 +120,7 @@ type PhraseTable = Record<PhraseKey, Record<ModeId, string>>
  * （例如线上仍写着「6 题 · 约 1 分钟」，而本地已改为 8 题），此时整体忽略远端 phrases。
  * 运营侧更新文案后把 version 提到 ≥ 此值即可重新生效。每次改本地短语，请 +1。
  */
-export const LOCAL_PHRASE_VERSION = 3
+export const LOCAL_PHRASE_VERSION = 4
 
 const LOCAL_PHRASES: PhraseTable = {
   /* ---------- 模式切换确认框 ---------- */
@@ -316,6 +319,22 @@ const LOCAL_PHRASES: PhraseTable = {
     normal: '数据已恢复',
     tech: '恢复完成',
     dao: '旧日修行已归位',
+  },
+  /*
+   * 徽章点亮（2026-09-22）。
+   * 拼法是「徽章名 · badge.lit · badge.litHint」，例如「持恒 · 点亮了 · 去成就墙看看」；
+   * 多枚一起点亮时用枚数代替徽章名（「3 枚 · 点亮了 · 去成就墙看看」）。
+   * 分三段是为了让同一种修行语言配上自己的动宾搭配，而不是把整句话焊死成一句固定文案。
+   */
+  'badge.lit': {
+    normal: '点亮了',
+    tech: '解锁完成',
+    dao: '得了一记',
+  },
+  'badge.litHint': {
+    normal: '去成就墙看看',
+    tech: '去成就墙查看',
+    dao: '功勋碑上添了一笔',
   },
 
   /* ---------- 测评：耗时说明（降低"一进来就要答题"的心理负担） ---------- */

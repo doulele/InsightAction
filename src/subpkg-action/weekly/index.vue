@@ -174,6 +174,7 @@ import { useSkinClass } from '@/composables/useSkin'
 import SceneProbe from '@/components/SceneProbe/SceneProbe.vue'
 import { navigateTo, ROUTES } from '@/router/routes'
 import { buildWeekly, HALLS } from '@/utils/weekly'
+import { countBoxDone } from '@/utils/growth'
 import { TAB_LABEL } from '@/config/skins'
 
 const trace = useTraceStore()
@@ -238,9 +239,8 @@ function saveNext(): void {
 /* 本周事件数 */
 const weekTraces = computed(() => trace.between(mondayKey, todayK))
 const todoCount = computed(() => weekTraces.value.filter((t) => t.kind === 'action.todo').length)
-const boxCount = computed(
-  () => weekTraces.value.filter((t) => t.kind === 'action.box' && t.text.includes('完成')).length,
-)
+/** 与 utils/growth 的 buildBadgeContext 同一口径（走 ref，不拿文案做匹配） */
+const boxCount = computed(() => countBoxDone(weekTraces.value))
 /** 习惯打卡：本周各习惯打卡的「习惯×天」总数 */
 const habitCount = computed(() =>
   habit.habits.reduce(

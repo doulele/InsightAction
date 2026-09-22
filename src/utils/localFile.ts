@@ -79,6 +79,22 @@ export function extOf(url: string): string {
 }
 
 /**
+ * 把本地文件读成 base64（读不到返回空串）。
+ *
+ * 给「要读出来发走」的场景用：上传录音转文字（utils/voice.ts → api/modules/asr.ts）。
+ * 与 copyToUserDir 里的兜底读法同一套 —— 只是这里读的是**已有**文件，不涉及落盘。
+ */
+export function readBase64(path: string): string {
+  if (!path) return ''
+  try {
+    const data = fs()?.readFileSync?.(path, 'base64')
+    return typeof data === 'string' ? data : ''
+  } catch {
+    return ''
+  }
+}
+
+/**
  * 把文件拷进私有永久目录，返回可直接给 `<image src>` 用的路径。
  *
  * @param src      临时文件路径
