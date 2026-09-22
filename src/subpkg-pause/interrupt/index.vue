@@ -9,7 +9,7 @@
       <text class="intro__text">
         管住「手先于脑」的时刻：选一个总想打开的开关，陪自己做完一段呼吸，
         把冲动摁回去——这一步比憋一整天更有用。
-        每一段都有一声轻响领着你：吸 · 屏 · 呼（可在「设置 → 静修声音」里关掉）。
+        {{ guideHint }}
       </text>
       <view class="cards">
         <view class="card">
@@ -133,12 +133,36 @@ import { useSkinClass } from '@/composables/useSkin'
 import { todayKey } from '@/stores/daily'
 import { ROUTES } from '@/router/routes'
 import type { CueKind } from '@/config/audio'
-import { playCue, prefetchCue, teardownAudio } from '@/utils/audio'
+import {
+  BREATH_CUE_CYCLE,
+  BREATH_GUIDE,
+  BREATH_SPLIT,
+  BREATH_TRACK,
+  BREATH_TRACK_CYCLE,
+} from '@/config/audio'
+import {
+  playCue,
+  prefetchAmbient,
+  prefetchCue,
+  startAmbient,
+  stopAmbient,
+  teardownAudio,
+} from '@/utils/audio'
 
 const store = useInterruptStore()
 const skinClass = useSkinClass()
 
 const DURATIONS = [1, 2, 3] as const
+
+/**
+ * 说明文案：一记是"吸 / 呼各一声轻响"（2026-09-22 起**屏息不响**），连续引导是"一段陪到底"。
+ *
+ * 文案必须跟着 `CUE_SOURCES.hold` 的实际状态走 —— 屏息已经不响，还说"吸 · 屏 · 呼"就是骗人。
+ */
+const guideHint =
+  BREATH_GUIDE === 'track'
+    ? '一段连续的呼吸引导会陪着你走完全程（可在「设置 → 静修声音」里关掉）。'
+    : '吸气与呼气各有一声轻响领着你，屏息那七秒是静的（可在「设置 → 静修声音」里关掉）。'
 
 const selectedId = ref<string>(PRESET_SCENARIOS[0].id)
 const minutes = ref<number>(1)
@@ -186,14 +210,26 @@ const pad = (n: number): string => String(n).padStart(2, '0')
 
 const mmss = computed(() => `${pad(Math.floor(remain.value / 60))}:${pad(remain.value % 60)}`)
 
-/** 4 秒吸 → 7 秒屏 → 8 秒呼（19 秒一个循环） */
+/**
+ * 一圈多长：一记模式用页面自己的 19 秒；连续引导模式用**素材的实测时长**
+ * （`BREATH_TRACK_CYCLE`，换素材必须同步改那一个常量）。
+ */
+const cycleSeconds = BREATH_GUIDE === 'track' ? BREATH_TRACK_CYCLE : BREATH_CUE_CYCLE
+
+/**
+ * 4 秒吸 → 7 秒屏 → 8 秒呼。
+ *
+ * 切分点按**比例**算（`BREATH_SPLIT / BREATH_CUE_CYCLE`），两种引导方式共用这一段：
+ * 一圈 19 秒时正好落在 4 / 11 秒，一圈 19.66 秒时落在 4.14 / 11.38 秒 —— 与素材严格同步。
+ */
 const phase = computed(() => {
-  const cycle = ((minutes.value * 60 - remain.value) % 19)
-  if (cycle < 4) return 'in'
-  if (cycle < 11) return 'hold'
+  const cycle = (minutes.value * 60 - remain.value) % cycleSeconds
+  if (cycle < (BREATH_SPLIT[0] / BREATH_CUE_CYCLE) * cycleSeconds) return 'in'
+  if (cycle < (BREATH_SPLIT[1] / BREATH_CUE_CYCLE) * cycleSeconds) return 'hold'
   return 'out'
 })
 
+/** 秒数按 4-7-8 的基准写（一圈 19.66 秒时实际是 4.14 / 7.24 / 8.28，取整显示） */
 const phaseText = computed(
   () =>
     ({
@@ -204,9 +240,9 @@ const phaseText = computed(
 )
 
 /**
- * 呼吸引导音（2026-09-17）：4-7-8 的每一段起手都给一声轻响。
+ * 一记模式的呼吸引导音（2026-09-17；2026-09-22 起只在 `BREATH_GUIDE === 'cue'` 时启用）：
+ * 吸 / 呼各在起手给一声，**屏息不响**（`CUE_SOURCES.hold` 是空链，见那边的注释）——
  * 之前只有文字 + 倒计时，闭着眼根本不知道此刻该吸还是该呼。
- * 素材见 config/audio.ts —— 短音还没上传时回落颂钵的变速截取，所以现在就已经有声；
  * 音量与总开关由 utils/audio.ts 统一管（设置页的「静修声音」）。
  */
 let lastCued = ''
@@ -219,12 +255,23 @@ function cuePhase(p: 'in' | 'hold' | 'out', force = false): void {
   playCue(p as CueKind)
 }
 
-watch(phase, (p) => cuePhase(p))
+/*
+ * 一记模式才跟着相位出声；连续引导模式由素材自己领（页面只管相位文字）。
+ * 两种方式同时上会互相拆台：一记会抢播放实例、把连续引导打断。
+ */
+if (BREATH_GUIDE === 'cue') watch(phase, (p) => cuePhase(p))
 
-/* 进页面就把三声备好（都是极短的音；缺素材时静默，不影响任何计时） */
-prefetchCue('in')
-prefetchCue('hold')
-prefetchCue('out')
+/*
+ * 进页面先把声音备好：一记是三条极短的音；连续引导是一段 19.66 秒的循环
+ * （首次要下 150–300KB）。缺素材时静默，不影响任何计时与入账。
+ */
+if (BREATH_GUIDE === 'track') {
+  prefetchAmbient(BREATH_TRACK.files)
+} else {
+  prefetchCue('in')
+  prefetchCue('hold')
+  prefetchCue('out')
+}
 
 function clearTimer(): void {
   if (timer !== null) {
@@ -252,18 +299,28 @@ function start(): void {
   running.value = true
   targetTs.value = Date.now() + minutes.value * 60 * 1000
   syncRemain()
-  /*
-   * 一声「吸」起手：显式放，不靠 watch ——
-   * 1 分钟档（60 秒）的起手相位和上一轮的落点可能恰好相同，watch 就不会触发。
-   */
-  lastCued = ''
-  cuePhase('in', true)
+  if (BREATH_GUIDE === 'track') {
+    /*
+     * 连续引导：整段循环与页面同一时刻起走。
+     * `immediate` 是为了"点了就出声"——本地还没缓存时先流网络地址（同时把文件存下来）。
+     */
+    startAmbient(BREATH_TRACK.files, BREATH_TRACK.volume, { immediate: true })
+  } else {
+    /*
+     * 一记模式：一声「吸」起手，显式放、不靠 watch ——
+     * 1 分钟档（60 秒）的起手相位和上一轮的落点可能恰好相同，watch 就不会触发。
+     */
+    lastCued = ''
+    cuePhase('in', true)
+  }
   startTicker()
 }
 
 function settle(held: boolean): void {
   running.value = false
   clearTimer()
+  /* 先收掉连续引导，否则收功铃响完它还在转（与沙漏 / 茶寮同一顺序） */
+  stopAmbient()
   store.finish(minutes.value, held)
   if (held) {
     // 守住誓愿：走事件流入账（原 +5 不变，显式指定以对齐旧口径）

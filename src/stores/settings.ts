@@ -35,7 +35,7 @@ export const useSettingsStore = defineStore(
     const soundOn = ref(true)
 
     /**
-     * 沙漏走时声偏好（none / tick / pink / leaves，见 config/audio.ts）。
+     * 沙漏走时声偏好（none / tick / sand / pink / leaves，见 config/audio.ts）。
      * 默认「静」：沙漏的语义就是安静，环境音是可选，不是默认。
      */
     const sandglassAmbient = ref('none')
