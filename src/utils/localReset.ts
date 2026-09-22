@@ -28,6 +28,7 @@ import { useInterruptStore } from '@/stores/interrupt'
 import { useProbeStore } from '@/stores/probe'
 import { useClosingStore } from '@/stores/closing'
 import { useCapsuleStore } from '@/stores/capsule'
+import { useShareStore } from '@/stores/share'
 
 export function resetPracticeData(): void {
   useXpStore().$patch({ total: 0, maxLevel: 0 })
@@ -51,8 +52,10 @@ export function resetPracticeData(): void {
    * 身体电量：步数属于"看得见的记录"，随修行数据一并清空 ——
    * 这既符合「重置全部」的字面意思，也是健康类数据必须给到用户的删除开关。
    * goal（今日目标步数）留着：它和语言、提醒一样是本机偏好，不是记录。
+   * lastTryAt / autoStrikes 是静默续接的记账，跟着步数一起清 —— 留着会让
+   * "重置之后反而更不容易同步"（auth 已清空，本来也不会自动，清掉只是不留下脏计数）。
    */
-  useBodyStore().$patch({ days: {}, lastSyncAt: '', auth: '' })
+  useBodyStore().$patch({ days: {}, lastSyncAt: '', lastTryAt: '', autoStrikes: 0, auth: '' })
   /*
    * 「止」与「行」的长期档同样是修行记录，漏了它们，用户点完「重置全部」
    * 会发现计划还在、冲动记录还在 —— 那句话就成了假的。
@@ -66,4 +69,10 @@ export function resetPracticeData(): void {
   /* 收功（每天一句）与时间胶囊（写给未来的自己的话）同样属于"我写过的东西"，一并清 */
   useClosingStore().$patch({ records: [] })
   useCapsuleStore().$patch({ items: [] })
+  /*
+   * 分享留痕也清 —— 但真正的撤回**发生在调用方**（设置页在重置前先 `share.revokeAll()`）：
+   * 这里只是同步清本机，服务器上那些快照要靠网络请求删，写不进这个同步函数。
+   * 顺序不能反：先撤回、后重置，否则详情页没了、链接却还公开可读。
+   */
+  useShareStore().$patch({ items: [] })
 }

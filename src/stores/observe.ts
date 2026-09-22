@@ -16,6 +16,7 @@ import { defineStore } from 'pinia'
 import { computed, ref } from 'vue'
 import { logTrace } from '@/utils/traceLog'
 import { htmlToText, sanitizeHtml } from '@/utils/richText'
+import { DAO_LINE_MAX } from '@/config/dao'
 import { dailyQuotaOf, dayKey } from '@/config/quota'
 import { useAssessmentStore } from '@/stores/assessment'
 import { useModeStore } from '@/stores/mode'
@@ -107,6 +108,18 @@ export interface ObsItem {
   why?: string
   /** 挂靠的母题 id */
   motherId?: string
+  /**
+   * 凝练句（2026-09-21，**只有「道」用得上**）：一句 ≤ 24 字的主张，
+   * 由用户自己从这条道上凝出来，用于「观」大厅头部那句主张与开屏「今日一签」。
+   *
+   * 为什么另开一个字段而不是复用 title：title 是那个**问句**（「我到底在回避什么」）——
+   * 它得一直是个问题（问句才会反复冒出来），而扉页上需要一句能立住的话。
+   * 取用规则与长度上限见 `config/dao.ts`，别在页面里另写一套。
+   *
+   * 边界：`add()` 会给非「道」的条目清掉它；而 `update()` 把归属从道改成事/理时**保留**——
+   * 取用侧只读 `mothers`，所以不显示；用户哪天再改回「道」，那句还在（不替他丢字）。
+   */
+  daoLine?: string
   /** 深度：0 存 / 1 写了自述 / 2 关联到某条理 */
   depth: 0 | 1 | 2
   state: ObserveState
@@ -237,6 +250,13 @@ export const useObserveStore = defineStore(
         content,
         contentHtml: contentHtml || undefined,
         golden: (input.golden ?? []).filter((g) => g.trim()),
+        /*
+         * 凝练句只在「道」上成立，长度在这里兜一次底（页面用 maxlength 拦过一次，
+         * 但 store 是唯一闸门，新入口绕不过去）；空串统一存 undefined ——
+         * 免得留下"有 daoLine 字段但是空的"这种半状态，取用时还得再判一次。
+         */
+        daoLine:
+          input.kind === 'mother' ? input.daoLine?.trim().slice(0, DAO_LINE_MAX) || undefined : undefined,
         depth: 0,
         state,
         createdAt: now,
@@ -406,6 +426,8 @@ export const useObserveStore = defineStore(
       topics: string[]
       content: string
       probe?: string
+      /** 认领时顺手凝的那一句（可留空，之后在母题库卡片上补） */
+      daoLine?: string
     }): ObsItem | null {
       const item = add({
         kind: 'mother',
@@ -416,6 +438,7 @@ export const useObserveStore = defineStore(
         summary: '',
         content: input.content,
         golden: [],
+        daoLine: input.daoLine,
       })
       // 预置母题是「待填」，不标记为已处理，让它在收件匣里等着被填上第一笔
       return item
@@ -426,7 +449,7 @@ export const useObserveStore = defineStore(
      * 入账 observe.mother（+20）—— 这是观这一环最贵的一次加工，值得。
      * 提炼后原条目自动挂到新母题下，母题条目标记已处理（避免同一份功夫付两次）。
      */
-    function promoteToMother(id: string, name: string, why: string): ObsItem | null {
+    function promoteToMother(id: string, name: string, why: string, daoLine?: string): ObsItem | null {
       const src = find(id)
       const n = name.trim()
       if (!src || !n) return null
@@ -439,6 +462,8 @@ export const useObserveStore = defineStore(
         summary: '',
         content: why.trim() || src.content,
         golden: [],
+        /* 详情页「凝练成道」走这条路：一边晋升一边就把那句主张定下来 */
+        daoLine,
       })
       if (!item) return null
       src.motherId = item.id

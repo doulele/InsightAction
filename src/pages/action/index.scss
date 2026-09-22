@@ -503,6 +503,14 @@
   color: $gz-accent;
 }
 
+/* 收功卡里那一句身体读数：比正文轻一档，它只是收尾时顺带看见的一个数 */
+.closing__body {
+  display: block;
+  margin-bottom: 14rpx;
+  font-size: $gz-fs-caption;
+  color: $gz-ink-3;
+}
+
 .closing__input {
   width: 100%;
   min-height: 120rpx;

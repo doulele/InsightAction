@@ -156,6 +156,8 @@
         <text class="closing__label">今日收功</text>
         <text v-if="closing.todayClosed" class="closing__tag">已收</text>
       </view>
+      <!-- 收尾时顺手带一句身体读数（2026-09-21）：今天没读数就整句不出现，不留空壳 -->
+      <text v-if="bodyTodayLine" class="closing__body">{{ bodyTodayLine }}</text>
       <template v-if="closing.todayClosed">
         <text class="closing__done">{{ closing.todayRecord?.text || '今天收了 —— 不留字也算。' }}</text>
         <text class="closing__redo" hover-class="gz-hover" @click="closing.reopen()">还想再做点什么 · 撤销收功</text>
@@ -229,6 +231,7 @@ import { useKnowledgeStore } from '@/stores/knowledge'
 import { useHabitStore } from '@/stores/habit'
 import { usePlanStore, TODAY_STEP_COMFORT, type DailyItem, type Plan, type StepItem } from '@/stores/plan'
 import { useBodyStore } from '@/stores/body'
+import { autoSyncWeRun } from '@/utils/werun'
 import { useClosingStore } from '@/stores/closing'
 import { isSabbathToday, sabbathLine } from '@/utils/sabbath'
 import { logTrace } from '@/utils/traceLog'
@@ -268,6 +271,13 @@ const sabbathText = computed(() => sabbathLine(modeStore.id))
 
 /* ---------------- 今日收功 ---------------- */
 const closeDraft = ref('')
+
+/**
+ * 收功时带一句身体读数（2026-09-21）：
+ * 一天收尾看见的不只是四环，还有身体这一格。**今天没读数就整句不出现** ——
+ * 不留"今天走了 — 步"这种空壳（标空是这一页的底线，收功这里同样守）。
+ */
+const bodyTodayLine = computed(() => (body.todayStep === null ? '' : `今天走了 ${body.todayStep} 步。`))
 
 function doClose(): void {
   const first = closing.close(closeDraft.value)
@@ -334,6 +344,12 @@ onShow(() => {
   }
   /* 搁置满 3 天的「今天做的一件事」自动收走（静默，不打扰） */
   planStore.sweep()
+  /*
+   * 身体电量静默续接（2026-09-21）：授权过之后，隔几天进「行」时补一次步数。
+   * 不 await —— 它不该挡住页面；失败也不提示（见 autoSyncWeRun 的说明）。
+   * 挂在这里而不是 App.onLaunch：那时隐私授权门还没挂载，隐私接口会挂起。
+   */
+  void autoSyncWeRun()
   /* 批次 D · 小枢：评估到点激励 / 入定到点提醒 */
   poke()
   /* tabBar 原生样式/图标只能在本类大厅页上同步 */

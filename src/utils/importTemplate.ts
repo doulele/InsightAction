@@ -15,9 +15,14 @@
  *  1. 契约跟着页面上选中的「形态」走 —— 文章给了「原文链接」、视频给「视频链接」、
  *     一句话只有正文与感悟，其余（经典语句 / 摘要 / 重要观点 / 一句话总结）是文章与视频共用。
  *     把另一种形态才有的字段塞给 AI，只会诱导它替你编一格（"视频链接"填进一篇公众号文章）。
- *  2. 契约里**没有 `form`**：形态是你手上这份清单的身份，不是 AI 该写的内容 ——
- *     粘进来之后由 utils/fileImport.ts 按"哪个形态独有的字段出现了"反推（见 inferForm）。
- *  3. 契约里也**没有 `why`**（原来有，2026-09-19 去掉）：它只对「理」有意义，
+ *  2. 契约里**有 `form` 这一格**（2026-09-21 加回，用户提的）：值就是当前形态的 id
+ *     （`article` / `quote` / `video`），让清单**自己声明身份**。
+ *     为什么加回来 —— 用户的原话是"万一进来复制错了咋搞"：在「一句话」签上复制了「文章」那份契约，
+ *     全文只有链接、金句、观点，粘回来靠字段反推也能认成文章，但**用户不知道**发生了什么。
+ *     有了这一格：① 导入以**清单里写的**为准（`applyImport` 优先用它，见 fileImport）；
+ *     ② 预检弹框能明说"这份清单自己写着是**文章**，你现在选的是**一句话**"，让人当场发现拿错了。
+ *     老文件 / 手写清单没有这一格时，仍由 `utils/fileImport.ts` 的 `inferForm()` 按字段反推。
+ *  3. 契约里**没有 `why`**（原来有，2026-09-19 去掉）：它只对「理」有意义，
  *     而归属（事 / 理 / 道）本来就不在契约里 —— 同理，AI 判不准就不要它替你写。
  *
  * 字段表与三种形态的生成规则都写在下方的 `FORM_KEYS` / `JSON_SAMPLE` / `MD_LABEL` 里：
@@ -28,7 +33,8 @@
  *     （底层用 localBackup 的 writeTextFile + shareFile，与备份 / 修行档案导出同一套）；
  *  2. **文件名的 ASCII 惯例**：`guanzhi-import-template-<形态>.json`，
  *     与 guanzhi-backup-*、guanzhi-archive-* 一致，避开多字节文件名在各端转发时的差异；
- *     文件名里带形态，是因为**文件本身看不出它是给哪个形态的**（契约里没有 form 这一格）。
+ *     文件名带形态是为了"一眼看得出"，而**契约里也有 `form` 那一格**（见上）——
+ *     转发到聊天之后文件躺在列表里，两处都对得上才不会拿错。
  */
 import type { ObserveForm } from '@/stores/observe'
 import { shareFile, writeTextFile } from '@/utils/localBackup'
@@ -47,13 +53,16 @@ export const FORM_LABEL: Record<ObserveForm, string> = {
 const ALL_FORMS: ObserveForm[] = ['article', 'quote', 'video']
 
 /**
- * 每种形态要哪几格 —— **顺序就是契约里的顺序**（正文放在最后）。
+ * 每种形态要哪几格 —— **顺序就是契约里的顺序**（`form` 在最前、正文放在最后）。
  * 三种形态的差别其实只有三处：文章有「原文链接」、视频有「视频链接」、一句话只有正文与感悟。
+ *
+ * `form` 放第一位（2026-09-21）：它是最该被先看到、也最不该被改的一格 ——
+ * AI 读到的第一行就是"这是文章/一句话/视频的清单"，填的时候自然照它来。
  */
 const FORM_KEYS: Record<ObserveForm, string[]> = {
-  article: ['title', 'sourceName', 'link', 'golden', 'digest', 'viewpoints', 'summary', 'insight', 'content', 'contentHtml'],
-  video: ['title', 'sourceName', 'videoUrl', 'golden', 'digest', 'viewpoints', 'summary', 'insight', 'content', 'contentHtml'],
-  quote: ['content', 'insight'],
+  article: ['form', 'title', 'sourceName', 'link', 'golden', 'digest', 'viewpoints', 'summary', 'insight', 'content', 'contentHtml'],
+  video: ['form', 'title', 'sourceName', 'videoUrl', 'golden', 'digest', 'viewpoints', 'summary', 'insight', 'content', 'contentHtml'],
+  quote: ['form', 'content', 'insight'],
 }
 
 /**
@@ -90,6 +99,7 @@ const QUOTE_CONTENT_SAMPLE = '那一句话：把打动你的那句原话照抄�
  * 读进来会自动转成富文本，用不着再手写一遍 HTML。
  */
 const MD_LABEL: Record<string, string> = {
+  form: '形态（article = 文章 / quote = 一句话 / video = 视频 · 这一格请原样保留，别改）',
   title: '标题（你以后找得回来的名字）',
   sourceName: '来源（公众号 / 播客 / 书 / 朋友 / UP 主）',
   link: '链接（原文地址；没有就留空）',
@@ -105,10 +115,18 @@ const MD_LABEL: Record<string, string> = {
 /** 一句话形态的正文行（字段名仍是「正文」，靠括号注说清它就是那一句话） */
 const QUOTE_CONTENT_LINE = '正文（那一句话 · 必填）：'
 
-/** 契约示例（JSON）—— 只给当前形态要的那几格 */
+/**
+ * 契约示例（JSON）—— 只给当前形态要的那几格。
+ * `form` 直接写成**当前形态的 id**（不是说明文字）：这一格是清单的身份证，
+ * AI 照抄下来，回来时就不必靠字段猜（拿错契约时也认得出来，见文件头的说明）。
+ */
 export function contractJson(form: ObserveForm): string {
   const out: Record<string, unknown> = {}
   for (const key of FORM_KEYS[form]) {
+    if (key === 'form') {
+      out[key] = form
+      continue
+    }
     out[key] = key === 'content' && form === 'quote' ? QUOTE_CONTENT_SAMPLE : JSON_SAMPLE[key]
   }
   return JSON.stringify(out, null, 2)
@@ -119,15 +137,19 @@ export function contractMd(form: ObserveForm): string {
   const label = FORM_LABEL[form]
   const others = ALL_FORMS.filter((f) => f !== form).map((f) => FORM_LABEL[f]).join(' / ')
   /* 正文不进这一串：它必须留在最后（解析器见到它就收到底） */
-  const heads = FORM_KEYS[form].filter((k) => MD_LABEL[k] && k !== 'content').map((k) => `${MD_LABEL[k]}：`)
+  /* `form` 那一格**带值**（其余留空给人 / AI 填）：它是这份清单的身份证，不该由谁去猜 */
+  const heads = FORM_KEYS[form]
+    .filter((k) => MD_LABEL[k] && k !== 'content')
+    .map((k) => `${MD_LABEL[k]}：${k === 'form' ? form : ''}`)
   return [
     `# 观止知行 · 记一笔导入模板（${label}）`,
     '',
     '提示：把值写在冒号后面；用不着的行整行删掉（空值会被忽略，不会写进表单）。',
     '提示：括号里的字是说明，不用删；「正文」必须放在最后一个字段 —— 它以下直到文件结束都算正文。',
-    `提示：这份模板只给「${label}」这一种形态 —— 换成${others}，字段不一样，别混着用。`,
+    `提示：这份模板只给「${label}」这一种形态（形态那一格已写好 ${form}，请原样保留）。`
+      + `要${others}的清单，回小程序切到那张签再复制一次，别拿这一份凑。`,
     '提示：正文支持简单格式：# 小标题、**加粗**、- 列表、> 引用（会自动转成富文本，所以没有单独的一格）。',
-    '提示：没有 归属（事 / 理 / 道）、形态、主题、标签、为什么成立 —— 那几格在应用里点一下就有，不在契约里。',
+    '提示：没有 归属（事 / 理 / 道）、主题、标签、为什么成立 —— 那几格在应用里点一下就有，不在契约里。',
     '',
     ...heads,
     '',

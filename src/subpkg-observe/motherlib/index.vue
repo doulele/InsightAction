@@ -57,6 +57,18 @@
 
         <text class="card__name" hover-class="gz-hover" @click="toggle(m.id)">{{ m.title }}</text>
 
+        <!--
+          凝练句（2026-09-21）：这条道的"招牌"，也是唯一会被端到台面上的东西
+          （「观」大厅头部 + 开屏「今日一签」，见 config/dao.ts）。
+          名字是**问题**，这一句是**答案** —— 所以有就摆出来，没有就明说还没凝，就地可补。
+          整行可点：这一行本身既是展示也是入口，不往下面那排按钮上再挤一个。
+        -->
+        <view class="card__dao" hover-class="gz-hover" @click="editDao(m)">
+          <text v-if="m.daoLine" class="card__dao-text">「{{ m.daoLine }}」</text>
+          <text v-else class="card__dao-text card__dao-text--none">还没有凝出那一句 · 点这里写一句</text>
+          <text class="card__dao-go">{{ m.daoLine ? '改' : '凝练' }}</text>
+        </view>
+
         <!-- 文章 / 视频：卡片先给「你写的摘要」，正文只留三行（全文在详情页）—— 2026-09-19 -->
         <view v-if="briefText(m)" class="brief">
           <text class="brief__label">{{ briefLabel(m) }}</text>
@@ -134,12 +146,16 @@
  *  - **不新开 store**：母题就是 observe 里 kind='mother' 的条目，预置只是"样本"，
  *    认领后变成一条普通的母题条目。避免"预置库 / 我的库"两套数据结构互相打架；
  *  - **认领不入账**：别人写好的问题不算功夫，挂上第一条自己的内容才算；
+ *  - **认领时顺手凝一句**（2026-09-21）：母题名是那个"问题"，凝练句（daoLine）是那句"答案"——
+ *    它是唯一会被端上台面的东西（「观」大厅头部与开屏「今日一签」，见 config/dao.ts）。
+ *    两道弹层都可跳过：认领的门槛不能变成"先写好一句"，写不出的之后卡片上随时补；
  *  - **删母题要先解挂**：直接删会留下一堆指向空 id 的内容（脏引用），
  *    所以删之前把挂靠内容的 motherId 全部清掉，它们退回理库，不会消失。
  */
 import { computed, ref } from 'vue'
 import GzDialog from '@/components/GzDialog/GzDialog.vue'
 import { PRESET_MOTHERS, type PresetMother } from '@/config/mothers'
+import { DAO_LINE_MAX } from '@/config/dao'
 import { useObserveStore, type ObsItem } from '@/stores/observe'
 import { useSkinClass } from '@/composables/useSkin'
 import { navigateTo, ROUTES } from '@/router/routes'
@@ -260,30 +276,77 @@ function promoteFromTag(h: TagHint): void {
   })
 }
 
-/** 认领预置母题：先让他写下自己的第一笔，空着也能收下（用预置那句垫底） */
+/**
+ * 认领预置母题：先让他写下自己的第一笔，再问那句能立起来的话（两道都可留空）。
+ *
+ * 为什么第二问放在**收下之前**：道这一层最终的价值就在那一句上（它会被端到
+ * 「观」的头部与开屏），趁"刚认下这条道"的时候问最合适；而它也**必须能跳过** ——
+ * 认领的门槛若变成"先写好一句"，用户会直接不认领了。
+ */
 function adopt(p: PresetMother): void {
   uni.showModal({
     title: p.name,
     content: p.probe,
     editable: true,
     placeholderText: '写下你自己的第一笔（可留空）',
-    confirmText: '收下',
+    confirmText: '下一步',
     cancelText: '再想想',
     success: (res) => {
       if (!res.confirm) return
       const mine = ((res as { content?: string }).content ?? '').trim()
-      const item = observe.adoptPreset({
-        name: p.name,
-        topics: [p.topic],
-        content: mine ? `${p.line}\n${mine}` : p.line,
+      askDaoLine((line) => {
+        const item = observe.adoptPreset({
+          name: p.name,
+          topics: [p.topic],
+          content: mine ? `${p.line}\n${mine}` : p.line,
+          daoLine: line,
+        })
+        if (!item) {
+          uni.showToast({ title: '收件满了，先去处理几条', icon: 'none' })
+          return
+        }
+        uni.showToast({
+          title: line ? '已收下 · 那句就是你的道' : '已收下 · 之后可补凝练',
+          icon: 'none',
+        })
       })
-      if (!item) {
-        uni.showToast({ title: '收件满了，先去处理几条', icon: 'none' })
-        return
-      }
-      uni.showToast({ title: '已收下 · 去挂上第一条内容', icon: 'none' })
     },
   })
+}
+
+/**
+ * 问那一句凝练句。
+ *
+ * @param done 回调收到**空串 = 用户没写**（跳过或取消）—— 两种场景都接受空：
+ *   认领时跳过 = 先收下以后补；卡片上补写时取消 = 不改，调用方各自判断即可。
+ */
+function askDaoLine(done: (line: string) => void, current = ''): void {
+  uni.showModal({
+    title: '凝练成一句',
+    content: current
+      ? `现在是：「${current}」`
+      : `一句你自己的道（${DAO_LINE_MAX} 字以内）—— 它会被端到「观」的头部与开屏。`,
+    editable: true,
+    placeholderText: '如：拖延不是懒，是那件事太大',
+    confirmText: '收下',
+    cancelText: '先不写',
+    success: (r) => {
+      if (!r.confirm) {
+        done('')
+        return
+      }
+      done(((r as { content?: string }).content ?? '').trim().slice(0, DAO_LINE_MAX))
+    },
+  })
+}
+
+/** 就地补 / 改某条道的凝练句（入口是卡片上那一行） */
+function editDao(m: ObsItem): void {
+  askDaoLine((line) => {
+    if (!line) return
+    observe.update(m.id, { daoLine: line })
+    uni.showToast({ title: '已写进你的道', icon: 'none' })
+  }, m.daoLine)
 }
 
 /**

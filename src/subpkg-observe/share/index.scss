@@ -1,0 +1,294 @@
+/**
+ * 一条分享的只读页样式（2026-09-21 建立）。
+ *
+ * 这一页的作者可能是**第一次打开这个应用的人**（好友从聊天里点进来），所以：
+ *  · 版式走"像一篇文章"而不是"像一张卡片列表"—— 大标题、宽行距、少边框；
+ *  · 不出现任何本机数据（收件匣状态、处理按钮、标签筛选都没有）；
+ *  · 底部只留两个出口（打开应用 / 复制网页链接）。
+ * 样式只认 tokens（$gz-*），三套皮肤自动跟随 —— 与网页版那份独立 CSS 刻意不同：
+ * 那边是给"微信外的人"看的，不需要跟着你的皮肤走。
+ */
+.page {
+  min-height: 100vh;
+  padding: calc(var(--status-bar-height) + 16rpx) $gz-page-pad 60rpx;
+  box-sizing: border-box;
+}
+
+.nav {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8rpx 0 10rpx;
+}
+
+.nav__side {
+  width: 76rpx;
+  height: 76rpx;
+}
+
+.nav__back {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 76rpx;
+  height: 76rpx;
+  border: 1rpx solid $gz-line;
+  border-radius: 50%;
+  background: $gz-surface;
+  color: $gz-ink-2;
+  font-size: 52rpx;
+  line-height: 1;
+  padding-bottom: 8rpx;
+}
+
+.nav__title {
+  font-size: 34rpx;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  color: $gz-ink;
+}
+
+.hint {
+  padding: 120rpx 0;
+  text-align: center;
+}
+
+.hint__text {
+  font-size: $gz-fs-small;
+  color: $gz-ink-3;
+}
+
+/* ---- 头部：形态 / 标题 / 一句话总结 ---- */
+.head {
+  margin-top: 18rpx;
+}
+
+.head__kind {
+  display: inline-block;
+  margin-bottom: 14rpx;
+  padding: 4rpx 16rpx;
+  border: 1rpx solid $gz-line;
+  border-radius: 999rpx;
+  font-size: $gz-fs-caption;
+  letter-spacing: 0.08em;
+  color: $gz-ink-3;
+}
+
+.head__title {
+  display: block;
+  font-size: 40rpx;
+  font-weight: 700;
+  line-height: 1.5;
+  color: $gz-ink;
+}
+
+/*
+ * 一句话总结：这一页最先被读到的一段（也是分享卡片上带的那句），
+ * 用左侧主题色细条 + 浅底把它从正文里拎出来 —— 与理库 / 母题库卡片上的"摘要"是同一套视觉。
+ */
+.brief {
+  margin-top: 20rpx;
+  padding: 18rpx 22rpx;
+  border-left: 4rpx solid $gz-accent;
+  background: $gz-accent-soft;
+  border-radius: 0 $gz-radius-sm $gz-radius-sm 0;
+}
+
+.brief__label {
+  display: block;
+  font-size: $gz-fs-caption;
+  color: $gz-ink-3;
+}
+
+.brief__text {
+  display: block;
+  margin-top: 6rpx;
+  font-size: $gz-fs-small;
+  line-height: 1.85;
+  color: $gz-ink-2;
+}
+
+.meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8rpx 20rpx;
+  margin-top: 18rpx;
+}
+
+.meta__item {
+  font-size: $gz-fs-caption;
+  color: $gz-ink-3;
+}
+
+/* ---- 正文 ---- */
+.body {
+  margin-top: 30rpx;
+}
+
+.body__text {
+  font-size: $gz-fs-body;
+  line-height: 1.95;
+  color: $gz-ink-2;
+  word-break: break-all;
+}
+
+/* 富文本容器：rich-text 自带节点样式，这里只管外层间距与断词 */
+.body--rich {
+  font-size: $gz-fs-body;
+  line-height: 1.95;
+  color: $gz-ink-2;
+  word-break: break-all;
+}
+
+/* ---- 金句 / 观点 / 感悟 / 为什么成立 ---- */
+.golden {
+  margin-top: 30rpx;
+  padding: 20rpx 24rpx;
+  background: $gz-surface-2;
+  border-radius: $gz-radius-sm;
+}
+
+.golden__line {
+  display: block;
+  font-size: $gz-fs-small;
+  line-height: 1.9;
+  color: $gz-ink-2;
+}
+
+.golden__line + .golden__line {
+  margin-top: 10rpx;
+}
+
+.block {
+  margin-top: 30rpx;
+}
+
+.block__label {
+  display: block;
+  margin-bottom: 10rpx;
+  font-size: $gz-fs-caption;
+  letter-spacing: 0.1em;
+  color: $gz-ink-3;
+}
+
+.block__text {
+  display: block;
+  font-size: $gz-fs-small;
+  line-height: 1.9;
+  color: $gz-ink-2;
+}
+
+.point + .point {
+  margin-top: 14rpx;
+}
+
+.point__title {
+  display: block;
+  font-size: $gz-fs-small;
+  font-weight: 600;
+  color: $gz-ink-2;
+}
+
+.point__text {
+  display: block;
+  margin-top: 4rpx;
+  font-size: $gz-fs-small;
+  line-height: 1.9;
+  color: $gz-ink-2;
+}
+
+/*
+ * 外链只做「复制 + 提示」：个人主体小程序没有业务域名白名单，web-view 打不开外站
+ * （与详情页同一口径，见 detail/index.vue 的 copyThenTip）。
+ */
+.link {
+  margin-top: 26rpx;
+  padding: 16rpx 0;
+}
+
+.link__text {
+  font-size: $gz-fs-small;
+  color: $gz-accent;
+}
+
+/* ---- 两个出口 ---- */
+.acts {
+  display: flex;
+  gap: 16rpx;
+  margin-top: 40rpx;
+}
+
+.acts__btn {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 22rpx 0;
+  border: 1rpx solid $gz-line;
+  border-radius: $gz-radius-md;
+  background: $gz-surface;
+}
+
+/* 主路：打开应用（读者多半是第一次听说这个应用） */
+.acts__btn--main {
+  border-color: $gz-accent;
+  background: $gz-accent-soft;
+}
+
+.acts__btn-text {
+  font-size: $gz-fs-small;
+  font-weight: 600;
+  color: $gz-ink-2;
+}
+
+.acts__btn--main .acts__btn-text {
+  color: $gz-accent;
+}
+
+.foot {
+  margin-top: 24rpx;
+  text-align: center;
+}
+
+.foot__text {
+  font-size: $gz-fs-caption;
+  color: $gz-ink-3;
+}
+
+/* ---- 取不到（撤回 / 过期）---- */
+.gone {
+  padding: 140rpx 0 0;
+  text-align: center;
+}
+
+.gone__seal {
+  width: 132rpx;
+  height: 132rpx;
+  margin: 0 auto 26rpx;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 2rpx solid $gz-line;
+  border-radius: 24rpx;
+  font-size: 56rpx;
+  color: $gz-ink-3;
+}
+
+.gone__title {
+  display: block;
+  font-size: 34rpx;
+  font-weight: 600;
+  color: $gz-ink;
+}
+
+.gone__desc {
+  display: block;
+  margin-top: 12rpx;
+  font-size: $gz-fs-small;
+  line-height: 1.8;
+  color: $gz-ink-3;
+}
+
+.gone .acts {
+  margin-top: 34rpx;
+}

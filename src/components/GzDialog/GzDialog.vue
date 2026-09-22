@@ -7,7 +7,13 @@
         :class="[skinClass, { 'is-danger': variant === 'danger' }]"
         @click.stop
       >
-        <image v-if="banner && art && variant !== 'danger'" class="gd__art" :src="art" mode="aspectFill" />
+        <image
+          v-if="banner && artSrc && variant !== 'danger'"
+          class="gd__art"
+          :src="artSrc"
+          mode="aspectFill"
+          @error="onArtError"
+        />
         <view v-else-if="banner && variant !== 'danger'" class="gd__art gd__art--fallback" />
         <view class="gd__body">
           <text v-if="title" class="gd__title">{{ title }}</text>
@@ -61,9 +67,13 @@
  *   />
  *   @confirm：点主按钮触发（由调用方执行动作并自行关闭）
  *   @cancel / 遮罩点击 / @update:show=false：取消路径
+ *
+ * 横幅图（art）**不用每个调用方都传**：缺省自动取当前模式的主题图；
+ * 只有换肤确认这类「要预览另一个模式」的场景才显式传目标模式的图。
  */
 import { computed } from 'vue'
 import { useModeStore } from '@/stores/mode'
+import { useImageStore } from '@/stores/images'
 import type { ModeId } from '@/config/modes'
 
 interface Props {
@@ -73,7 +83,11 @@ interface Props {
   skin?: ModeId
   /** 语义变体：danger 用于破坏性操作（删除/重置），确认键固定语义红 */
   variant?: 'default' | 'danger'
-  /** 顶部横幅图（danger 变体自动忽略） */
+  /**
+   * 顶部横幅图。**缺省 = 当前模式的主题横幅**（组件自己去 modeStore 取）；
+   * 只有「预览切换后的模式」才需要显式传目标模式的图（见 settings / me 的换肤确认）。
+   * danger 变体自动忽略。
+   */
   art?: string
   title?: string
   /** 标题下小标 */
@@ -113,6 +127,27 @@ const emit = defineEmits<{
 
 const modeStore = useModeStore()
 const skinClass = computed(() => `gz-skin gz-skin--${props.skin ?? modeStore.id}`)
+
+/**
+ * 横幅图源：显式传入的优先，**没传就用当前模式的图**。
+ *
+ * 为什么要有这层兜底：横幅图必须走 `modeStore.art`（后端 /skins 下发 + 本地缓存，
+ * 见 HallHead 的同款注释），早先每个调用方各自传一遍，漏传就静默退回渐变饰带 ——
+ * 表现是「这个弹框看起来没加载出主题图」，而代码不报错、极难被发现
+ * （2026-09-21 设置页「开启云备份」与盲盒「换一只」两处即如此）。
+ * 兜底后调用方只在「预览别的模式」时才需要传 art，其余一律自动跟随当前模式。
+ */
+const artSrc = computed(() => props.art ?? modeStore.art)
+
+/**
+ * 横幅读不出来（本地缓存被系统清掉 / 开发者工具里本地文件失效）→ 作废这条缓存。
+ * 作废后 `artSrc` 自动回落到**远端地址**（弹框照常出图），且缓存层自带 5 分钟冷却，
+ * 不会「报错 → 重下 → 再报错」打转。与 HallHead 同一套自愈
+ * （2026-09-16 立的口径：凡是渲染本地图的 `<image>` 都要有 @error 自愈）。
+ */
+function onArtError(): void {
+  useImageStore().invalidate(modeStore.remoteArtOf(props.skin ?? modeStore.id))
+}
 
 function close(isMask: boolean): void {
   if (isMask && !props.maskClosable) return

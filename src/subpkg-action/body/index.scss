@@ -269,6 +269,143 @@
   color: $gz-ink-3;
 }
 
+/* ---- 最近三十天（只摆形状，没有刻度、也没有达标线） ---- */
+.month {
+  margin-top: 28rpx;
+  padding: 26rpx 30rpx 22rpx;
+  background: $gz-surface;
+  border: 1rpx solid $gz-line;
+  border-radius: $gz-radius-lg;
+}
+
+.month__head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 16rpx;
+}
+
+.month__title {
+  font-size: $gz-fs-title;
+  font-weight: 600;
+  color: $gz-ink;
+}
+
+.month__tip {
+  font-size: $gz-fs-caption;
+  color: $gz-ink-3;
+}
+
+/* 30 根细柱：容器矮一点，免得整块比「最近七天」还占地方 */
+.month__bars {
+  display: flex;
+  align-items: flex-end;
+  gap: 4rpx;
+  height: 120rpx;
+  margin-top: 24rpx;
+}
+
+.mcol {
+  flex: 1;
+  display: flex;
+  align-items: flex-end;
+  height: 100%;
+  min-width: 0;
+}
+
+.mcol__bar {
+  width: 100%;
+  background: linear-gradient(180deg, var(--gz-accent), var(--gz-grad-to));
+  border-radius: 4rpx;
+}
+
+/* 没读到的那天只留一道浅色底 —— 与「走了 0 步」的小短柱区分开 */
+.mcol__bar.is-empty {
+  background: var(--gz-line-soft);
+}
+
+.month__facts {
+  margin-top: 20rpx;
+}
+
+.month__fact {
+  display: block;
+  font-size: $gz-fs-caption;
+  line-height: 1.85;
+  color: $gz-ink-2;
+}
+
+.month__fact--dim {
+  color: $gz-ink-3;
+}
+
+/* ---- 输入与输出（观环条数 vs 步数，同一天摆在一起） ---- */
+.io {
+  margin-top: 28rpx;
+  padding: 24rpx 30rpx 20rpx;
+  background: $gz-surface;
+  border: 1rpx solid $gz-line;
+  border-radius: $gz-radius-lg;
+}
+
+.io__head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 16rpx;
+}
+
+.io__title {
+  font-size: $gz-fs-title;
+  font-weight: 600;
+  color: $gz-ink;
+}
+
+.io__tip {
+  font-size: $gz-fs-caption;
+  color: $gz-ink-3;
+}
+
+.io__row {
+  display: flex;
+  align-items: center;
+  gap: 16rpx;
+  padding: 14rpx 0;
+  border-bottom: 1rpx solid var(--gz-line-soft);
+}
+
+.io__row:last-child {
+  border-bottom: none;
+}
+
+.io__date {
+  flex: none;
+  width: 100rpx;
+  font-size: $gz-fs-caption;
+  color: $gz-ink-3;
+}
+
+.io__in {
+  flex: 1;
+  min-width: 0;
+  font-size: $gz-fs-small;
+  color: $gz-ink-2;
+}
+
+.io__out {
+  flex: none;
+  font-size: $gz-fs-small;
+  color: $gz-ink;
+}
+
+.io__note {
+  display: block;
+  margin-top: 16rpx;
+  font-size: $gz-fs-caption;
+  line-height: 1.75;
+  color: $gz-ink-3;
+}
+
 /* ---- 同步按钮 ---- */
 .sync {
   margin-top: 32rpx;

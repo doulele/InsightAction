@@ -7,11 +7,14 @@
  *  - 恢复时若 `备份.schema > SCHEMA_VERSION` → **拒绝恢复**并明确提示
  *    （这是「换机后脊椎变脏数据」的最后一道防线，宁可不让恢复，也不能让界面错乱）。
  *
- * 当前 = 9：步骤嵌套（plan 的 PlanNode 增 parentId / progress）与两份正文（observe 增
+ * 当前 = 11：observe 的「道」增 daoLine（凝练句，≤24 字）—— 母题名是那个问句，
+ * 这一句才是会被端到「观」大厅头部与开屏的那句主张（取用规则见 config/dao.ts）。
+ * 上一版（10）：新增 stores/share.ts（我发出去的分享的本机留痕：token / itemId / 标题 / 到期时间）。
+ * 再上一版（9）：步骤嵌套（plan 的 PlanNode 增 parentId / progress）与两份正文（observe 增
  * contentHtml / imported / handleNote），knowledge 增 domain / qa / ref，
  * 并删掉 stores/quality.ts（信息源质量榜 → 派生的来源账本）。
  */
-export const SCHEMA_VERSION = 9
+export const SCHEMA_VERSION = 11
 
 /** 结构升级记录：给未来的自己看「哪一版改了什么」 */
 export const SCHEMA_HISTORY: ReadonlyArray<{ version: number; note: string }> = [
@@ -29,5 +32,13 @@ export const SCHEMA_HISTORY: ReadonlyArray<{ version: number; note: string }> = 
   {
     version: 9,
     note: '步骤嵌套与两份正文：plan 的 PlanNode 增 parentId（≤5 层）与 progress（叶子自评进度，拉满等于勾上）；knowledge 增 domain（我的知识 / 专业知识）、qa（要点与追问）、ref（回链三件事）；observe 增 contentHtml（富文本正本）、imported（由文件导入，不占信息配额）、handleNote（处理时那句从正文里挪出来）；删除 stores/quality.ts —— 信息源质量榜改成从收件池派生的「来源账本」，观维度日指标由"辨源标注次数"改为数 observe 环痕迹。老数据一律按"无父子 / life 书架 / 无富文本 / 未导入"兼容，无需迁移脚本',
+  },
+  {
+    version: 10,
+    note: '新增 stores/share.ts：分享的本机留痕（token / itemId / 短标题 / h5Url / 到期时间），用于详情页显示"这条已分享 · 撤回"、避免重复发布，以及重置数据前尽量撤回服务器上的快照。老数据没有这个 store，按空列表兼容（不影响恢复）',
+  },
+  {
+    version: 11,
+    note: 'observe 的「道」增 daoLine（凝练句，≤24 字，只在 kind=\'mother\' 上成立）：它是「观」大厅头部那句主张与开屏「今日一签」的来源（config/dao.ts 按天轮换）。写入入口三处 —— 详情页「凝练成道」、母题库认领流程、母题库卡片补写；写入时 store 统一 trim + 截断。老数据没有这一格，按"还没凝练"兼容，无需迁移脚本',
   },
 ]

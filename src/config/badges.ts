@@ -58,6 +58,10 @@ export interface BadgeContext {
   crossHallDay: number
   /** 断卡 7 天之后又回来了 */
   comebackAfterBreak: boolean
+  /** 行 · 身体：留下过步数读数的天数（累计，不要求连续） */
+  bodyReadDays: number
+  /** 行 · 身体：是否有过走到自己定的目标的一天 */
+  bodyGoalHit: boolean
 }
 
 export interface BadgeRule {
@@ -77,7 +81,7 @@ export interface BadgeRule {
  *     断卡不归零是产品的立场，再发一枚「你没断」的徽章，等于变相惩罚那些断了的人。
  *
  * 关于箴言三枚：规格 §12.4 的表写于箴言体系之前，未包含它们；
- * 这里保留（2026-09-15 已上线），所以实际是 25 + 3 = 28 枚。
+ * 这里保留（2026-09-15 已上线）；2026-09-21 又补了身体两枚，所以实际是 25 + 3 + 2 = 30 枚。
  */
 export const BADGE_RULES: readonly BadgeRule[] = [
   /* ---------------- 通用 ---------------- */
@@ -129,6 +133,18 @@ export const BADGE_RULES: readonly BadgeRule[] = [
     name: '疑己',
     desc: '完成一个认知型计划：推翻自己原来的一个判断',
     hit: (c) => c.challengeCogCount >= 1,
+  },
+  /*
+   * 身体两枚（2026-09-21）：身体电量此前在成就体系里**零引用** —— 做了也不会有任何回声。
+   * 门槛刻意避开两件事：不设「连续 N 天」（那是惩罚性 streak，旧表里的已删），
+   * 也不用绝对步数（"走过一万步"是系统在评判）；「走到满格」对的是**你自己设的目标**。
+   */
+  { id: 'body-remember', name: '记起身体', desc: '有 30 天留下过身体读数', hit: (c) => c.bodyReadDays >= 30 },
+  {
+    id: 'body-full',
+    name: '走到满格',
+    desc: '有一天走到了你自己定的目标步数',
+    hit: (c) => c.bodyGoalHit,
   },
 
   /*

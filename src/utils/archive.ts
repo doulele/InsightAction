@@ -149,7 +149,9 @@ export function buildArchive(now = new Date()): ArchiveResult {
   } else {
     for (const m of mothers) {
       const n = observe.childrenOf(m.id).length
-      L.push(`- ${oneLine(m.title || m.summary)}${n ? `（辖 ${n} 条理）` : ''}`)
+      /* 凝练句摆前面 —— 那是这条道上"能带走的那一句"；母题名跟在后面当身份 */
+      const line = m.daoLine ? `「${oneLine(m.daoLine)}」 —— ` : ''
+      L.push(`- ${line}${oneLine(m.title || m.summary)}${n ? `（辖 ${n} 条理）` : ''}`)
     }
   }
   L.push('')

@@ -508,3 +508,162 @@
   letter-spacing: 0.08em;
   color: $gz-ink-3;
 }
+
+/*
+ * 顶栏右侧的「分享」（2026-09-21）。
+ * 宽度就 76rpx（与左侧返回键同宽，标题才居得正）—— 两个字 24rpx 正好，
+ * 所以这里只有"分享"二字，"已分享"那种状态放在面板里说，不挤这一格。
+ */
+.nav__share {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 76rpx;
+  height: 76rpx;
+  font-size: 24rpx;
+  letter-spacing: 0.04em;
+  color: $gz-accent;
+}
+
+/*
+ * 分享面板（2026-09-21）—— 底部升起，与「记一笔」的粘贴台是同一套版式。
+ * mask 用 fixed + inset，高度由视口给（不看 .page 的 min-height: 100vh）。
+ *
+ * 一个必须处理的地方：微信原生 `<button open-type="share">` 自带默认背景与 ::after 边框，
+ * 不重置的话它会是个灰方块（与 PrivacyGate.scss 里那条注是同一件事）。
+ */
+.mask {
+  position: fixed;
+  inset: 0;
+  z-index: 30;
+  display: flex;
+  align-items: flex-end;
+  background: rgba(20, 16, 10, 0.5);
+}
+
+.sheet {
+  width: 100%;
+  padding: 34rpx 32rpx calc(env(safe-area-inset-bottom) + 30rpx);
+  background: $gz-surface;
+  border-radius: 32rpx 32rpx 0 0;
+  box-sizing: border-box;
+}
+
+.sheet__title {
+  display: block;
+  font-size: 32rpx;
+  font-weight: 700;
+  color: $gz-ink;
+}
+
+.sheet__sub {
+  display: block;
+  margin-top: 10rpx;
+  font-size: $gz-fs-caption;
+  line-height: 1.7;
+  color: $gz-ink-3;
+}
+
+.sheet__row {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  margin-top: 16rpx;
+  padding: 24rpx 0;
+  border: 1rpx solid $gz-line;
+  border-radius: $gz-radius-md;
+  background: $gz-surface;
+  /* 原生 button 的默认样式一律抹掉（背景 / 边框 / 最小高度） */
+  line-height: 1.4;
+  &::after {
+    border: none;
+  }
+}
+
+/* 主路：转发给好友 */
+.sheet__row--main {
+  border-color: $gz-accent;
+  background: $gz-accent-soft;
+}
+
+.sheet__row--danger .sheet__row-text {
+  color: #b4553f;
+}
+
+.sheet__row-text {
+  font-size: $gz-fs-small;
+  font-weight: 600;
+  color: $gz-ink-2;
+}
+
+.sheet__row--main .sheet__row-text {
+  color: $gz-accent;
+}
+
+/*
+ * 凝练成道（2026-09-21）
+ * 这一块的主角是**那一句**，所以给它的字号比正文大一档（34rpx / 加粗）——
+ * 卡片里其它文字都是"读到的"，只有这句是"要带走的"。
+ */
+.dao__line {
+  display: block;
+  margin-top: 18rpx;
+  font-size: 34rpx;
+  font-weight: 700;
+  line-height: 1.6;
+  color: $gz-ink;
+}
+
+.dao__target {
+  margin-top: 18rpx;
+}
+
+.dao__target-label {
+  font-size: $gz-fs-caption;
+  color: $gz-ink-3;
+}
+
+.dao__target-name {
+  margin-left: 10rpx;
+  font-size: $gz-fs-small;
+  color: $gz-ink-2;
+}
+
+/* 还没有那一句 / 还没挂道：如实说清楚下一步，不写"快来凝练吧"这类鼓动词 */
+.dao__none {
+  display: block;
+  margin-top: 18rpx;
+  font-size: $gz-fs-caption;
+  line-height: 1.85;
+  color: $gz-ink-3;
+}
+
+.dao__ops {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: 18rpx;
+}
+
+.dao__btn {
+  padding: 10rpx 28rpx;
+  border: 1rpx solid $gz-line;
+  border-radius: 999rpx;
+  font-size: $gz-fs-caption;
+  color: $gz-ink-2;
+}
+
+.dao__btn--main {
+  border-color: $gz-accent;
+  background: $gz-accent-soft;
+  color: $gz-accent;
+  font-weight: 600;
+}
+
+.sheet__cancel {
+  margin-top: 14rpx;
+  padding: 18rpx 0;
+  text-align: center;
+  font-size: $gz-fs-small;
+  color: $gz-ink-3;
+}

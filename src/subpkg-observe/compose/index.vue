@@ -510,7 +510,8 @@
  *     且进页时明说一句，不悄悄吞掉用户敲过的字。草稿槽见 stores/composeDraft.ts。
  *
  * 两条外来清单的路（2026-09-17 起，2026-09-19 加粘贴）：契约与模板在 utils/importTemplate.ts
- * （**按当前形态给字段**，里面没有 form / why 两格），解析与反推形态在 utils/fileImport.ts；
+ * （**按当前形态给字段**，并带 `form` 那一格 —— 清单自己声明身份；`why` 仍不在契约里），
+ * 解析在 utils/fileImport.ts、没有 form 时的反推也在那里（`inferForm`）；
  * 这里只负责"问一句 → 落进表单 → 明说填了什么"，且永远不代存。
  */
 import { computed, ref, watch } from 'vue'
@@ -949,8 +950,11 @@ function closePaste(): void {
 }
 
 /**
- * 这份清单是哪个形态的 —— 契约里**刻意没有 `form` 这一格**（形态跟着页面上的签走），
- * 所以粘/导进来之后得自己认。认法很实在：哪个形态独有的字段出现就是它。
+ * 这份清单是哪个形态的 —— **兜底的猜法**（2026-09-21 起只给"没有 form 那一格"的清单用）。
+ *
+ * 契约现在带 `form`（清单自己声明身份），所以正常路径根本用不到这里；
+ * 它会派上用场的只有两种：老文件、手写的「字段：值」清单。
+ * 认法很实在：哪个形态独有的字段出现就是它。
  *  - 有「视频链接」→ 视频（这一格只有视频有，最硬）；
  *  - 有标题 / 原文链接 / 带样式的正文 / 摘要 / 观点 / 一句话总结 → 文章；
  *  - 只剩正文与感悟 → 一句话（它的契约就只有这两格）；
@@ -967,8 +971,14 @@ function inferForm(f: ImportedForm): ObserveForm | '' {
 
 /**
  * 粘进来的这份填不填 —— **先给一次预检**，别闷头往回填。
- * 两件事要在这时说清：这份是哪个形态的（要不要顺手把形态切过去）、认出了哪几格。
+ * 三件事要在这时说清：这份是哪个形态的（要不要顺手把形态切过去）、认出了哪几格、有什么没读到。
  * 认不出任何字段就不填，并告诉他该粘什么（不装作成功）。
+ *
+ * 形态这一栏分两种情况（2026-09-21，契约里加了 `form` 之后）：
+ *  · 清单**自己写了形态**（AI 照契约填的都有）→ 以它为准，并且如果和当前签不一样，
+ *    要把两边都写出来（"这份清单写着是文章，你现在选的是一句话"）——这正是用户要的兜底：
+ *    **拿错契约时当场看得出来**，而不是悄悄按字段猜一个；
+ *  · 老文件 / 手写清单没有这一格 → 退回按字段反推（`inferForm`），措辞改成"看着像"。
  */
 function usePaste(): void {
   const text = pasteText.value.trim()
@@ -993,12 +1003,21 @@ function usePaste(): void {
     })
     return
   }
-  const inferred = inferForm(fields)
-  const willSwitch = !!inferred && inferred !== form.value.form
+  /* 清单自己声明了形态就以它为准；没声明才按字段反推 */
+  const declared = fields.form
+  const guessed = declared ?? (inferForm(fields) || undefined)
+  const willSwitch = !!guessed && guessed !== form.value.form
+  const switchNote = !willSwitch
+    ? ''
+    : declared
+      ? `这份清单自己写着是「${FORM_LABEL[declared]}」（形态那一格），填的时候会用清单里写的那个；`
+        + `你现在选的是「${FORM_LABEL[form.value.form]}」。\n`
+        + `若这不是你要的，先「再看看」回页面切到对的签、重新复制一份契约再让 AI 填。\n\n`
+      : `看着像「${FORM_LABEL[guessed]}」的清单（它没有形态那一格），填的时候会顺手把形态切过去。\n\n`
   uni.showModal({
     title: '粘进来的这份清单',
     content:
-      (willSwitch ? `看着是「${FORM_LABEL[inferred as ObserveForm]}」的清单，填的时候会顺手把形态切过去。\n\n` : '')
+      switchNote
       + `填进去：${got.join(' / ')}`
       + (warnings.length ? `\n（${warnings.join('；')}）` : '')
       + '\n\n过一遍再存 —— 拿进来的只是预填，最后那一下由你按。',
@@ -1089,7 +1108,7 @@ function confirmUpload(file: PickedFile): Promise<boolean> {
 function finishImport(fields: ImportedForm, warnings: string[], source: '' | 'rule' | 'ai' | 'ocr'): void {
   const before = form.value.form
   applyImport(fields)
-  /* 形态被清单带着换了（契约里没有 form 这一格，靠 inferForm 认）—— 换过就说一声，别让人纳闷 */
+  /* 形态被清单带着换了（以清单里的 form 为准，没写才靠 inferForm 猜）—— 换过就说一声，别让人纳闷 */
   const switched = form.value.form !== before
   imported.value = true
   importSource.value = source
@@ -1111,8 +1130,8 @@ function closeNotice(): void {
 function applyImport(f: ImportedForm): void {
   const v = form.value
   if (f.kind) v.kind = f.kind
-  /* 形态：契约里没有 `form` 这一格（按形态给的），所以这份清单得自己认（见 inferForm）；
-     老文件 / 服务端仍可能给 form，那就以它为准 */
+  /* 形态：**清单里写了就以它为准**（契约带 form；服务端解析也会回传），
+     没写才按字段反推（见 inferForm）—— 用户拿错契约时，这里不会再"猜错还悄悄改掉" */
   const shape = f.form ?? inferForm(f)
   if (shape) v.form = shape
   if (f.title) v.title = f.title
@@ -1175,7 +1194,7 @@ function copyContract(): void {
 /**
  * 转发模板文件：本机写文件 → 转发到聊天（用户发给「文件传输助手」，再在电脑上打开）。
  * 文案里刻意不出现"下载" —— 微信里没有下载落点，落点就是"转发到聊天"。
- * 形态一起带下去：生成的文件名里有形态（契约里没有 form 这一格，文件自己得说得清）。
+ * 形态一起带下去：文件名里带形态（一眼看得出），契约里也有 `form` 那一格 —— 两处都对得上。
  */
 async function sendTemplate(kind: TemplateKind): Promise<void> {
   try {
@@ -1202,12 +1221,12 @@ function showFormatHelp(): void {
   uni.showModal({
     title: '清单格式说明',
     content:
-      '契约跟着上面选中的「形态」走 —— 三种形态字段不一样：\n'
+      '契约跟着上面选中的「形态」走 —— 三种形态字段不一样（每种都带「形态」那一格，写着这份清单是给哪一格用的）：\n'
       + '· 文章：标题 / 来源 / 原文链接 / 经典语句 / 摘要 / 重要观点 / 一句话总结 / 感悟 / 正文（外加一份带样式的正文）；\n'
       + '· 视频：把「原文链接」换成「视频链接」，其余同上；\n'
       + '· 一句话：只有正文（那一句话）与感悟。\n'
-      + '粘进来的时候会按字段自己认是哪种形态（认得出就顺手把形态切过去，认不出就不动）。\n\n'
-      + '不进契约的是这五格：归属（事 / 理 / 道）、形态、主题、标签、为什么成立 —— 前四格在应用里点一下就有（归属是你对它的判断，原文里并没有写着「这是理」）；「为什么成立」只在归到「理」时才用得上，判不准就别让 AI 替你写。\n\n'
+      + '粘进来的时候：清单里写了哪一格就以它为准（拿错契约会当场告诉你）；没写这一格的（老文件、手写清单）才按字段猜，猜不出就不动。\n\n'
+      + '不进契约的是这四格：归属（事 / 理 / 道）、主题、标签、为什么成立 —— 前三格在应用里点一下就有（归属是你对它的判断，原文里并没有写着「这是理」）；「为什么成立」只在归到「理」时才用得上，判不准就别让 AI 替你写。\n\n'
       + 'JSON 最准：字段名与表单一一对应，把「JSON 模板」转发到电脑、让 AI 照它填，最不容易出错。\n\n'
       + 'MD 与 JSON 是同一套字段，只是写法不同：按「字段：值」逐行写，字段名后面能用括号注明"这格要什么"；「正文：」以下全算正文，用 # 小标题、**加粗**、- 列表、> 引用写，会自动转成富文本。\n\n'
       + '粘清单与 MD / TXT 文件都在小程序本机解析，内容不会离开手机。\n\n'

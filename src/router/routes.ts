@@ -44,6 +44,12 @@ export const ROUTES = {
   observeMotherLib: '/subpkg-observe/motherlib/index',
   /** 观：理道图谱 —— 理与母题引用关系的总览（§15.4 MVP 列表版，分包 subpkg-observe） */
   observeGraph: '/subpkg-observe/graph/index',
+  /**
+   * 观：一条分享的**只读页**（`?t=<token>`）—— 好友点开小程序卡片就落在这里。
+   * 它**不需要登录**：进来先用 `?t` 去服务器取那一条（services/shareStore.read），
+   * 取不到就渲染"这条分享已被撤回或已过期"（与网页版同一口径）。
+   */
+  observeShare: '/subpkg-observe/share/index',
   /** 批次 B · 止：禅定沙漏专注计时（分包 subpkg-pause） */
   pauseSandglass: '/subpkg-pause/sandglass/index',
   /** 批次 B · 止：专注统计（分包 subpkg-pause） */

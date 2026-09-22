@@ -11,6 +11,7 @@
  *     这里按本项目惯例（见 utils/privacy.ts）写一个窄接口再断言。
  */
 import { useAccountStore } from '@/stores/account'
+import { useBodyStore } from '@/stores/body'
 import { BizError } from '@/types/api'
 import { decodeWeRunData, type WerunResult } from '@/api/modules/werun'
 
@@ -171,4 +172,33 @@ export async function readWeRun(): Promise<WerunResult> {
  */
 export function openWeRunSetting(): void {
   uni.openSetting({})
+}
+
+/**
+ * 静默续接一次步数（2026-09-21）。
+ *
+ * 与 readWeRun 的分工：**所有判定与失败都在这里吞掉**。
+ * 自动续接失败不应该弹窗、不应该 toast —— 用户根本没要求这件事，
+ * 拿不到数据只是"没续上"，不是"出错了"。真正的报错留给手动同步那条路。
+ *
+ * 之所以敢自动：`scope.werun` 授权**一次就够**，拿到之后 getWeRunData 完全静默、
+ * 不再弹窗。所以自动的只是"取数"，"要不要授权"仍然是用户自己按下的那一次。
+ * 没授权过（`auth !== 'ok'`）时这里直接返回，一扇窗都不会弹。
+ */
+export async function autoSyncWeRun(): Promise<boolean> {
+  const body = useBodyStore()
+  if (!body.canAutoSync()) return false
+  body.markTried()
+  try {
+    const res = await readWeRun()
+    body.record(res.days)
+    body.finishTry()
+    return true
+  } catch (e) {
+    // 只有"没授权"需要落到状态上（之后不再自动打扰）；其余静默
+    if (e instanceof WerunError && e.reason === 'denied') body.markDenied()
+    body.finishTry()
+    console.warn('[werun] 静默续接未成功：', e)
+    return false
+  }
 }

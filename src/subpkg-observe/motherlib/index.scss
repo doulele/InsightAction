@@ -187,6 +187,39 @@
   color: $gz-ink;
 }
 
+/*
+ * 凝练句（2026-09-21）：这一行既是展示也是入口（点它就地补 / 改）。
+ * 样式上刻意比母题名小一档、带主题色底 —— 名字是"问"，这句是"答"，
+ * 而它的去向（观页头部 / 开屏）值得被一眼认出来。
+ */
+.card__dao {
+  display: flex;
+  align-items: center;
+  gap: 12rpx;
+  margin-top: 12rpx;
+  padding: 14rpx 18rpx;
+  border-radius: $gz-radius-sm;
+  background: $gz-accent-soft;
+}
+
+.card__dao-text {
+  flex: 1;
+  min-width: 0;
+  font-size: $gz-fs-small;
+  line-height: 1.6;
+  color: $gz-accent;
+}
+
+.card__dao-text--none {
+  color: $gz-ink-3;
+}
+
+.card__dao-go {
+  flex: none;
+  font-size: $gz-fs-caption;
+  color: $gz-accent;
+}
+
 .card__line {
   display: block;
   margin-top: 10rpx;

@@ -87,6 +87,49 @@
       </view>
     </view>
 
+    <!--
+      最近三十天：微信只给约 31 天，"三十天"就是能拿到的最长窗口。
+      这里只摆形状，不出现"完成率""达标率"这类评判词。
+    -->
+    <view class="month">
+      <view class="month__head">
+        <text class="month__title">最近三十天</text>
+        <text class="month__tip">只摆形状，不下结论</text>
+      </view>
+      <view class="month__bars">
+        <view v-for="d in body.bars30" :key="d.date" class="mcol">
+          <view
+            class="mcol__bar"
+            :class="{ 'is-empty': d.step === null }"
+            :style="{ height: monthHeight(d) }"
+          />
+        </view>
+      </view>
+      <view class="month__facts">
+        <text class="month__fact">这三十天里，有读数的 {{ body.insight.knownDays }} 天，没读到的 {{ body.insight.missingDays }} 天。</text>
+        <text v-if="medianText" class="month__fact">{{ medianText }}</text>
+        <text v-if="compareText" class="month__fact">{{ compareText }}</text>
+        <text class="month__fact month__fact--dim">没读到不等于没走 —— 可能是没带手机，也可能那天没打开过小程序。</text>
+      </view>
+    </view>
+
+    <!--
+      输入与输出（2026-09-21）：同一天，观环存进多少条 vs 行环走了多少步。
+      这是别处做不出的对照（微信运动没有你的阅读记录），所以只把它俩摆在一起。
+    -->
+    <view class="io">
+      <view class="io__head">
+        <text class="io__title">输入与输出</text>
+        <text class="io__tip">看了多少 / 走了多少</text>
+      </view>
+      <view v-for="r in ioRows" :key="r.date" class="io__row">
+        <text class="io__date">{{ r.label }}</text>
+        <text class="io__in">{{ r.read ? `读了 ${r.read} 条` : '没存东西' }}</text>
+        <text class="io__out">{{ r.step === null ? '步数没读到' : `走了 ${stepText(r.step)} 步` }}</text>
+      </view>
+      <text v-if="ioNote" class="io__note">{{ ioNote }}</text>
+    </view>
+
     <!-- 同步 -->
     <view class="sync" :class="{ 'is-busy': syncing }" hover-class="gz-hover" @click="onSync">
       <text>{{ syncing ? '读取中…' : '同步今日步数' }}</text>
@@ -96,7 +139,8 @@
     </view>
 
     <view class="note">
-      <text class="note__row">步数来自微信运动，每次点击才读一次，不会在后台偷着取。</text>
+      <text class="note__row">步数来自微信运动。第一次要你点一下授权；之后隔几天进「行」大厅会自动续接一次。没授权之前，我们不会读。</text>
+      <text class="note__row">自动续接失败不打扰你，也不会一直重试 —— 连续两次没拿到更新的数据就改回你手动点。</text>
       <text class="note__row">服务端只负责解开微信的密文，解开即刻返回，不留存、不写日志。</text>
       <text class="note__row">步数存在你这台手机上：云备份不带它，本地备份文件才带得走。</text>
       <text class="note__row">它只是身体活动的粗略参考，不构成健康建议。</text>
@@ -112,17 +156,26 @@
  * 行 · 身体电量（微信运动）。
  *
  * 产品的取舍写在前头：
- *  1. **只手动，不自动** —— 冷启动就弹授权框是惹人不快也要不到授权的，
- *     而且微信运动本来就要"用户主动进入小程序"才会刷新数据；
+ *  1. **授权手动、取数自动**（2026-09-21 改）—— 授权窗只在用户主动点「同步」时才弹
+ *     （冷启动就弹是惹人不快也要不到授权的）。拿到授权之后进「行」大厅会静默续接一次，
+ *     因为那时 `getWeRunData` 已不再弹窗、用户全程无感；判定见 `stores/body.ts` 的
+ *     `canAutoSync`（数据过期 ≥2 天、距上次尝试 ≥20 小时、不在 23:00–06:00）。
+ *     微信运动本来就要"用户主动进入小程序"才会刷新数据，所以自动也只是补一次；
  *  2. **诚实标空** —— 没读到数据显示「—」而不是 0，柱状图同样留白。
  *     把「没数据」画成「走了 0 步」，是另一种形式的自欺；
- *  3. **不评判** —— 不给连续达标 / 断签才会有回头cue，只有一句平铺直叙的话。
+ *  3. **不评判** —— 不给连续达标 / 断签才会有回头cue，只有一句平铺直叙的话；
+ *  4. **只跟自己比**（2026-09-21）—— 三十天视图比的是**自己的中位数**与自己的工作日/周末，
+ *     不跟达标线比、更不跟别人比；没读到的天数如实报出来，但明确写着"没读到不等于没走"；
+ *  5. **输入与输出**（2026-09-21）—— 同一天"观环存了几条"与"走了多少步"摆在一起。
+ *     这是微信运动与系统数字健康都做不出的对照，所以只摆结构、不下结论。
  */
 import { computed, ref } from 'vue'
 import { useSkinClass } from '@/composables/useSkin'
 import { useBodyStore, GOAL_PRESETS, GOAL_MIN, GOAL_MAX, formatGoal } from '@/stores/body'
 import type { BodyBar } from '@/stores/body'
+import { dayStats } from '@/utils/growth'
 import { WerunError, openWeRunSetting, readWeRun } from '@/utils/werun'
+import { logTrace } from '@/utils/traceLog'
 
 const skinClass = useSkinClass()
 const body = useBodyStore()
@@ -200,12 +253,78 @@ function barHeight(d: BodyBar): string {
   return `${Math.max(3, Math.round(pct))}%`
 }
 
+/** 三十天柱高：只按这 30 天的峰值归一（不掺目标值，否则整排都会被压扁） */
+function monthHeight(d: BodyBar): string {
+  if (d.step === null) return '0%'
+  const pct = (d.step / Math.max(1, body.peak30)) * 100
+  return `${Math.max(4, Math.round(pct))}%`
+}
+
+/** 「只跟自己比」第一句：今天与自己的中位数比 */
+const medianText = computed<string>(() => {
+  const s = body.insight
+  if (s.median === null) return ''
+  const base = `你最近的中间值是 ${s.median} 步`
+  if (s.diff === null) return `${base}。`
+  if (s.diff === 0) return `${base}，今天正好停在线上。`
+  return `${base}，今天${s.diff > 0 ? '多' : '少'}了 ${Math.abs(s.diff)} 步。`
+})
+
+/** 「只跟自己比」第二句：工作日 vs 周末（两边样本不够就整句不出现） */
+const compareText = computed<string>(() => {
+  const s = body.insight
+  if (s.workdayAvg === null || s.weekendAvg === null) return ''
+  const gap = s.weekendAvg - s.workdayAvg
+  if (gap === 0) return `工作日与周末走得一样多，都是 ${s.workdayAvg} 步。`
+  return `工作日日均 ${s.workdayAvg} 步，周末 ${s.weekendAvg} 步。`
+})
+
+/** 最近七天的「输入与输出」逐日对照（观环痕迹数复用 utils/growth 的同一口径） */
+const ioRows = computed(() =>
+  body.recent.map((d) => ({
+    date: d.date,
+    label: d.label,
+    read: dayStats(d.date).obsN,
+    step: d.step,
+  })),
+)
+
+/**
+ * 对照的收束句：只指出"存得最多"与"走得最多"落在哪一天，不说这两件事谁好谁坏。
+ * 步数样本不足 3 天、或这一周压根没存东西时整句不出现 —— 宁可不说话，也别硬凑一句。
+ */
+const ioNote = computed<string>(() => {
+  const rows = ioRows.value
+  const withStep = rows.filter((r) => r.step !== null)
+  if (withStep.length < 3) return ''
+  const busiest = [...rows].sort((a, b) => b.read - a.read)[0]
+  const farthest = [...withStep].sort((a, b) => (b.step ?? 0) - (a.step ?? 0))[0]
+  if (!busiest || busiest.read === 0 || !farthest) return ''
+  return busiest.date === farthest.date
+    ? `存得最多和走得最多，落在同一天（${farthest.label}）。`
+    : `存得最多的是 ${busiest.label}，走得最多的是 ${farthest.label}。`
+})
+
 async function onSync(): Promise<void> {
   if (syncing.value) return
   syncing.value = true
   try {
     const res = await readWeRun()
     body.record(res.days)
+    /*
+     * 入账：同步本身就是"回头看了一眼身体"这个行为，值 2 分。
+     * 一天只计一次（config/trace.ts 的 DAY_CAP），第二次起照常留痕、不再入账 ——
+     * 否则反复点同步就是反复领分。安息日由 logTrace 统一处理，页面不判断。
+     */
+    logTrace({
+      kind: 'action.body',
+      text: body.hasToday ? `今天 ${body.todayStep} 步` : '同步了步数，今天暂无数据',
+    })
+    /*
+     * 手动同步成功也顺手把"自动续接连败"清零：那道闸是给取不到数的情况兜底的，
+     * 用户自己点通了，说明路是通的，自动该恢复。
+     */
+    body.finishTry()
     uni.showToast({
       title: body.hasToday ? `今天 ${body.todayStep} 步` : '已同步，今天暂无数据',
       icon: 'none',

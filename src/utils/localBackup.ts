@@ -39,6 +39,7 @@ import { useRemoteStore } from '@/stores/remote'
 import { useReminderStore } from '@/stores/reminder'
 import { useSeedStore } from '@/stores/seed'
 import { useSettingsStore } from '@/stores/settings'
+import { useShareStore } from '@/stores/share'
 import { useThoughtStore } from '@/stores/thought'
 import { useTraceStore } from '@/stores/trace'
 import { useUrgeStore } from '@/stores/urge'
@@ -129,6 +130,11 @@ const HYDRATORS: Array<{ key: string; use: () => Patchable }> = [
   { key: 'reminder', use: () => useReminderStore() },
   { key: 'seed', use: () => useSeedStore() },
   { key: 'settings', use: () => useSettingsStore() },
+  /*
+   * share（2026-09-21）：分享的本机留痕。它**要**跟着备份走 ——
+   * 换机之后你还要能撤回自己发出去的链接；丢了这份记录，那些链接就再也撤不了。
+   */
+  { key: 'share', use: () => useShareStore() },
   { key: 'thought', use: () => useThoughtStore() },
   { key: 'trace', use: () => useTraceStore() },
   { key: 'urge', use: () => useUrgeStore() },

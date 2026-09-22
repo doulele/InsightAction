@@ -1,7 +1,18 @@
 <template>
   <view class="page" :class="skinClass" @touchstart="armDwell">
-    <!-- 大厅头（五页共用组件：主题艺术画作背景 + 印章 + 定位 + 状态 + 修行语言横幅） -->
-    <HallHead mark="观" en="INSIGHT · 观事 → 观理 → 观道" :state="stateText" show-cap />
+    <!--
+      大厅头（五页共用组件：主题艺术画作背景 + 印章 + 定位 + 状态 + 修行语言横幅）。
+      横幅里那句主张**优先用「我的道」**（config/dao.ts，一天一句）：有就顶着模式标签语上，
+      小字行同时标出来源；没有才照旧显示模式标签语 —— 所以"没道"的观感与改动前完全一样。
+    -->
+    <HallHead
+      mark="观"
+      en="INSIGHT · 观事 → 观理 → 观道"
+      :state="stateText"
+      show-cap
+      :line="myDao?.line ?? ''"
+      :cap-label="headCapLabel"
+    />
 
     <!-- 第一周解锁引导：今天的主角在这里才挂出 -->
     <WeekGuide for="observe" />
@@ -240,6 +251,7 @@ import { useModeStore } from '@/stores/mode'
 import { useSkinClass } from '@/composables/useSkin'
 import { syncTabBar } from '@/utils/skin'
 import { hallStatus } from '@/config/lexicon'
+import { DAO_FROM_LABEL, daoLineOf } from '@/config/dao'
 import { ledgerSummary } from '@/utils/sourceLedger'
 import { dailyOf } from '@/config/daily'
 import type { DailyKind } from '@/config/daily'
@@ -313,6 +325,18 @@ const quota = computed(() => observe.quotaTotal())
 const content = useContentStore()
 const today = ref(todayKey())
 const dailyList = computed(() => content.dailyItems())
+
+/*
+ * —— 我的道（2026-09-21）——
+ * 头部那句主张优先用自己的道：用户在母题上凝出来的那一句（daoLine），
+ * 按天轮换（同一天多次进来是同一条，与「每日一则」同一份仪式感）。
+ * 一条都没凝过时 myDao 为 null —— 头部照旧显示模式标签语，不显示任何"你还没有道"的提示。
+ */
+const myDao = computed(() => daoLineOf(today.value, observe.mothers))
+/** 小字行：有道时把「模式 · 我的道」写出来，让那句不是凭空冒出来的 */
+const headCapLabel = computed(() =>
+  myDao.value ? `今日修行 · ${modeStore.meta.label} · ${DAO_FROM_LABEL}` : '',
+)
 
 /* —— 外部入口（信息工作台）：只有数字与出口，内容全部留在网站侧 —— */
 const portal = computed(() => content.portal)

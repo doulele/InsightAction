@@ -43,8 +43,8 @@
 
       <!-- 下半部：一句主张 + 关键数字（或「观」大厅的模式标签语），两者都空时整块不渲染 -->
       <view v-if="hasCap" class="hall-head__cap">
-        <text v-if="capLabel" class="hall-head__eyebrow">{{ capLabel }}</text>
-        <text v-if="capLine" class="hall-head__quote">{{ capLine }}</text>
+        <text v-if="capLabelText" class="hall-head__eyebrow">{{ capLabelText }}</text>
+        <text v-if="capLineText" class="hall-head__quote">{{ capLineText }}</text>
         <view v-if="statList.length" class="hall-head__stats">
           <view v-for="s in statList" :key="s.label" class="hall-head__stat">
             <text class="hall-head__stat-value">{{ s.value }}</text>
@@ -97,8 +97,16 @@ const props = withDefaults(
     action?: string
     /** 挂「今日修行 · 模式 + 模式标签语」，只有「观」大厅开 */
     showCap?: boolean
-    /** 下半部那句主张（四个非「观」大厅用），文案来自 `lexicon.hallLine()` */
+    /**
+     * 下半部那句主张，文案来自各页的 `lexicon.hallLine()` / `config/dao.ts`。
+     * **传了就用传进来的**（观页在这里放"我的道"），没传才回落到模式标签语。
+     */
     line?: string
+    /**
+     * 覆盖小字行（观页有"我的道"时写成「今日修行 · 普通 · 我的道」）。
+     * 空 = 走默认那句「今日修行 · 模式 · EN」。
+     */
+    capLabel?: string
     /** 关键数字：值走大字、标签走小字；**两三个为宜**，多了这块就散了 */
     stats?: Array<{ value: string; label: string }>
   }>(),
@@ -134,12 +142,19 @@ function onArtError(): void {
 /** 数字行（归一成数组，模板里不用再判 undefined） */
 const statList = computed(() => props.stats ?? [])
 
-/** 「观」大厅：小字是「今日修行 · 模式 · EN」，大字是模式标签语 */
-const capLabel = computed(() => (props.showCap ? `今日修行 · ${meta.value.label} · ${meta.value.labelEn}` : ''))
-const capLine = computed(() => (props.showCap ? meta.value.tagline : props.line ?? ''))
+/** 小字行：默认「今日修行 · 模式 · EN」，观页有"我的道"时覆盖成「今日修行 · 模式 · 我的道」 */
+const capLabelText = computed(
+  () => props.capLabel || (props.showCap ? `今日修行 · ${meta.value.label} · ${meta.value.labelEn}` : ''),
+)
+/**
+ * 那句主张。**优先用传进来的 `line`**（观页放"我的道"），没有才回落到模式标签语 ——
+ * 模式标签语讲的是"这套表达语言什么气质"，道讲的是"你自己认的那条道理"，
+ * 两种话同时只能站一个位置：叠起来就是同一块地方把话说两遍。
+ */
+const capLineText = computed(() => props.line || (props.showCap ? meta.value.tagline : ''))
 
 /** 下半部有没有内容 —— 决定卡片走 250rpx（有下半部）还是 190rpx（只有印章行） */
-const hasCap = computed(() => !!capLabel.value || !!capLine.value || statList.value.length > 0)
+const hasCap = computed(() => !!capLabelText.value || !!capLineText.value || statList.value.length > 0)
 </script>
 
 <style lang="scss" scoped>

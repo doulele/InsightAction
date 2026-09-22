@@ -121,6 +121,12 @@ export const DAY_CAP: Partial<Record<TraceKind, number>> = {
   'action.closing': 1,
   'reflect.echo': 1,
   'reflect.capsule': 1,
+  /*
+   * 身体电量（2026-09-21）：一天最多计一次。
+   * 手动点同步 + 进「行」大厅的静默续接都可能触发它，没有这道闸，
+   * 反复点同步就成了反复领分。触顶后照常留痕，只是不再入账。
+   */
+  'action.body': 1,
 }
 
 /** 该类事件的每日入账上限；0 = 不限 */

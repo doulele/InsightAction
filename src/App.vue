@@ -18,7 +18,17 @@ import { initAudioOption, resumeAudio, setSoundEnabled, suspendAudio } from '@/u
 import { suspendSpeech } from '@/utils/speech'
 import { installRouterGuard, ROUTES } from '@/router/routes'
 
-onLaunch(() => {
+/**
+ * 这一次启动是不是"落在分享页"（2026-09-21）。
+ * 好友点开分享卡片时 launch options 的 path 就是那一页（带 `?t=<token>`）；
+ * 网页版那条不经过小程序，与此无关。
+ */
+function isShareLanding(options: unknown): boolean {
+  const path = String((options as { path?: string } | undefined)?.path || '')
+  return path.includes('subpkg-observe/share/index')
+}
+
+onLaunch((options) => {
   /*
    * 路由兜底：`switchTab` 在工具/基础库上出现过 `fail timeout`，而项目里那二十多处 tab 跳转
    * 大多没写 fail 回调 —— 失败会被当成未捕获错误整屏上报，跳转也没发生。
@@ -49,10 +59,16 @@ onLaunch(() => {
   // 头像自检：持久化的本地路径可能已失效（换机恢复 / 系统清理），失效就回落成「名字章」
   useIdentityStore().verify()
 
-  // 打开仪式：每次冷启动一律先进启动箴言页（约 4 秒，点按即跳过）。
-  // 该页随用户上次选择的模式皮肤出现；模式已持久化，无需重复选择。
-  // 分流（已完成引导 → 主界面 / 首次 → 模式选择）由该页自身负责。
-  uni.reLaunch({ url: ROUTES.entryStartup })
+  /*
+   * 打开仪式：每次冷启动一律先进启动箴言页（约 4 秒，点按即跳过）。
+   * 该页随用户上次选择的模式皮肤出现；模式已持久化，无需重复选择。
+   * 分流（已完成引导 → 主界面 / 首次 → 模式选择）由该页自身负责。
+   *
+   * **例外（2026-09-21）：从分享卡片进来时不走这一步** ——
+   * 好友点开的是"那一条"，这里再 reLaunch 一次，那一页就永远打不开，人也找不到回来的路。
+   * 分享页自己给了「打开观止知行」的出口（同样落回启动页，由那一页分流）。
+   */
+  if (!isShareLanding(options)) uni.reLaunch({ url: ROUTES.entryStartup })
 
   // tabBar / navigationBar 在首帧后才就绪，延迟一帧确保 API 可用
   const modeStore = useModeStore()

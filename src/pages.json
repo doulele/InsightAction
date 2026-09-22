@@ -122,6 +122,13 @@
             "navigationStyle": "custom",
             "navigationBarTitleText": "理道图谱"
           }
+        },
+        {
+          "path": "share/index",
+          "style": {
+            "navigationStyle": "custom",
+            "navigationBarTitleText": "一条分享"
+          }
         }
       ]
     },

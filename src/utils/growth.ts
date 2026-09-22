@@ -7,6 +7,7 @@
 import type { BadgeContext } from '@/config/badges'
 import type { HallId } from '@/config/lexicon'
 import { useAssessmentStore } from '@/stores/assessment'
+import { useBodyStore } from '@/stores/body'
 import { useFocusStore } from '@/stores/focus'
 import { useHabitStore } from '@/stores/habit'
 import { useKnowledgeStore } from '@/stores/knowledge'
@@ -21,6 +22,7 @@ import { useXpStore } from '@/stores/xp'
 /** 从全部 store 汇总一次性徽章快照（本地可判定的行为数据） */
 export function buildBadgeContext(): BadgeContext {
   const assessment = useAssessmentStore()
+  const body = useBodyStore()
   const xp = useXpStore()
   const focus = useFocusStore()
   const question = useQuestionStore()
@@ -65,6 +67,10 @@ export function buildBadgeContext(): BadgeContext {
     vowBreakReflect: vow.tally.broken,
     crossHallDay: crossHallDays(trace.list),
     comebackAfterBreak: hasComeback(trace.list),
+
+    /* 身体两枚（2026-09-21）：步数只在本机，取计数即可，不涉及网络 */
+    bodyReadDays: body.readDays,
+    bodyGoalHit: body.goalHitCount > 0,
   }
 }
 

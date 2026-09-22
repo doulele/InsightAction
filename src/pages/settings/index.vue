@@ -429,6 +429,7 @@ import { levelIndexFromXp } from '@/config/levels'
 import { ROUTES } from '@/router/routes'
 import { useContentStore } from '@/stores/content'
 import { useAccountStore } from '@/stores/account'
+import { useShareStore } from '@/stores/share'
 import { useRemoteStore } from '@/stores/remote'
 import { applyUpdateNow, updateCheckState, updateReady, updateSupported } from '@/utils/update'
 import { compareVersion, getRunningVersion } from '@/utils/version'
@@ -527,7 +528,7 @@ function resetAll(): void {
   dangerKind.value = 'resetAll'
 }
 
-function runDanger(): void {
+async function runDanger(): Promise<void> {
   const kind = dangerKind.value
   dangerKind.value = null
   if (kind === 'resetToday') {
@@ -537,8 +538,27 @@ function runDanger(): void {
     uni.showToast({ title: p('toast.resetDone'), icon: 'none' })
     return
   }
+  /*
+   * 先撤回服务器上的分享，再清本机（2026-09-21）。
+   *
+   * 顺序不能反：重置会把收件匣清掉，那条内容的详情页也随之消失 ——
+   * 而服务器上那些快照**仍然是公开可读的**，那样"重置全部"就等于一句假话。
+   * 撤回失败不拦着重置（可能只是没网），但要把没撤成的条数如实说出来。
+   */
+  const share = useShareStore()
+  const revoked = await share.revokeAll()
   resetPracticeData()
   uni.showToast({ title: p('toast.resetDone'), icon: 'none' })
+  if (revoked.failed) {
+    uni.showModal({
+      title: '有分享没能撤回',
+      content:
+        `本机数据已重置，但有 ${revoked.failed} 条分享没能从服务器撤回（多半是网络问题）。\n`
+        + '它们会在 30 天后自动失效；你也可以等有网时再试一次。',
+      showCancel: false,
+      confirmText: '知道了',
+    })
+  }
 }
 
 /* ---------------- 本地备份：导出 / 恢复 ---------------- */
