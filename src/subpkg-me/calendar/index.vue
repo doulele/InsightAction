@@ -122,7 +122,8 @@
  * 数据来自各 store 的历史聚合（growth.ts 的 dayStats），纯本地。
  */
 import { computed, ref } from 'vue'
-import { dayStats, activeDimCount, fmtKey, type DayStats } from '@/utils/growth'
+import { dayStats, activeDimCount, type DayStats } from '@/utils/growth'
+import { dateKeyOf } from '@/utils/dateKey'
 import { isSabbathDay } from '@/utils/sabbath'
 import { useSkinClass } from '@/composables/useSkin'
 import { ROUTES } from '@/router/routes'
@@ -134,7 +135,7 @@ const dl = useDimLabel()
 const WEEK = ['一', '二', '三', '四', '五', '六', '日']
 
 const now = new Date()
-const todayKey = fmtKey(now)
+const todayK = dateKeyOf(now)
 /** 视图锚点：所在月份的 1 号 */
 const anchor = ref(new Date(now.getFullYear(), now.getMonth(), 1))
 const viewYear = computed(() => anchor.value.getFullYear())
@@ -153,10 +154,11 @@ interface Cell {
   sabbath: boolean
 }
 
-const selectedKey = ref(todayKey)
+const selectedKey = ref(todayK)
 
+/** 页内小工具：由年/月/日直接得到日键（本月格子在生成时手里只有这三个数） */
 function dateKey(y: number, m: number, d: number): string {
-  return `${y}-${`${m + 1}`.padStart(2, '0')}-${`${d}`.padStart(2, '0')}`
+  return dateKeyOf(new Date(y, m, d))
 }
 
 /** 生成 6 行 × 7 列的格子（周一开头），逐格取真实 stats */
@@ -180,8 +182,8 @@ const cells = computed<Cell[]>(() => {
   for (let i = 0; i < firstDow; i++) out.push({ ...blank })
   for (let d = 1; d <= daysInMonth; d++) {
     const key = dateKey(y, m, d)
-    const future = key > todayKey
-    const isToday = key === todayKey
+    const future = key > todayK
+    const isToday = key === todayK
     const stats = future ? null : dayStats(key)
     out.push({
       key,
@@ -236,7 +238,7 @@ const d = computed<DayStats>(() => {
 const selectedLabel = computed(() => {
   const k = selected.value?.key ?? selectedKey.value
   const [, m, day] = k.split('-').map(Number)
-  if (k === todayKey) return '今天'
+  if (k === todayK) return '今天'
   return `${m} 月 ${day} 日`
 })
 
@@ -271,14 +273,14 @@ function stepMonth(delta: number): void {
   const max = new Date(y, m + 1, 0).getDate()
   const cur = Number(now.getDate())
   const pickDay = cur <= max ? dateKey(y, m, cur) : mk
-  selectedKey.value = pickDay <= todayKey ? pickDay : mk
+  selectedKey.value = pickDay <= todayK ? pickDay : mk
 }
 
 function jumpToday(): void {
   const y = now.getFullYear()
   const m = now.getMonth()
   anchor.value = new Date(y, m, 1)
-  selectedKey.value = todayKey
+  selectedKey.value = todayK
 }
 
 </script>

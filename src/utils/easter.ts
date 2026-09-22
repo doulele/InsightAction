@@ -16,6 +16,7 @@
  * **重逢时推翻过自己的旧卡**（温故知新）。三条都严格贴合"意外惊喜"的定义：
  * 它们是"某件不常发生的事真的发生过"，不是"攒够多少条" —— 攒数量那类归徽章。
  */
+import { dateKeyOf, dateKeyShift } from '@/utils/dateKey'
 import { useCapsuleStore } from '@/stores/capsule'
 import { useFocusStore } from '@/stores/focus'
 import { useKnowledgeStore } from '@/stores/knowledge'
@@ -55,16 +56,10 @@ export interface EggContext {
   cardChanged: boolean
 }
 
-/** 自然日键平移 */
-function pad(n: number): string {
-  return String(n).padStart(2, '0')
-}
-
-export function dayKeyShift(base: Date, delta: number): string {
-  const d = new Date(base)
-  d.setDate(d.getDate() + delta)
-  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`
-}
+/*
+ * 自然日键与平移（原 pad + dayKeyShift）2026-09-22 合并进 `utils/dateKey.ts`，
+ * 现用 `dateKeyOf()` / `dateKeyShift()`。本文件第 182 行那处内联拼串也一并换掉了。
+ */
 
 export const EGG_RULES: readonly EggRule[] = [
   {
@@ -161,7 +156,7 @@ export function evaluateEggs(): EggResult[] {
   const today = new Date()
 
   const keys: string[] = []
-  for (let i = 0; i < 40; i++) keys.push(dayKeyShift(today, -i))
+  for (let i = 0; i < 40; i++) keys.push(dateKeyShift(today, -i))
 
   const ctx: EggContext = {
     valueOn: (day, hall) => trace.valueOn(day, hall),
@@ -178,8 +173,7 @@ export function evaluateEggs(): EggResult[] {
     hasTrace: (kind, pred) => trace.list.some((t) => t.kind === kind && (pred ? pred(t) : true)),
     deepNoteOn: (day) =>
       knowledge.cards.some((c) => {
-        const d = new Date(c.createdAt)
-        const k = `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`
+        const k = dateKeyOf(c.createdAt)
         return k === day && c.content.trim().length >= 50
       }),
     focusMinOn: (day) => focus.minutesOn(day),

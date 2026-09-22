@@ -21,8 +21,14 @@
  * 组件 wxss 选不中组件外的祖先类，`.gz-skin--tech .nav__title` 会静默失效。
  * 所以皮肤类由 SubNav.vue 挂在**自己**的根节点上（与 GzDialog / PrivacyGate / HallHead 同一做法）。
  *
- * ⚠️ 挂 `gz-skin` 会带上全局 `.gz-skin { min-height: 100vh }`，必须自己压掉 ——
- * CSS 里 min-height 大于 max-height 时 min 胜，不压就会把顶栏撑成一屏高。
+ * ⚠️ 挂 `gz-skin` 会带上全局 `.gz-skin` 的两条副作用，都必须自己收拾：
+ *   ① `min-height: 100vh` —— CSS 里 min-height 大于 max-height 时 min 胜，不压就会把顶栏撑成一屏高；
+ *   ② `background-color: var(--gz-paper)` —— 会在页首铺一条**纯纸色**色带，把页面纸底上的
+ *      帘纹与顶部晨光盖住，于是顶栏与页面之间出现一条硬分界线（2026-09-22 用户在截图上
+ *      发现"设置背景色没有和整个背景融为一体"）。顶栏本就是页面的一部分、不该有自己的底，
+ *      所以下面显式 `background: transparent`。
+ *   `GzDialog` / `PrivacyGate` / `HallHead` 同样挂了 `gz-skin`，但它们的面板 / 卡面自己写了
+ *   `background` 简写，所以从没露过这个馅 —— 一句话：**挂 `gz-skin` 的组件都要自带背景**。
  */
 
 @import '../../styles/hover';
@@ -35,6 +41,8 @@
   min-height: 76rpx;
   /* 24rpx = 原先各页「状态栏 + 16rpx（.page 顶距）+ 8rpx（.nav 顶距）」的合计 */
   padding: var(--nav-top) 0 10rpx;
+  /* 清掉 `.gz-skin` 带来的纸底色，让页面背景（帘纹 + 晨光）透上来（见文件头 ⚠️ ②） */
+  background: transparent;
   /* 标题要脱离 flex 自己居中（见下面那条说明），这里是它的定位参照 */
   position: relative;
 }
@@ -45,7 +53,7 @@
  * 两端占位不再对称（左边贴边、右边内缩），space-between 会把标题整体推偏半个让位宽度。
  * 所以标题自己绝对铺满整行居中 —— 左右两侧按钮的位置因此互不影响。
  *   · `pointer-events: none` 必须留：标题铺满整行，不穿透就会盖住返回键与右侧动作的点击；
- *   · 左右 padding 是给超长标题留的走廊，避免它压到两边按钮底下。
+ *   · 左右 padding 是给超长标题留的走廊，避免它压到两边按钮底下（两行版另有更窄的值，见下）。
  */
 .nav > .nav__title,
 .nav > .nav__mid {
@@ -54,18 +62,47 @@
   top: var(--nav-top);
   left: 0;
   right: 0;
-  padding: 0 190rpx;
   box-sizing: border-box;
   pointer-events: none;
 }
 
 .nav > .nav__title {
+  /* 190rpx 走廊：留给单行版的超长标题（年度回顾那种），免得它压到两侧按钮 */
+  padding: 0 190rpx;
   text-align: center;
   line-height: 76rpx;
   /* 超长标题截断而不是折行压到副标题上（详情页的「事 · 文章」这类都很短，属保险） */
+  max-width: 100%;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+/*
+ * 两行版的走廊**比单行版窄**（110rpx 而非 190rpx）。
+ * nav 自身只有「屏宽 − 页面左右内边距（`$gz-page-pad` 48rpx×2）」，再扣 190rpx 走廊就只剩
+ * 约 274rpx —— 记一笔页那句副标题「存下不入账 · 处理时才给修为」约 320rpx，本来就放不下、
+ * 只会折行（2026-09-22 用户报"这里的都漂移了"）。
+ * 两行版的两页（记一笔 / 一条详情）标题与副标题都短，带右侧动作的那页副标题更短，所以收窄安全；
+ * 真有过长的，由上面的单行截断兜底。
+ */
+.nav > .nav__mid {
+  padding: 0 110rpx;
+}
+
+/*
+ * 两行版（记一笔 / 一条详情）要把 nav 撑高（2026-09-22 修）。
+ *
+ * `.nav__mid` 是**绝对定位**，不参与 nav 的高度计算 —— 而它比单行版高出约 24rpx
+ * （标题一行 + 副标题一行 + 4rpx 间距），光靠 `.nav__side`（76rpx）撑起的内容区装不下，
+ * 多出来的部分会**溢出到 nav 之外**、压住页面顶部的内容：记一笔页就是副标题
+ * 「存下不入账 · 处理时才给修为」折成两行后，末行压到了「事 / 理 / 道」签上。
+ *
+ * 为什么用 padding-bottom 撑而不是 min-height：全局 `view { box-sizing: border-box }`，
+ * 而 nav 的实际高度本来就大于 min-height（内容区由 76rpx 的按钮盒撑着），加 min-height 不起作用。
+ */
+.nav.nav--two-line {
+  padding-bottom: 34rpx;
 }
 
 .nav__side {
@@ -113,6 +150,11 @@
   margin-top: 4rpx;
   font-size: $gz-fs-caption;
   color: $gz-ink-2;
+  /* 单行截断：绝对定位的副标题一旦折行就会溢出 nav、压住下面的内容（见 .nav--two-line 的注） */
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 /*

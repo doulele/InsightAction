@@ -17,7 +17,8 @@ import { computed, ref } from 'vue'
 import { logTrace } from '@/utils/traceLog'
 import { htmlToText, sanitizeHtml } from '@/utils/richText'
 import { DAO_LINE_MAX } from '@/config/dao'
-import { dailyQuotaOf, dayKey } from '@/config/quota'
+import { dailyQuotaOf } from '@/config/quota'
+import { dateKeyOf } from '@/utils/dateKey'
 import { useAssessmentStore } from '@/stores/assessment'
 import { useModeStore } from '@/stores/mode'
 
@@ -334,14 +335,14 @@ export const useObserveStore = defineStore(
      * 若连还债都要占名额，用户只会把旧账继续拖着，与 §4 的清理机制相悖。
      */
     function quotaUsed(now = Date.now()): number {
-      const key = dayKey(now)
+      const key = dateKeyOf(now)
       return items.value.filter(
         (i) =>
           /* 导入的文件不占配额（2026-09-17 定案）：一次导入常常是一整篇，不该一口吃掉当天名额 */
           !i.imported &&
           i.handledAt &&
-          dayKey(i.createdAt) === key &&
-          dayKey(i.handledAt) === key,
+          dateKeyOf(i.createdAt) === key &&
+          dateKeyOf(i.handledAt) === key,
       ).length
     }
 
@@ -358,7 +359,7 @@ export const useObserveStore = defineStore(
       if (!it) return false
       /* 导入的永远可以读（同上：不占配额） */
       if (it.imported) return true
-      if (dayKey(it.createdAt) !== dayKey()) return true
+      if (dateKeyOf(it.createdAt) !== dateKeyOf()) return true
       return quotaUsed() < quotaTotal()
     }
 

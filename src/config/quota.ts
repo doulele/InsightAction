@@ -82,14 +82,8 @@ export function dailyQuotaOf(profile: QuotaProfile | null | undefined): DailyQuo
   return { total: clamp(QUOTA_BASE + delta, QUOTA_MIN, QUOTA_MAX), from: 'assess', note }
 }
 
-/**
- * 本地日键（YYYY-MM-DD）。
- * 为什么不用 stores/daily 的 todayKey：那是个 store 模块的导出，
- * 为了一个日期函数让 config 与 observe store 反过来依赖 daily store，不值得。
+/*
+ * 这里曾复制过一份 dayKey，理由写的是"不想让 config 与 observe store 反过来依赖 daily store"。
+ * 2026-09-22 合并进 `utils/dateKey.ts`：那是个中立的工具模块，config 与 store 引用它都不成环，
+ * 原理由不再成立。需要日键的地方现在直接用 `dateKeyOf()`。
  */
-export function dayKey(d: Date | number = new Date()): string {
-  const t = d instanceof Date ? d : new Date(d)
-  const m = `${t.getMonth() + 1}`.padStart(2, '0')
-  const day = `${t.getDate()}`.padStart(2, '0')
-  return `${t.getFullYear()}-${m}-${day}`
-}

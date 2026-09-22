@@ -88,18 +88,13 @@ import { useKnowledgeStore } from '@/stores/knowledge'
 import { useQuestionStore } from '@/stores/question'
 import { useSkinClass } from '@/composables/useSkin'
 import { ROUTES } from '@/router/routes'
+import { dateKeyOf } from '@/utils/dateKey'
 
 const knowledge = useKnowledgeStore()
 const question = useQuestionStore()
 const skinClass = useSkinClass()
 
-function pad(n: number): string {
-  return String(n).padStart(2, '0')
-}
 
-function dayKey(d: Date): string {
-  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`
-}
 
 /** 周一 0 点 */
 function mondayOf(d: Date): Date {
@@ -126,10 +121,10 @@ const weeks = computed<WeekRow[]>(() => {
   for (let i = 0; i < 8; i++) {
     const start = new Date(curMon.getTime() - i * 7 * 24 * 60 * 60 * 1000)
     const end = new Date(start.getTime() + 7 * 24 * 60 * 60 * 1000)
-    const startKey = dayKey(start)
-    const endKey = dayKey(end) // 开区间用
+    const startKey = dateKeyOf(start)
+    const endKey = dateKeyOf(end) // 开区间用
     const inRange = (createdAt: number) => {
-      const k = dayKey(new Date(createdAt))
+      const k = dateKeyOf(new Date(createdAt))
       return k >= startKey && k < endKey
     }
     const arr = knowledge.cards.filter((c) => inRange(c.createdAt))

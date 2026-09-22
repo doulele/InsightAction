@@ -4,6 +4,7 @@
  */
 import { defineStore } from 'pinia'
 import { computed, ref } from 'vue'
+import { dateKeyOf } from '@/utils/dateKey'
 
 /**
  * 三件事的**回指**来源类别（规格 §4.4「回应式行动」）。
@@ -50,12 +51,15 @@ export function freshTodos(): DailyTodo[] {
   return [0, 1, 2].map((i) => ({ id: i, text: '', done: false }))
 }
 
-/** 本地日期键，如 2026-09-09 */
-export function todayKey(d = new Date()): string {
-  const m = `${d.getMonth() + 1}`.padStart(2, '0')
-  const day = `${d.getDate()}`.padStart(2, '0')
-  return `${d.getFullYear()}-${m}-${day}`
-}
+/**
+ * 本地日期键，如 2026-09-09。
+ *
+ * **过渡别名**：实现已合并到 `utils/dateKey.ts`（全项目唯一实现），这里只做转发。
+ * 之所以先留着：调用点有几十处、都写着 `from '@/stores/daily'`，一次性全改会把
+ * 真正的逻辑差异淹没在噪音里。新代码请直接用 `import { dateKeyOf } from '@/utils/dateKey'`；
+ * 等调用点迁完，删掉这条别名即可。
+ */
+export const todayKey = dateKeyOf
 
 export const useDailyStore = defineStore(
   'daily',

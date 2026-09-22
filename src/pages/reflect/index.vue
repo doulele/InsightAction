@@ -238,7 +238,8 @@ import { DWELL_MS, dwellTip, poke } from '@/composables/useBuddy'
 import { logTrace } from '@/utils/traceLog'
 import { useSkinClass } from '@/composables/useSkin'
 import { syncTabBar } from '@/utils/skin'
-import { fmtKey, stopPenTip } from '@/utils/growth'
+import { dateKeyOf } from '@/utils/dateKey'
+import { stopPenTip } from '@/utils/growth'
 import { buildProfile, type ProfileItem } from '@/utils/profile'
 import { refOfCard } from '@/utils/refSource'
 import { navigateTo, ROUTES } from '@/router/routes'
@@ -316,7 +317,7 @@ const probeList = computed<ProbeRow[]>(() => {
     out.push({
       key: `p-${r.ref}`,
       tag: PROBE_SCENE_LABEL[r.scene],
-      day: fmtKey(new Date(r.at)),
+      day: dateKeyOf(new Date(r.at)),
       q: r.q,
       a: r.answer,
     })

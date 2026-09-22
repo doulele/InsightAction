@@ -6,6 +6,7 @@
  */
 import type { BadgeContext } from '@/config/badges'
 import type { HallId } from '@/config/lexicon'
+import { dateKeyOf } from '@/utils/dateKey'
 import { useAssessmentStore } from '@/stores/assessment'
 import { useBodyStore } from '@/stores/body'
 import { useFocusStore } from '@/stores/focus'
@@ -171,20 +172,13 @@ export function activeDimCount(s: DayStats): number {
  * 产出为 0 时返回空串：那会让「知」还没开始就被劝退。
  */
 export function stopPenTip(): string {
-  const day = fmtKey(new Date())
+  const day = dateKeyOf(new Date())
   const st = dayStats(day)
   const produced = st.cards + (st.answered ? 1 : 0)
   if (produced <= 0) return ''
   const used = useTraceStore().ofDay(day).some((t) => t.kind === 'reflect.apply')
   if (used) return ''
   return `今天写了 ${produced} 条，一条都还没用上 —— 用过的才算你的。`
-}
-
-/** 日期工具：本地自然日（calendar 页使用） */
-export function fmtKey(d: Date): string {
-  const m = `${d.getMonth() + 1}`.padStart(2, '0')
-  const day = `${d.getDate()}`.padStart(2, '0')
-  return `${d.getFullYear()}-${m}-${day}`
 }
 
 /** [from, to]（含两端，YYYY-MM-DD）内有活跃入账的天数 */
@@ -194,7 +188,7 @@ export function activeDaysInRange(from: string, to: string): number {
   let n = 0
   const cursor = new Date(start)
   while (cursor.getTime() <= end.getTime()) {
-    if (activeDimCount(dayStats(fmtKey(cursor))) > 0) n += 1
+    if (activeDimCount(dayStats(dateKeyOf(cursor))) > 0) n += 1
     cursor.setDate(cursor.getDate() + 1)
   }
   return n
@@ -228,10 +222,6 @@ export interface YearStats {
   topTags: string[]
   /** 修为入账最多的一天 */
   bestDay: { date: string; value: number } | null
-}
-
-function dayKeyOf(ts: number): string {
-  return fmtKey(new Date(ts))
 }
 
 /**
@@ -279,7 +269,7 @@ export function yearStats(year = new Date().getFullYear()): YearStats {
 
   let cards = 0
   for (const c of knowledge.cards) {
-    const k = dayKeyOf(c.createdAt)
+    const k = dateKeyOf(c.createdAt)
     if (!inYear(k)) continue
     cards += 1
     active.add(k)
@@ -301,8 +291,8 @@ export function yearStats(year = new Date().getFullYear()): YearStats {
     }
   }
 
-  const provInYear = proverb.items.filter((it) => inYear(dayKeyOf(it.createdAt)))
-  for (const it of provInYear) active.add(dayKeyOf(it.createdAt))
+  const provInYear = proverb.items.filter((it) => inYear(dateKeyOf(it.createdAt)))
+  for (const it of provInYear) active.add(dateKeyOf(it.createdAt))
 
   /* 年度关键词 = 你反复留住的句子在说些什么；没有标签就不硬凑 */
   const tagCount = new Map<string, number>()
@@ -341,10 +331,10 @@ export function yearStats(year = new Date().getFullYear()): YearStats {
 /** 某月已活跃天数（未来日期不计入；month 0-11） */
 export function monthActiveCount(year: number, month: number): number {
   const now = new Date()
-  const today = fmtKey(now)
+  const today = dateKeyOf(now)
   const isCurrent = now.getFullYear() === year && now.getMonth() === month
-  const first = fmtKey(new Date(year, month, 1))
-  const last = isCurrent ? today : fmtKey(new Date(year, month + 1, 0))
+  const first = dateKeyOf(new Date(year, month, 1))
+  const last = isCurrent ? today : dateKeyOf(new Date(year, month + 1, 0))
   if (first > last) return 0
   return activeDaysInRange(first, last)
 }

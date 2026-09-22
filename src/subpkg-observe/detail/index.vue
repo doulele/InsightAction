@@ -3,13 +3,14 @@
     <!--
       顶栏（顶距与样式统一在 components/SubNav）。
       分享的入口**只在这一页**（2026-09-21）：收件匣 / 理库 / 母题库的卡片上不给。
-      理由：分享是"对外"的动作，二列表页最容易点错，错一下就把自己的笔记发进群了；
+      理由：分享是"对外"的动作，列表页最容易点错，错一下就把自己的笔记发进群了；
       而详情页是"读过之后"的地方，也是三种形态的公共落点 —— 一处开发，事 / 理 / 道 全覆盖。
+
+      2026-09-22 位置变更：原先它挤在顶栏右侧那一格（与返回键同宽、只有"分享"二字），
+      用户提出"分享按钮不应该放在顶部导航栏中" → 移到底部**操作区**，与编辑 / 处理 / 删除同一层。
+      顶栏因此回到"只有返回键 + 标题"（右侧不再有动作）。
     -->
-    <SubNav @back="goBack" :subtitle="navSub" @right="openShare">
-      {{ headTitle }}
-      <template #right><text class="nav__share">分享</text></template>
-    </SubNav>
+    <SubNav @back="goBack" :subtitle="navSub">{{ headTitle }}</SubNav>
 
     <!-- 找不到（可能刚在别处删了） -->
     <view v-if="!item" class="empty">
@@ -232,6 +233,14 @@
       <view class="acts">
         <view class="acts__ghost" hover-class="gz-hover" @click="edit">
           <text class="acts__ghost-text">编辑</text>
+        </view>
+        <!--
+          分享（2026-09-22 从顶栏移到这里）：与编辑 / 删除同一层 —— 三者都是"对这条做的事"。
+          点它是开面板（见文件末的 .mask/.sheet），不是直接转发：转发必须是
+          `<button open-type="share">`，那个按钮在面板里。
+        -->
+        <view class="acts__ghost" hover-class="gz-hover" @click="openShare">
+          <text class="acts__ghost-text">分享</text>
         </view>
         <view v-if="!item.handledAt" class="save" :class="{ 'is-off': !canRead }" hover-class="gz-hover" @click="handle">
           <text class="save__text">{{ canRead ? '处理' : '明日再读' }}</text>

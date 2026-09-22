@@ -9,6 +9,12 @@
     标题走**默认插槽**而不是 prop：年度回顾那页的标题是 `{{ year }} 年度回顾`，
     插槽能原样搬过来，不必为它发明一个计算属性。带副标题的两页用 `subtitle`。
 
+    ⚠️ 带 `subtitle` 的两行版会给根节点挂 `nav--two-line`：`.nav__mid` 是绝对定位、
+    不参与 nav 的高度计算，必须靠这条类把 nav 撑高 —— 否则副标题（或折行后的末行）
+    会溢出到 nav 之外、压住页面顶部的内容（2026-09-22 记一笔页踩过，
+    副标题「存下不入账 · 处理时才给修为」压到了「事 / 理 / 道」签上；
+    详见 SubNav.scss 里 `.nav--two-line` 的注）。
+
     返回：
       · 传 `fallback`（tab 页路由常量）→ 组件自己处理（栈里只有这一页时 switchTab 回大厅，
         与原先各页手写的逻辑逐字等价）；
@@ -33,7 +39,7 @@
     经内联 CSS 变量 `--nav-top` 同时喂给 `.nav` 的 padding-top 与标题的绝对定位 top
     （两处必须是同一个值，否则标题与返回键会错行）。
   -->
-  <view class="nav" :class="skinClass" :style="navVars">
+  <view class="nav" :class="[skinClass, { 'nav--two-line': !!subtitle }]" :style="navVars">
     <view class="nav__side" hover-class="gz-hover" @click="onBack">
       <text class="nav__back">‹</text>
     </view>
