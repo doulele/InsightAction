@@ -135,6 +135,13 @@
   font-weight: 400;
 }
 
+/* 计数签兼展开开关（2026-09-22）：这个小三角是"点这里能展开挂靠"唯一的视觉线索 */
+.card__count-caret {
+  margin-left: 6rpx;
+  font-size: 20rpx;
+  line-height: 1;
+}
+
 /* §15.2：挂满 3 条 = 这个母题已经长出来了 */
 .card__grown {
   margin-left: 10rpx;
@@ -296,15 +303,12 @@
 .ops {
   display: flex;
   align-items: center;
-  justify-content: space-between;
+  /* 居右：左下角那行「展开 / 收起」文字已删（2026-09-22，它没绑点击），
+     展开开关挪到卡片右上的计数签上 —— 见 index.vue 卡头那条注释 */
+  justify-content: flex-end;
   margin-top: 16rpx;
   padding-top: 14rpx;
   border-top: 1rpx solid $gz-line;
-}
-
-.ops__state {
-  font-size: $gz-fs-caption;
-  color: $gz-ink-3;
 }
 
 .ops__right {

@@ -44,7 +44,19 @@
       <view v-for="m in mothers" :key="m.id" class="card">
         <view class="card__top">
           <text v-for="t in m.topics" :key="t" class="card__topic">{{ t }}</text>
-          <text class="card__count" :class="{ 'is-thin': countOf(m.id) < 3 }">{{ countOf(m.id) }} 条</text>
+          <!--
+            计数签兼「展开挂靠」的开关（2026-09-22）。
+            原先卡片左下角有一行「展开 / 收起」文字，它**从来没绑过点击**（点了没反应），
+            而真正的展开入口是可点的母题名 —— 用户报「这个展开没什么用」，那行遂删。
+            开关落到这里：紧挨「N 条」既说清有几条挂靠、又给了一个看得见可点的入口（▾ 指示），
+            母题名那条路照旧能用。
+          -->
+          <text
+            class="card__count"
+            :class="{ 'is-thin': countOf(m.id) < 3 }"
+            hover-class="gz-hover"
+            @click="toggle(m.id)"
+          >{{ countOf(m.id) }} 条<text class="card__count-caret">{{ openId === m.id ? '▴' : '▾' }}</text></text>
           <!-- §15.2：挂满 3 条就算「长出来了」 -->
           <text v-if="countOf(m.id) >= 3" class="card__grown">长出来了</text>
         </view>
@@ -88,7 +100,6 @@
         </view>
 
         <view class="ops">
-          <text class="ops__state">{{ openId === m.id ? '收起' : '展开' }}</text>
           <view class="ops__right">
             <text v-if="isDoc(m)" class="ops__btn" hover-class="gz-hover" @click="goDetail(m.id)">详情</text>
             <text class="ops__btn" hover-class="gz-hover" @click="drop(m.id)">删</text>
