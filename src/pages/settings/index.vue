@@ -1,13 +1,7 @@
 <template>
   <view class="page" :class="skinClass">
     <!-- 顶栏：返回 + 标题（子页统一样式） -->
-    <view class="nav">
-      <view class="nav__side" hover-class="gz-hover" @click="goBack">
-        <text class="nav__back">‹</text>
-      </view>
-      <text class="nav__title">设置</text>
-      <view class="nav__side" />
-    </view>
+        <SubNav :fallback="ROUTES.tabMe">设置</SubNav>
 
     <!-- 1 · 修行语言：三种表达语言即时预览切换 -->
     <view class="section">
@@ -447,6 +441,7 @@ import {
 import type { BackupPayload } from '@/utils/localBackup'
 import { buildArchive, writeArchiveFile } from '@/utils/archive'
 import { backupNow, disableCloudBackup, fetchCloudSnapshot } from '@/utils/cloudBackup'
+import { showModal } from '@/utils/dialog'
 
 const modeStore = useModeStore()
 const appStore = useAppStore()
@@ -471,14 +466,6 @@ onShow(() => {
 })
 
 /** 返回：正常栈内 navigateBack；异常兜底回「我」大厅 */
-function goBack(): void {
-  const pages = getCurrentPages()
-  if (pages.length > 1) {
-    uni.navigateBack()
-  } else {
-    uni.switchTab({ url: ROUTES.tabMe })
-  }
-}
 
 /** 待确认切换的模式（null = 无弹框）；弹框面板整体套用目标皮肤预览 */
 const pending = ref<ModeId | null>(null)
@@ -550,7 +537,7 @@ async function runDanger(): Promise<void> {
   resetPracticeData()
   uni.showToast({ title: p('toast.resetDone'), icon: 'none' })
   if (revoked.failed) {
-    uni.showModal({
+    showModal({
       title: '有分享没能撤回',
       content:
         `本机数据已重置，但有 ${revoked.failed} 条分享没能从服务器撤回（多半是网络问题）。\n`
@@ -584,7 +571,7 @@ async function exportAll(): Promise<void> {
     await shareFile(filePath, fileName)
     uni.showToast({ title: `已导出 ${sum.storeCount} 项 · 请把文件留存在聊天里`, icon: 'none' })
   } catch (e) {
-    uni.showModal({ title: '导出失败', content: e instanceof Error ? e.message : '未知错误', showCancel: false })
+    showModal({ title: '导出失败', content: e instanceof Error ? e.message : '未知错误', showCancel: false })
   }
 }
 
@@ -602,7 +589,7 @@ async function exportArchive(): Promise<void> {
     text = built.text
     traceShown = built.traceShown
   } catch (e) {
-    uni.showModal({
+    showModal({
       title: '生成档案失败',
       content: e instanceof Error ? e.message : '未知错误',
       showCancel: false,
@@ -619,7 +606,7 @@ async function exportArchive(): Promise<void> {
           await shareFile(filePath, fileName)
           uni.showToast({ title: '已生成档案 · 请把文件留存在聊天里', icon: 'none' })
         } catch (err) {
-          uni.showModal({
+          showModal({
             title: '转发失败',
             content: err instanceof Error ? err.message : '未知错误',
             showCancel: false,
@@ -647,7 +634,7 @@ async function importFromFile(): Promise<void> {
     restoreFrom.value = 'file'
   } catch (e) {
     const msg = e instanceof Error ? e.message : '选择文件失败'
-    if (msg !== '已取消') uni.showModal({ title: '无法读取备份', content: msg, showCancel: false })
+    if (msg !== '已取消') showModal({ title: '无法读取备份', content: msg, showCancel: false })
   }
 }
 
@@ -665,7 +652,7 @@ function applyRestore(): void {
     uni.showToast({ title: `${p('toast.restored')} · ${result.restoredStores} 项`, icon: 'none' })
     setTimeout(() => uni.reLaunch({ url: ROUTES.entryStartup }), 900)
   } catch (e) {
-    uni.showModal({ title: '恢复失败', content: e instanceof Error ? e.message : '未知错误', showCancel: false })
+    showModal({ title: '恢复失败', content: e instanceof Error ? e.message : '未知错误', showCancel: false })
   }
 }
 
@@ -721,10 +708,10 @@ async function backupToCloud(): Promise<void> {
     if (outcome.saved) {
       uni.showToast({ title: '已备份到云端', icon: 'none' })
     } else {
-      uni.showModal({ title: '未能备份', content: outcome.reason || '本次备份被跳过', showCancel: false })
+      showModal({ title: '未能备份', content: outcome.reason || '本次备份被跳过', showCancel: false })
     }
   } catch (e) {
-    uni.showModal({ title: '备份失败', content: e instanceof Error ? e.message : '未知错误', showCancel: false })
+    showModal({ title: '备份失败', content: e instanceof Error ? e.message : '未知错误', showCancel: false })
   }
 }
 
@@ -735,7 +722,7 @@ async function confirmDeleteCloud(): Promise<void> {
     uni.showToast({ title: `已删除云端 ${removed} 项数据`, icon: 'none' })
   } catch (e) {
     cloudDeleteOpen.value = false
-    uni.showModal({ title: '删除失败', content: e instanceof Error ? e.message : '未知错误', showCancel: false })
+    showModal({ title: '删除失败', content: e instanceof Error ? e.message : '未知错误', showCancel: false })
   }
 }
 
@@ -745,7 +732,7 @@ async function restoreFromCloud(which: 'latest' | 'prev'): Promise<void> {
     restorePayload.value = await fetchCloudSnapshot(which)
     restoreFrom.value = which === 'prev' ? 'cloud-prev' : 'cloud-latest'
   } catch (e) {
-    uni.showModal({ title: '取回失败', content: e instanceof Error ? e.message : '未知错误', showCancel: false })
+    showModal({ title: '取回失败', content: e instanceof Error ? e.message : '未知错误', showCancel: false })
   }
 }
 
@@ -967,7 +954,7 @@ function onUpdateConfirm(): void {
   if (!r?.canApply) return
   // applyUpdate 会立即重启小程序，成功就不必再管界面
   if (applyUpdateNow()) return
-  uni.showModal({
+  showModal({
     title: '重启失败',
     content: '没能应用新版本，请关掉小程序后重新进入。',
     showCancel: false,

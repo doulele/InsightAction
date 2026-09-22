@@ -4,7 +4,8 @@
  */
 .page {
   min-height: 100vh;
-  padding: 24rpx $gz-page-pad 60rpx;
+  /* 底部留白 180rpx：避开小枢悬浮球（108rpx @ bottom 40rpx）压住页尾 */
+  padding: 24rpx $gz-page-pad 180rpx;
 }
 
 /*
@@ -29,7 +30,7 @@
   margin-bottom: 16rpx;
   font-size: $gz-fs-caption;
   line-height: 1.7;
-  color: $gz-ink-3;
+  color: $gz-ink-2;
 }
 
 .section {
@@ -82,13 +83,19 @@
   color: $gz-ink-3;
 }
 
+/*
+ * 拨轮上"不是今天"的两档：过去 / 未来。
+ * 2026-09-22 改为走皮肤变量（原先写死 #b24a3a / #8a6a3c）——
+ * 那两个色是照浅色纸面配的，切到科技（#0D1117 深底）就糊成一片。
+ * 分档靠"次要色 vs 最轻色"拉开，不靠色相：过去比未来重一档。
+ */
 .daily__today--back {
-  color: #b24a3a;
+  color: $gz-ink-2;
 }
 
 /* 往未来拨到的日子：内容算得出来，但还没到来，标一下别让人误会 */
 .daily__today--future {
-  color: #8a6a3c;
+  color: $gz-ink-3;
 }
 
 /*
@@ -216,23 +223,28 @@
   color: $gz-ink-2;
 }
 
+/*
+ * 「今天读到第 N 则」的计数条。
+ * 2026-09-22 改为跟随皮肤（原先写死 #d9a15b / #fbf3e6 / #8a6a3c）：
+ * 那是照浅色纸面配的暖色，科技模式（深底）下会变成一块刺眼的亮奶油贴片。
+ */
 .daily__counter {
   display: block;
   margin-top: 16rpx;
   padding: 14rpx 18rpx;
-  border-left: 4rpx solid #d9a15b;
-  background: #fbf3e6;
+  border-left: 4rpx solid $gz-accent;
+  background: $gz-accent-a06;
   border-radius: 0 $gz-radius-sm $gz-radius-sm 0;
   font-size: $gz-fs-caption;
   line-height: 1.8;
-  color: #8a6a3c;
+  color: $gz-ink-2;
 }
 
 .daily__src {
   display: block;
   margin-top: 14rpx;
   font-size: $gz-fs-caption;
-  color: $gz-ink-3;
+  color: $gz-ink-2;
 }
 
 /* 四动作 */
@@ -328,7 +340,7 @@
   margin-top: 6rpx;
   font-size: 20rpx;
   line-height: 1.1;
-  color: $gz-ink-3;
+  color: $gz-ink-2;
 }
 
 /* 正中那一格：主题色 + 加粗，其余靠内联 opacity/font-size 渐变 */
@@ -412,7 +424,7 @@
 
 .dial__hint {
   font-size: $gz-fs-caption;
-  color: $gz-ink-3;
+  color: $gz-ink-2;
 }
 
 .dial__picked {
@@ -473,26 +485,26 @@
   letter-spacing: 0.08em;
 }
 
-/* 7 天清理提示 */
+/* 7 天清理提示（2026-09-22 跟随皮肤：原先是写死的粉红底 + 砖红字） */
 .cleandue {
   display: flex;
   align-items: center;
   justify-content: space-between;
   margin-top: 18rpx;
   padding: 18rpx 26rpx;
-  border: 1rpx solid #e0b3a8;
+  border: 1rpx solid $gz-line;
   border-radius: $gz-radius-md;
-  background: #fbf0ec;
+  background: $gz-accent-a06;
 }
 
 .cleandue__text {
   font-size: $gz-fs-small;
-  color: #b24a3a;
+  color: $gz-ink-2;
 }
 
 .cleandue__go {
   font-size: $gz-fs-caption;
-  color: #b24a3a;
+  color: $gz-accent;
   font-weight: 600;
 }
 
@@ -627,7 +639,7 @@
   white-space: nowrap;
   text-overflow: ellipsis;
   font-size: $gz-fs-caption;
-  color: $gz-ink-3;
+  color: $gz-ink-2;
 }
 
 .portal__arrow {

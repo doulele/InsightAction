@@ -1,61 +1,161 @@
-/**
+﻿/**
  * index.vue 的样式（超过 100 行，按项目约定外置到同目录 index.scss）。
  * 由 index.vue 通过 @import 引入；以后改样式改本文件。
  */
 .page {
   min-height: 100vh;
-  padding: 24rpx $gz-page-pad 60rpx;
+  /*
+   * 底部留白 180rpx：小枢悬浮球是 `fixed; right:28rpx; bottom:40rpx; 108rpx`，
+   * 只留 60rpx 时它会压住页尾最后一行（如「今日收功」的按钮）的右端。
+   */
+  padding: 24rpx $gz-page-pad 180rpx;
 }
 
 /*
- * 2026-09-17 排版收紧：三件事是行大厅的主角，但它曾在首屏占掉近半屏 ——
- * 减的是留白与重复信息，不减内容：三条一样全在，出处一样能挂。
+ * 三块「今日清单」的统一卡壳（2026-09-22）。
+ *
+ * 之前三块是三套形态：三件事与步子是大卡、日课是裸列表；标题规格也三套
+ * （30rpx 粗黑 / 30rpx / 20rpx 灰宽字距）。现在统一成一套 ——
+ * 与「把念头变成痕迹」的入口行同一语言：小印 + 名称 + 「?」+ 计数徽章。
+ * 一眼看出"这是同一类东西，但分工不同"，也把首屏从六行解释里解放出来。
+ *
+ * 主角标识只留给三件事（`block--hero` 的模式色带）；日课与步子是可折叠的分类行。
  */
-.today {
+.block {
   position: relative;
   overflow: hidden;
-  padding: 24rpx 26rpx 18rpx;
+  margin-top: 24rpx;
+  padding: 26rpx 30rpx;
   background: $gz-surface;
   border: 1rpx solid $gz-line;
   border-radius: $gz-radius-lg;
-
-  /* 模式顶缘：与「我」页等级卡同一道模式色带，一瞥即知当前皮肤 */
-  &::before {
-    content: '';
-    position: absolute;
-    top: 0;
-    left: 0;
-    right: 0;
-    height: 6rpx;
-    background: linear-gradient(90deg, $gz-accent, $gz-grad-to);
-  }
 }
 
-.today__head {
+/* 三件事是首块：它上面已经有大厅头与周引导，不需要再加一段留白 */
+.block--hero {
+  margin-top: 0;
+}
+
+/* 模式顶缘：与「我」页等级卡同一道模式色带，一瞥即知当前皮肤 */
+.block--hero::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 6rpx;
+  background: linear-gradient(90deg, $gz-accent, $gz-grad-to);
+}
+
+.block__head {
   display: flex;
-  align-items: baseline;
+  align-items: center;
   justify-content: space-between;
-  padding: 0 4rpx;
 }
 
-.today__label {
-  font-size: 30rpx;
+/* 可点的行头（日课 / 步子）：整行都能点开合，给它一个够大的点击面 */
+.block__head--fold {
+  min-height: 56rpx;
+}
+
+.block__title {
+  display: flex;
+  align-items: center;
+  min-width: 0;
+}
+
+/*
+ * 小印字：与 `entry__mark` 同一套语言，尺寸收一档（56rpx）——
+ * 它只负责"分类"，不抢主角的注意力。用行高居中而非 flex，
+ * 因为这是 `<text>` 节点，别指望它在所有基础库上都吃 flex 居中。
+ */
+.block__mark {
+  flex: none;
+  box-sizing: border-box;
+  margin-right: 14rpx;
+  width: 56rpx;
+  height: 56rpx;
+  line-height: 54rpx;
+  text-align: center;
+  border: 1rpx solid $gz-accent;
+  border-radius: 14rpx;
+  background: $gz-accent-soft;
+  color: $gz-accent;
+  font-size: 28rpx;
+  font-weight: 600;
+}
+
+/* 与同页的 `.section__title` 同档（2026-09-22 收敛：原先 30 / 32 / 34 三档并排，层级读不出来） */
+.block__label {
+  font-size: 32rpx;
   font-weight: 700;
   color: $gz-ink;
 }
 
-.today__count {
-  font-size: 34rpx;
-  font-weight: 800;
+.block__right {
+  flex: none;
+  display: flex;
+  align-items: center;
+}
+
+/* 计数徽章：与 `entry__badge` 同一套 token（accent = 有进度 / muted = 已完成或零） */
+.block__badge {
+  flex: none;
+  padding: 4rpx 16rpx;
+  border-radius: 999rpx;
+  font-size: $gz-fs-caption;
+  line-height: 1.6;
+  font-variant-numeric: tabular-nums;
+}
+
+.block__badge.is-accent {
+  background: $gz-accent-soft;
   color: $gz-accent;
 }
 
-/* 一行一件事：勾选框 + 输入 + 出处药丸（出处不再另占一行） */
+.block__badge.is-muted {
+  background: $gz-line-soft;
+  color: $gz-ink-3;
+}
+
+/* 展开 / 收起：小字，落在徽章右边，不与徽章抢注意力（但它是可点区，要用能读的 ink-2） */
+.block__fold {
+  flex: none;
+  margin-left: 14rpx;
+  font-size: $gz-fs-caption;
+  color: $gz-ink-2;
+}
+
+/*
+ * 「?」= 这一块到底管什么（2026-09-22）。
+ * 刻意做成小圆环而不是文字按钮：它是"看不懂时点我"，不是主要功能，
+ * 但也不能小到点不着（32rpx 是这一页的最小可点尺寸）。
+ */
+.today__ask {
+  flex: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  /* 不用 flex gap —— 小程序的 wxss 对它的支持不一致，用 margin 更稳 */
+  margin-left: 10rpx;
+  width: 32rpx;
+  height: 32rpx;
+  border: 1rpx solid $gz-line;
+  border-radius: 50%;
+  font-size: 20rpx;
+  color: $gz-ink-3;
+}
+
+/*
+ * 一件事：**一行**（勾选 + 输入 + 行尾出处标记），2026-09-22 定案。
+ * 为什么不做两行：三条各占两行就是六行，首屏立刻吃亏；
+ * 为什么标记不带摘要：带摘要的药丸会吃掉 45% 宽，把窄屏输入框压到十来个字。
+ */
 .todo {
   display: flex;
   align-items: center;
   gap: 16rpx;
-  padding: 16rpx 0;
+  padding: 14rpx 0;
   border-bottom: 1rpx solid $gz-line-soft;
 }
 
@@ -64,27 +164,35 @@
   border-bottom: none;
 }
 
+/*
+ * 勾选框：**圆角方，不是圆形**（2026-09-22 用户反馈"圆框太丑"），尺寸**再收一档**（36rpx）。
+ * 圆角方与全项目的"印 / 纸"语言一致（`block__mark`、`entry__mark` 都是圆角方），
+ * 圆形在这一页是唯一一个"球"。未完成用淡线（`$gz-line` 而非 `$gz-ink-3`），
+ * 让三条都空着时不显得那么重。
+ * 36rpx 是刻意压小的 —— 它要跟 48rpx 的输入行比显得轻，但仍大于"点不着"的下限。
+ */
 .todo__check {
   flex: none;
+  box-sizing: border-box;
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 44rpx;
-  height: 44rpx;
-  border: 2rpx solid $gz-ink-3;
-  border-radius: 50%;
+  width: 36rpx;
+  height: 36rpx;
+  border: 2rpx solid $gz-line;
+  border-radius: 10rpx;
   color: transparent;
   transition: all 0.2s ease;
 }
 
 .todo__check.is-on {
-  background: $gz-cta-bg;
-  border-color: $gz-cta-bg;
+  background: $gz-accent;
+  border-color: $gz-accent;
   color: $gz-on-cta;
 }
 
 .todo__tick {
-  font-size: 26rpx;
+  font-size: 22rpx;
   font-weight: 700;
 }
 
@@ -106,53 +214,36 @@
 }
 
 /*
- * 出处药丸（§4.4）：与输入同一行的小胶囊，点开仍是完整的选择面板。
- * 有出处时是浅底 + 品类色，无出处时是描边灰 —— 一眼能看出"挂没挂上"。
- * 正文过长就地省略（面板里看得全），不为了显示全句再撑高一行。
+ * 行尾出处标记（§4.4）：一枚窄标记，只放一个品类字（理 / 卡 / 冲 / 念 / 计）。
+ * 挂了 = 浅底 + 主题色；没挂 = 虚线描边 + 灰「＋」—— 一眼看出挂没挂上。
+ * 点开仍是完整的选择面板（`TodoSource` 会把当前项高亮，解绑走面板里的「无出处」）。
  */
 .todo__src {
   flex: none;
+  box-sizing: border-box;
   display: flex;
   align-items: center;
-  gap: 8rpx;
-  box-sizing: border-box;
-  max-width: 45%;
-  height: 48rpx;
-  padding: 0 18rpx;
-  border-radius: 999rpx;
-  background: rgba($gz-accent, 0.1);
+  justify-content: center;
+  min-width: 44rpx;
+  height: 40rpx;
+  padding: 0 10rpx;
+  border-radius: 12rpx;
+  background: $gz-accent-soft;
 }
 
 .todo__src.is-none {
   background: transparent;
-  border: 1rpx solid $gz-line;
+  border: 1rpx dashed $gz-line;
 }
 
 .todo__src-tag {
-  flex: none;
   font-size: 20rpx;
+  line-height: 1;
   color: $gz-accent;
 }
 
 .todo__src.is-none .todo__src-tag {
-  color: $gz-ink-3;
-}
-
-.todo__src-text {
-  flex: 1 1 auto;
-  min-width: 0;
-  font-size: 20rpx;
-  color: $gz-ink-3;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.todo__src-x {
-  flex: none;
-  padding: 0 4rpx;
-  font-size: 20rpx;
-  color: $gz-ink-3;
+  color: $gz-ink-2;
 }
 
 .today__done {
@@ -168,10 +259,65 @@
   color: $gz-accent;
 }
 
-.today__done-sub {
+/* 三件事已成之后的收尾捷径：只在"做完了且今天还没收"时出现，平时不占位 */
+.today__done-close {
+  display: block;
+  margin-top: 14rpx;
+  font-size: $gz-fs-caption;
+  color: $gz-accent;
+}
+
+/* ---- 「这三个清单，分别管什么」弹窗内容（2026-09-22） ---- */
+.exp {
+  display: flex;
+  flex-direction: column;
+  gap: 20rpx;
+}
+
+.exp__item {
+  padding: 18rpx 20rpx;
+  /* 默认一道同宽的透明边：高亮时只换颜色，内容不会被推着移动 */
+  border-left: 6rpx solid transparent;
+  background: $gz-surface-2;
+  border-radius: $gz-radius-md;
+}
+
+/* 被点的那一块：左侧一道模式色，一眼看出"我先讲的就是你问的这块" */
+.exp__item.is-on {
+  border-left: 6rpx solid $gz-accent;
+}
+
+.exp__name {
+  display: block;
+  font-size: $gz-fs-small;
+  font-weight: 700;
+  color: $gz-ink;
+}
+
+.exp__what {
   display: block;
   margin-top: 8rpx;
   font-size: $gz-fs-caption;
+  line-height: 1.75;
+  color: $gz-ink-2;
+}
+
+.exp__eg {
+  display: block;
+  margin-top: 8rpx;
+  font-size: $gz-fs-caption;
+  line-height: 1.7;
+  color: $gz-ink-3;
+}
+
+/* 「忘了做会怎样」—— 三块真正的分界，单独成段 */
+.exp__fate {
+  display: block;
+  margin-top: 8rpx;
+  padding-top: 8rpx;
+  border-top: 1rpx solid $gz-line-soft;
+  font-size: $gz-fs-caption;
+  line-height: 1.75;
   color: $gz-ink-3;
 }
 
@@ -198,33 +344,7 @@
 }
 
 /* ---- 今天要走的步子（三件事之外的推进） ---- */
-.steps {
-  margin-top: 24rpx;
-  padding: 30rpx;
-  background: $gz-surface;
-  border: 1rpx solid $gz-line;
-  border-radius: $gz-radius-lg;
-}
-
-.steps__head {
-  display: flex;
-  align-items: baseline;
-  justify-content: space-between;
-}
-
-.steps__label {
-  font-size: 30rpx;
-  font-weight: 700;
-  color: $gz-ink;
-}
-
-.steps__n {
-  font-size: 34rpx;
-  font-weight: 800;
-  color: $gz-accent;
-  font-variant-numeric: tabular-nums;
-}
-
+/* 外壳、行头与计数都交给 .block（2026-09-22 统一），这里只留列表内部 */
 .steps__list {
   margin-top: 8rpx;
 }
@@ -234,7 +354,7 @@
   margin-top: 18rpx;
   font-size: $gz-fs-caption;
   line-height: 1.8;
-  color: $gz-ink-3;
+  color: $gz-ink-2;
 }
 
 /*
@@ -246,7 +366,12 @@
   margin-top: 4rpx;
   font-size: 20rpx;
   letter-spacing: 0.02em;
-  color: $gz-ink-3;
+  color: $gz-ink-2;
+}
+
+/* 收在列表之后的那几句（如日课的"没记不等于破了"）：多让一口气，别贴着上一条 */
+.block-hint--tail {
+  margin-top: 14rpx;
 }
 
 .steps__quick {
@@ -324,7 +449,7 @@
   padding: 2rpx 12rpx;
   border: 1rpx solid $gz-line;
   border-radius: 999rpx;
-  font-size: 18rpx;
+  font-size: 20rpx;
   color: $gz-ink-3;
 }
 
@@ -387,43 +512,14 @@
 }
 
 /* ---- 今天要守的日课 ---- */
-.dailies {
-  margin-top: 30rpx;
-}
-
-.dailies__head {
-  display: flex;
-  align-items: baseline;
-  justify-content: space-between;
-  margin-bottom: 14rpx;
-}
-
-.dailies__label {
-  font-size: $gz-fs-caption;
-  letter-spacing: $gz-ls-wide;
-  color: $gz-ink-3;
-}
-
-.dailies__n {
-  font-size: $gz-fs-caption;
-  color: $gz-accent;
-  font-variant-numeric: tabular-nums;
-}
-
-.dailies__hint {
-  display: block;
-  margin-top: 12rpx;
-  font-size: $gz-fs-caption;
-  color: $gz-ink-3;
-}
-
+/* 外壳、行头与计数交给 .block（2026-09-22 统一） */
 .daily {
   display: flex;
   align-items: center;
   gap: 14rpx;
   padding: 22rpx 26rpx;
-  margin-bottom: 14rpx;
-  background: $gz-surface;
+  margin-top: 14rpx;
+  background: $gz-surface-2;
   border: 1rpx solid $gz-line;
   border-radius: $gz-radius-md;
 }
@@ -451,7 +547,7 @@
   display: block;
   margin-top: 6rpx;
   font-size: $gz-fs-caption;
-  color: $gz-ink-3;
+  color: $gz-ink-2;
 }
 
 .daily__act {
@@ -476,39 +572,73 @@
   color: $gz-ink-3;
 }
 
-/* ---- 今日收功 ---- */
+/* ---- 今日收功 ----
+ * 2026-09-17 建；09-22 改形态与位置：
+ *  · 全页最后一块（原先夹在长路与入口之间 —— 语义上是"句号"，却排在中段）；
+ *  · 折叠态是一条窄行（`is-fold` 时连卡壳都不要），白天几乎不占位；
+ *  · 已收态把那一句排成引文 + 落款时间，它是全页唯一"自己写给自己的话"。
+ */
 .closing {
-  margin-top: 30rpx;
-  padding: 28rpx 30rpx;
+  margin-top: 40rpx;
+  padding: 26rpx 30rpx;
   background: $gz-surface;
   border: 1rpx solid $gz-line;
   border-radius: $gz-radius-lg;
+}
+
+/* 折叠态：一条窄行，不做成卡片（白天它只是"今天还没收"的一个提醒） */
+.closing.is-fold {
+  padding: 20rpx 26rpx;
+  background: transparent;
+  border: 1rpx dashed $gz-line;
 }
 
 .closing__head {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  margin-bottom: 16rpx;
 }
 
+/* 收工标题：与三块今日清单同一档（30rpx/700）+ 左侧小印字，不再是一行灰标签 */
 .closing__label {
-  font-size: $gz-fs-caption;
-  letter-spacing: $gz-ls-wide;
-  color: $gz-ink-3;
+  font-size: 30rpx;
+  font-weight: 700;
+  color: $gz-ink;
 }
 
-.closing__tag {
+/* 已收落款（`已收 · 21:03`）：比标签重一档，它是"今天真的收了"的凭据 */
+.closing__stamp {
   font-size: $gz-fs-caption;
   color: $gz-accent;
+  font-variant-numeric: tabular-nums;
+}
+
+/* 折叠态那一行的高度下限：够手指点，又不至于像一张卡 */
+.closing__fold {
+  display: block;
+  min-height: 48rpx;
+  margin-top: 6rpx;
+  font-size: $gz-fs-small;
+  line-height: 48rpx;
+  color: $gz-ink-2;
+}
+
+.closing__hint {
+  display: block;
+  margin-top: 14rpx;
+  margin-bottom: 14rpx;
+  font-size: $gz-fs-caption;
+  line-height: 1.7;
+  color: $gz-ink-2;
 }
 
 /* 收功卡里那一句身体读数：比正文轻一档，它只是收尾时顺带看见的一个数 */
 .closing__body {
   display: block;
+  margin-top: 14rpx;
   margin-bottom: 14rpx;
   font-size: $gz-fs-caption;
-  color: $gz-ink-3;
+  color: $gz-ink-2;
 }
 
 .closing__input {
@@ -539,16 +669,34 @@
   border-radius: $gz-radius-md;
 }
 
-.closing__done {
-  display: block;
+/*
+ * 已收的那一句：引文块（左侧一道模式色竖线 + 稍大的行距）。
+ * 它该比任何一行正文都更像"被收好的东西"。
+ */
+.closing__quote {
+  margin-top: 6rpx;
+  padding: 4rpx 0 4rpx 20rpx;
+  border-left: 6rpx solid $gz-accent;
+}
+
+.closing__quote-text {
   font-size: $gz-fs-body;
+  line-height: 1.85;
+  color: $gz-ink;
+}
+
+/* 收了但没留字：如实说一句，不摆空引文 */
+.closing__none {
+  display: block;
+  margin-top: 6rpx;
+  font-size: $gz-fs-small;
   line-height: 1.75;
-  color: $gz-ink-2;
+  color: $gz-ink-3;
 }
 
 .closing__redo {
   display: block;
-  margin-top: 14rpx;
+  margin-top: 16rpx;
   font-size: $gz-fs-caption;
-  color: $gz-ink-3;
+  color: $gz-ink-2;
 }

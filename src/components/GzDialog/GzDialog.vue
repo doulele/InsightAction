@@ -31,12 +31,12 @@
           <view
             v-if="showCancel"
             class="gd__btn is-ghost"
-            hover-class="gz-hover"
+            hover-class="gz-hover-btn"
             @click="close(false)"
           >
             {{ cancelText }}
           </view>
-          <view class="gd__btn is-main" hover-class="gz-hover" @click="onConfirm">
+          <view class="gd__btn is-main" hover-class="gz-hover-btn" @click="onConfirm">
             {{ confirmText }}
           </view>
         </view>

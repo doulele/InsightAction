@@ -2,6 +2,8 @@
  * RichEditor 的样式（外置，由 RichEditor.vue @import 引入）。
  * 结构：工具栏一行 + 编辑区（固定高度）+ 底部字数/说明。
  */
+
+@import '../../styles/hover';
 .re {
   margin-top: 16rpx;
   border: 1rpx solid $gz-line;
@@ -64,12 +66,12 @@
 }
 
 .re__count.is-over {
-  color: #b25a2c;
+  color: $gz-warn;
   font-weight: 700;
 }
 
 .re__hint {
   font-size: 20rpx;
-  color: $gz-ink-3;
+  color: $gz-ink-2;
   text-align: right;
 }

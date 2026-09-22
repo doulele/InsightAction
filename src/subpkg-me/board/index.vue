@@ -1,12 +1,6 @@
 <template>
   <view class="page" :class="skinClass">
-    <view class="nav">
-      <view class="nav__side" hover-class="gz-hover" @click="goBack">
-        <text class="nav__back">‹</text>
-      </view>
-      <text class="nav__title">修行看板</text>
-      <view class="nav__side" />
-    </view>
+        <SubNav :fallback="ROUTES.tabMe">修行看板</SubNav>
 
     <!-- 四维雷达 -->
     <view class="card">
@@ -153,6 +147,7 @@ import { useKnowledgeStore, DEPTH_LABEL } from '@/stores/knowledge'
 import { OBSERVE_TOPICS, useObserveStore } from '@/stores/observe'
 import { useSkinClass } from '@/composables/useSkin'
 import { getSkin } from '@/config/skins'
+import { DIM_COLOR, DIM_ORDER, depthColor } from '@/config/palette'
 import { useDimLabel } from '@/composables/usePhrase'
 import { todayKey } from '@/stores/daily'
 import { ROUTES } from '@/router/routes'
@@ -169,14 +164,9 @@ const dl = useDimLabel()
 const today = todayKey()
 
 /* ---------------- ① 四维雷达 ---------------- */
-/** 雷达轴顺序：上 观 → 右 止 → 下 知 → 左 行 */
-const HALLS: HallId[] = ['observe', 'pause', 'reflect', 'action']
-const DIM_COLORS: Record<HallId, string> = {
-  observe: '#4E8FD4',
-  pause: '#84A268',
-  reflect: '#9C8AC4',
-  action: '#C4602E',
-}
+/** 雷达轴顺序：上 观 → 右 止 → 下 知 → 左 行（顺序与身份色都取自 config/palette.ts） */
+const HALLS: HallId[] = [...DIM_ORDER]
+const DIM_COLORS: Record<HallId, string> = DIM_COLOR
 
 const dimValues = computed(() => HALLS.map((h) => trace.valueOn(today, h)))
 const dims = computed(() =>
@@ -200,7 +190,7 @@ const depthDist = computed(() => {
       count,
       pct: total ? Math.round((count / total) * 100) : 0,
       label: DEPTH_LABEL[depth],
-      color: depth === 1 ? '#84A268' : depth === 2 ? '#4E8FD4' : '#9C8AC4',
+      color: depthColor(depth),
     }
   })
 })
@@ -449,14 +439,6 @@ watch([dimValues, () => mode.id], () => {
   drawRadar()
 })
 
-function goBack(): void {
-  const pages = getCurrentPages()
-  if (pages.length > 1) {
-    uni.navigateBack()
-  } else {
-    uni.switchTab({ url: ROUTES.tabMe })
-  }
-}
 </script>
 
 <style lang="scss" scoped>

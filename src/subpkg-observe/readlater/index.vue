@@ -1,13 +1,7 @@
 <template>
   <view class="page" :class="skinClass">
     <!-- 顶栏：返回 + 标题（子页统一样式） -->
-    <view class="nav">
-      <view class="nav__side" hover-class="gz-hover" @click="goBack">
-        <text class="nav__back">‹</text>
-      </view>
-      <text class="nav__title">稍后读 · 碎片回收</text>
-      <view class="nav__side" />
-    </view>
+        <SubNav :fallback="ROUTES.tabObserve">稍后读 · 碎片回收</SubNav>
 
     <!-- 收纳条 -->
     <view class="add">
@@ -103,14 +97,6 @@ function leftLabel(it: ReadLaterItem): string {
 }
 
 /** 返回：正常栈内 navigateBack；异常兜底回「观」大厅 */
-function goBack(): void {
-  const pages = getCurrentPages()
-  if (pages.length > 1) {
-    uni.navigateBack()
-  } else {
-    uni.switchTab({ url: ROUTES.tabObserve })
-  }
-}
 
 onShow(() => {
   const cleared = store.prune()

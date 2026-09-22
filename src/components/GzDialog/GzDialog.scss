@@ -2,6 +2,8 @@
  * GzDialog.vue 的样式（超过 100 行，按项目约定外置到同目录 GzDialog.scss）。
  * 由 GzDialog.vue 通过 @import 引入；以后改样式改本文件。
  */
+
+@import '../../styles/hover';
 /**
  * 遮罩：显式写 width/height:100vh，而不是只靠 top/bottom 拉伸 ——
  * 后者在小程序里一旦某条声明没生效，遮罩和面板就会塌成"内容高度"或反过来铺满整屏。
@@ -100,7 +102,7 @@
   margin-top: 10rpx;
   font-size: $gz-fs-caption;
   line-height: 1.6;
-  color: $gz-ink-3;
+  color: $gz-ink-2;
 }
 
 .gd__content {
@@ -129,7 +131,12 @@
   flex: none;
   display: flex;
   gap: 18rpx;
-  padding: 28rpx 30rpx calc(32rpx + env(safe-area-inset-bottom) / 2);
+  /*
+   * 不用加安全区：面板是居中弹的，底边并不贴屏幕下沿，`env(safe-area-inset-bottom)`
+   * 在这里没有依据（原先取了一半，等于凭空调高或调矮一截）。
+   * 贴底的弹层（TodoSource 的 .sheet）才需要它。
+   */
+  padding: 28rpx 30rpx 32rpx;
 }
 
 .gd__btn {

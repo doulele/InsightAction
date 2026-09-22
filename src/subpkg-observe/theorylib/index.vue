@@ -1,15 +1,10 @@
 <template>
   <view class="page" :class="skinClass">
-    <!-- 顶栏 -->
-    <view class="nav">
-      <view class="nav__side" hover-class="gz-hover" @click="goBack">
-        <text class="nav__back">‹</text>
-      </view>
-      <text class="nav__title">理库</text>
-      <view class="nav__side nav__side--right" hover-class="gz-hover" @click="goCompose">
-        <text class="nav__add">＋</text>
-      </view>
-    </view>
+    <!-- 顶栏（顶距与样式统一在 components/SubNav；右侧「＋」走 #right 插槽） -->
+    <SubNav :fallback="ROUTES.tabObserve" @right="goCompose">
+      理库
+      <template #right><text class="nav__add">＋</text></template>
+    </SubNav>
 
     <!-- 分区：理 / 播种 -->
     <view class="tabs">
@@ -297,6 +292,7 @@ import { useModeStore } from '@/stores/mode'
 import { isRipe, useSeedStore, type Seed } from '@/stores/seed'
 import { useSkinClass } from '@/composables/useSkin'
 import { navigateTo, ROUTES } from '@/router/routes'
+import { showModal } from '@/utils/dialog'
 
 const observe = useObserveStore()
 const seedStore = useSeedStore()
@@ -415,7 +411,7 @@ function attach(id: string): void {
 function promote(id: string): void {
   const src = observe.find(id)
   if (!src) return
-  uni.showModal({
+  showModal({
     title: '这个反复出现的问题，叫什么',
     content: `从「${src.title || src.content.slice(0, 12)}」升上去`,
     editable: true,
@@ -549,14 +545,6 @@ function doHarvest(): void {
   }
 }
 
-function goBack(): void {
-  const pages = getCurrentPages()
-  if (pages.length > 1) {
-    uni.navigateBack()
-  } else {
-    uni.switchTab({ url: ROUTES.tabObserve })
-  }
-}
 </script>
 
 <style lang="scss" scoped>

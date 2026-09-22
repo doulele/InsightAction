@@ -1,16 +1,7 @@
 <template>
   <view class="page" :class="skinClass">
-    <!-- 顶栏 -->
-    <view class="nav">
-      <view class="nav__side" hover-class="gz-hover" @click="goBack">
-        <text class="nav__back">‹</text>
-      </view>
-      <view class="nav__mid">
-        <text class="nav__title">{{ kindTitle }}</text>
-        <text class="nav__sub">存下不入账 · 处理时才给修为</text>
-      </view>
-      <view class="nav__side" />
-    </view>
+    <!-- 顶栏（顶距与样式统一在 components/SubNav；这页要两行版所以传 subtitle） -->
+    <SubNav @back="goBack" subtitle="存下不入账 · 处理时才给修为">{{ kindTitle }}</SubNav>
 
     <!-- 草稿：上次没写完的这一笔（点「继续写」才填回表单，不自动覆盖当前输入；改一笔时收起） -->
     <view v-if="draftStore.hasDraft && !isEditing" class="draft">
@@ -540,6 +531,7 @@ import {
 import { parseFile } from '@/api/modules/parse'
 import { FORM_LABEL, contractJson, shareTemplate, type TemplateKind } from '@/utils/importTemplate'
 import { ROUTES } from '@/router/routes'
+import { showModal } from '@/utils/dialog'
 
 const store = useObserveStore()
 const draftStore = useComposeDraftStore()
@@ -721,7 +713,7 @@ function pickKind(id: ObserveKind): void {
     return
   }
   const to = kindLabel(id)
-  uni.showModal({
+  showModal({
     title: `改成「${to}」？`,
     content:
       `${KIND_SWITCH[id]}\n\n`
@@ -882,7 +874,7 @@ function resumeDraft(): void {
 
 /** 丢弃草稿：破坏性操作，照项目惯例走红色确认弹框 */
 function dropDraft(): void {
-  uni.showModal({
+  showModal({
     title: '丢弃这份草稿',
     content: '草稿删了就找不回来了',
     confirmText: '丢弃',
@@ -989,7 +981,7 @@ function usePaste(): void {
   const { fields, warnings } = parsePasted(text)
   const got = recognizedFields(fields)
   if (!got.length) {
-    uni.showModal({
+    showModal({
       title: '这段文字里没认出清单',
       content:
         '要粘的是 AI 按契约给你的那段 JSON（以 { 开头，包在 ``` 里也行），'
@@ -1014,7 +1006,7 @@ function usePaste(): void {
         + `你现在选的是「${FORM_LABEL[form.value.form]}」。\n`
         + `若这不是你要的，先「再看看」回页面切到对的签、重新复制一份契约再让 AI 填。\n\n`
       : `看着像「${FORM_LABEL[guessed]}」的清单（它没有形态那一格），填的时候会顺手把形态切过去。\n\n`
-  uni.showModal({
+  showModal({
     title: '粘进来的这份清单',
     content:
       switchNote
@@ -1090,7 +1082,7 @@ async function doImport(): Promise<void> {
  */
 function confirmUpload(file: PickedFile): Promise<boolean> {
   return new Promise((resolve) => {
-    uni.showModal({
+    showModal({
       title: '这个文件要上传解析',
       content:
         `「${file.name}」这类文件本机读不了，需要上传到服务器解析。\n\n`
@@ -1205,7 +1197,7 @@ async function sendTemplate(kind: TemplateKind): Promise<void> {
       duration: 2600,
     })
   } catch (e) {
-    uni.showModal({
+    showModal({
       title: '模板没能转发',
       content: `${e instanceof Error ? e.message : '未知错误'}\n\n可以改用「复制契约示例」，把格式直接粘给 AI。`,
       showCancel: false,
@@ -1218,7 +1210,7 @@ async function sendTemplate(kind: TemplateKind): Promise<void> {
  * 正文里不用 `**` 表强调 —— 原生弹框不认 Markdown，星号会原样显示出来。
  */
 function showFormatHelp(): void {
-  uni.showModal({
+  showModal({
     title: '清单格式说明',
     content:
       '契约跟着上面选中的「形态」走 —— 三种形态字段不一样（每种都带「形态」那一格，写着这份清单是给哪一格用的）：\n'

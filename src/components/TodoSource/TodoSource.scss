@@ -3,6 +3,8 @@
  * 由 components/TodoSource/TodoSource.vue 通过 @import 引入（样式超过 100 行，按项目约定外置）。
  */
 
+@import '../../styles/hover';
+
 .overlay {
   position: fixed;
   inset: 0;
@@ -54,14 +56,14 @@
 
 .opt.is-on {
   border-color: $gz-accent;
-  background: rgba($gz-accent, 0.06);
+  background: $gz-accent-a06;
 }
 
 .opt__kind {
   flex: none;
   padding: 4rpx 12rpx;
   border-radius: 999rpx;
-  background: rgba($gz-accent, 0.1);
+  background: $gz-accent-a10;
   font-size: 20rpx;
   color: $gz-accent;
 }
@@ -85,7 +87,7 @@
   display: block;
   margin-top: 4rpx;
   font-size: 20rpx;
-  color: $gz-ink-3;
+  color: $gz-ink-2;
 }
 
 .opt__tick {
@@ -100,7 +102,7 @@
   text-align: center;
   font-size: $gz-fs-caption;
   line-height: 1.7;
-  color: $gz-ink-3;
+  color: $gz-ink-2;
 }
 
 .sheet__row {

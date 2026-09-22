@@ -146,11 +146,20 @@
 
         <text class="stl__comment">{{ settleData.comment }}</text>
 
+        <!--
+          今天还没收功时给一条出口（2026-09-22）：
+          这一刻正是"一天的句号"，用户刚看完读数，顺势把他送到写一句的地方。
+          已经收过就不出现 —— 那一行会变成没意义的重复。
+        -->
+        <view v-if="!closing.todayClosed" class="stl__link" hover-class="gz-hover" @click="settleToClosing">
+          去{{ cw.title }} · 留一句给今天 ›
+        </view>
+
         <view class="stl__acts">
-          <view class="stl__btn stl__btn--ghost" hover-class="gz-hover" @click="settleToCard">
+          <view class="stl__btn stl__btn--ghost" hover-class="gz-hover-btn" @click="settleToCard">
             看今日日课卡
           </view>
-          <view class="stl__btn" hover-class="gz-hover" @click="closeSettle">收下今天</view>
+          <view class="stl__btn" hover-class="gz-hover-btn" @click="closeSettle">收下今天</view>
         </view>
       </view>
     </view>
@@ -166,6 +175,9 @@
 import { computed } from 'vue'
 import { useBuddy } from '@/composables/useBuddy'
 import { useModeStore } from '@/stores/mode'
+import { useClosingStore } from '@/stores/closing'
+import { closingWords } from '@/config/lexicon'
+import { navigateTo, ROUTES } from '@/router/routes'
 
 const modeStore = useModeStore()
 /**
@@ -207,6 +219,21 @@ const {
 
 /** 面板副行的职司后缀：不在四个大厅里（我页 / 子页）就整段不出现，不写"闲置"这类废话 */
 const dutySuffix = computed(() => (buddyDuty.value ? ` · ${buddyDuty.value.label}` : ''))
+
+/** 今日收功的三模式叫法（结算面板那条出口用） */
+const closing = useClosingStore()
+const cw = computed(() => closingWords(modeStore.id))
+
+/**
+ * 结算 → 去写一句（2026-09-22）。
+ * 交接走 store（`takeFocus`）而不是 query：**tab 页带不了参数**，
+ * 与「止念 → 三件事」的 handoff 同一范式（请求写在跳之前，由「行」页 onShow 取）。
+ */
+function settleToClosing(): void {
+  closeSettle()
+  closing.requestFocus()
+  navigateTo(ROUTES.tabAction)
+}
 
 /** 结算里「看今日日课卡」：先关结算层，再跳（否则返回时会看到结算层还在） */
 function settleToCard(): void {

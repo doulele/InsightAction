@@ -4,58 +4,8 @@
  */
 .page {
   min-height: 100vh;
-  padding: calc(var(--status-bar-height) + 16rpx) $gz-page-pad 80rpx;
+  padding: 0 $gz-page-pad 80rpx;
   box-sizing: border-box;
-}
-
-.nav {
-  display: flex;
-  align-items: flex-start;
-  justify-content: space-between;
-  padding: 4rpx 0 6rpx;
-}
-
-.nav__side {
-  width: 76rpx;
-  height: 76rpx;
-}
-
-.nav__back {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 76rpx;
-  height: 76rpx;
-  border: 1rpx solid $gz-line;
-  border-radius: 50%;
-  background: $gz-surface;
-  color: $gz-ink-2;
-  font-size: 52rpx;
-  line-height: 1;
-  padding-bottom: 8rpx;
-}
-
-.nav__mid {
-  flex: 1;
-  min-width: 0;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 8rpx;
-  padding-top: 8rpx;
-}
-
-.nav__title {
-  font-size: 34rpx;
-  font-weight: 700;
-  letter-spacing: 0.08em;
-  color: $gz-ink;
-}
-
-.nav__sub {
-  font-size: $gz-fs-caption;
-  letter-spacing: 0.06em;
-  color: $gz-ink-3;
 }
 
 /* 归属：事 / 理 / 道 —— 三张并排的签 */
@@ -96,7 +46,7 @@
 .kind__hint {
   font-size: $gz-fs-caption;
   letter-spacing: 0.1em;
-  color: $gz-ink-3;
+  color: $gz-ink-2;
 }
 
 .kind.is-on .kind__hint {
@@ -364,7 +314,7 @@
   min-width: 0;
   text-align: right;
   font-size: $gz-fs-caption;
-  color: $gz-ink-3;
+  color: $gz-ink-2;
 }
 
 /* 字段 */
@@ -724,7 +674,7 @@
   margin-top: 10rpx;
   font-size: $gz-fs-caption;
   line-height: 1.7;
-  color: $gz-ink-3;
+  color: $gz-ink-2;
 }
 
 /*

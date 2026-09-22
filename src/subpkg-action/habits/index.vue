@@ -1,13 +1,7 @@
 <template>
   <view class="page" :class="skinClass">
     <!-- 顶栏：返回 + 标题 -->
-    <view class="nav">
-      <view class="nav__side" hover-class="gz-hover" @click="goBack">
-        <text class="nav__back">‹</text>
-      </view>
-      <text class="nav__title">习惯打卡</text>
-      <view class="nav__side" />
-    </view>
+        <SubNav :fallback="ROUTES.tabAction">习惯打卡</SubNav>
 
     <!-- 今日总况 -->
     <view class="today">
@@ -110,6 +104,7 @@ import { logTrace } from '@/utils/traceLog'
 import { todayKey } from '@/stores/daily'
 import { useSkinClass } from '@/composables/useSkin'
 import { navigateTo, ROUTES } from '@/router/routes'
+import { showModal } from '@/utils/dialog'
 
 const habit = useHabitStore()
 /** 日课：习惯的"有期限版"（见 stores/plan.ts 的 PlanCadence） */
@@ -215,7 +210,7 @@ function toDaily(h: Row): void {
 
 /** 自定义天数：showModal 的 editable 输入（小程序 2.17.1+），填了合法值才建 */
 function toDailyCustom(h: Row): void {
-  uni.showModal({
+  showModal({
     title: '总共守住多少天',
     content: '',
     editable: true,
@@ -282,14 +277,6 @@ function dropConfirm(): void {
   habit.remove(id)
 }
 
-function goBack(): void {
-  const pages = getCurrentPages()
-  if (pages.length > 1) {
-    uni.navigateBack()
-  } else {
-    uni.switchTab({ url: ROUTES.tabAction })
-  }
-}
 </script>
 
 <style lang="scss" scoped>

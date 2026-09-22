@@ -1,5 +1,5 @@
 <template>
-  <view class="page" :class="skinClass">
+  <view class="page" :class="skinClass" :style="pageStyle">
     <view class="head">
       <text class="head__caption">CHOOSE YOUR PATH · 选择你的修行语言</text>
       <text class="head__title">你以什么方式，过这一日？</text>
@@ -73,6 +73,7 @@ import { useModeStore } from '@/stores/mode'
 import { useAppStore } from '@/stores/app'
 import { useContentStore } from '@/stores/content'
 import { applySkin } from '@/utils/skin'
+import { safeTopPx } from '@/utils/safeArea'
 import { ROUTES } from '@/router/routes'
 
 const modeStore = useModeStore()
@@ -92,6 +93,9 @@ function p(key: PhraseKey, mode: ModeId): string {
 const chosen = ref<ModeId>(DEFAULT_MODE_ID)
 /** 页面皮肤跟随点击的候选模式：点谁，整页立即变成谁的风格 */
 const skinClass = computed(() => `gz-skin gz-skin--${chosen.value}`)
+
+/** 页首顶距：状态栏真值 + 48rpx（原 `calc(var(--status-bar-height) + 48rpx)`，见 utils/safeArea.ts） */
+const pageStyle = { paddingTop: `${safeTopPx(48)}px` }
 
 /** 卡片横幅：优先后端下发，其次构建期静态配置，都没有则渲染主题兜底饰带 */
 function artOf(target: ModeId): string | undefined {

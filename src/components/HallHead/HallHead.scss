@@ -16,6 +16,8 @@
  * 本文件的 `.hall-head` 带 data-v 类、优先级高于全局的 `.gz-skin`，190rpx / 250rpx 稳稳盖住它。
  * 另：`.gz-skin` 还会给卡片底色，但下面的 `background:` 简写在同一条规则里更具体，卡片渐变不受影响。
  */
+
+@import '../../styles/hover';
 .hall-head {
   /*
     图上文字配色（三套皮肤各给一组，见下方皮肤覆盖）：

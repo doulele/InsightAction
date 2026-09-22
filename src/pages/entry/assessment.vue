@@ -1,13 +1,19 @@
 <template>
-  <view class="page" :class="skinClass">
+  <view class="page" :class="skinClass" :style="pageStyle">
     <!-- 顶栏：返回 + 标题 + 跳过 -->
     <view class="nav">
       <view class="nav__side" hover-class="gz-hover" @click="goBack">
         <text class="nav__back">‹</text>
       </view>
       <text class="nav__title">{{ navTitle }}</text>
-      <!-- 答题全程都有出口（结果屏不再显示，免得误点） -->
-      <view v-if="screen === 'quiz'" class="nav__side nav__skip" hover-class="gz-hover" @click="skip">
+      <!-- 答题全程都有出口（结果屏不再显示，免得误点）；右边距按胶囊让位，见 skipStyle -->
+      <view
+        v-if="screen === 'quiz'"
+        class="nav__side nav__skip"
+        :style="skipStyle"
+        hover-class="gz-hover"
+        @click="skip"
+      >
         {{ skipLabel }}
       </view>
     </view>
@@ -183,6 +189,7 @@ import { useAssessmentStore, type AssessmentResult } from '@/stores/assessment'
 import { useContentStore } from '@/stores/content'
 import { useModeStore } from '@/stores/mode'
 import { useSkinClass } from '@/composables/useSkin'
+import { capsuleInsetPx, safeTopPx } from '@/utils/safeArea'
 import { ROUTES } from '@/router/routes'
 import { useDimLabel } from '@/composables/usePhrase'
 
@@ -190,6 +197,15 @@ const modeStore = useModeStore()
 const assessment = useAssessmentStore()
 const contentStore = useContentStore()
 const skinClass = useSkinClass()
+
+/** 页首顶距：状态栏真值 + 16rpx（原 `calc(var(--status-bar-height) + 16rpx)`，见 utils/safeArea.ts） */
+const pageStyle = { paddingTop: `${safeTopPx(16)}px` }
+
+/**
+ * 「跳过」的右边距：让开右上角微信胶囊（与 SubNav 的右侧动作同一条口径）。
+ * 它原本贴着屏幕右缘，正好被胶囊压住 —— 看得见半截、点不到。
+ */
+const skipStyle = { marginRight: `${capsuleInsetPx()}px` }
 
 const fromOnboard = ref(false)
 

@@ -2,6 +2,8 @@
  * SceneProbe —— 情境化省察就地一问（样式外置，由 SceneProbe.vue @import 引入）。
  */
 
+@import '../../styles/hover';
+
 .probe {
   margin-top: 24rpx;
   padding: 28rpx 28rpx 24rpx;
@@ -85,5 +87,5 @@
   margin-top: 16rpx;
   font-size: 22rpx;
   line-height: 1.6;
-  color: $gz-ink-3;
+  color: $gz-ink-2;
 }

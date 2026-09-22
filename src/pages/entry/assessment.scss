@@ -4,7 +4,9 @@
  */
 .page {
   min-height: 100vh;
-  padding: calc(var(--status-bar-height) + 16rpx) $gz-page-pad 70rpx;
+  /* 顶部不在这里给：状态栏真值由 assessment.vue 内联（见 utils/safeArea.ts）——
+     CSS 变量 --status-bar-height 在小程序端固定 25px，刘海屏上不够 */
+  padding: 0 $gz-page-pad 70rpx;
   box-sizing: border-box;
 }
 
@@ -13,6 +15,8 @@
   align-items: center;
   justify-content: space-between;
   padding: 8rpx 0 10rpx;
+  /* 标题绝对居中的参照（右侧「跳过」让开胶囊后两端不再对称，见 .nav__title） */
+  position: relative;
 }
 
 .nav__side {
@@ -43,7 +47,21 @@
   color: $gz-ink-3;
 }
 
+/*
+ * 标题**屏幕居中**：右侧「跳过」让开胶囊后两端占位不再对称，
+ * space-between 会把标题推偏半个让位宽度 —— 所以标题自己绝对铺满整行。
+ * `pointer-events: none` 必须留，否则它铺满整行会盖住返回键与「跳过」的点击。
+ */
 .nav__title {
+  position: absolute;
+  top: 8rpx;
+  left: 0;
+  right: 0;
+  padding: 0 190rpx;
+  box-sizing: border-box;
+  text-align: center;
+  line-height: 76rpx;
+  pointer-events: none;
   font-size: 32rpx;
   font-weight: 700;
   letter-spacing: 0.06em;
@@ -230,8 +248,8 @@
 
 .done__seal.is-high {
   background: rgba(196, 96, 46, 0.14);
-  color: #b25a2c;
-  border-color: #b25a2c;
+  color: $gz-warn;
+  border-color: $gz-warn;
 }
 
 .done__eyebrow {

@@ -1,12 +1,6 @@
 <template>
   <view class="page" :class="skinClass">
-    <view class="nav">
-      <view class="nav__side" hover-class="gz-hover" @click="goBack">
-        <text class="nav__back">‹</text>
-      </view>
-      <text class="nav__title">止欲 · 冲动记录</text>
-      <view class="nav__side" />
-    </view>
+        <SubNav :fallback="ROUTES.tabPause">止欲 · 冲动记录</SubNav>
 
     <view class="tabs">
       <view
@@ -208,6 +202,7 @@ import { useBodyStore } from '@/stores/body'
 import { useSkinClass } from '@/composables/useSkin'
 import SceneProbe from '@/components/SceneProbe/SceneProbe.vue'
 import { navigateTo, ROUTES } from '@/router/routes'
+import { showModal } from '@/utils/dialog'
 
 const urge = useUrgeStore()
 const skinClass = useSkinClass()
@@ -361,7 +356,7 @@ function whenOf(at: number): string {
 }
 
 function remove(id: number): void {
-  uni.showModal({
+  showModal({
     title: '删掉这一笔？',
     content: '它会从地图统计里一并移除。',
     confirmText: '删除',
@@ -372,14 +367,6 @@ function remove(id: number): void {
   })
 }
 
-function goBack(): void {
-  const pages = getCurrentPages()
-  if (pages.length > 1) {
-    uni.navigateBack()
-  } else {
-    uni.switchTab({ url: ROUTES.tabPause })
-  }
-}
 </script>
 
 <style lang="scss" scoped>

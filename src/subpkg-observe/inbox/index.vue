@@ -1,15 +1,10 @@
 <template>
   <view class="page" :class="skinClass">
-    <!-- 顶栏 -->
-    <view class="nav">
-      <view class="nav__side" hover-class="gz-hover" @click="goBack">
-        <text class="nav__back">‹</text>
-      </view>
-      <text class="nav__title">收件匣</text>
-      <view class="nav__side nav__side--right" hover-class="gz-hover" @click="goCompose">
-        <text class="nav__add">＋</text>
-      </view>
-    </view>
+    <!-- 顶栏（顶距与样式统一在 components/SubNav；右侧「＋」走 #right 插槽） -->
+    <SubNav :fallback="ROUTES.tabObserve" @right="goCompose">
+      收件匣
+      <template #right><text class="nav__add">＋</text></template>
+    </SubNav>
 
     <!-- 搜索 -->
     <input
@@ -153,6 +148,7 @@ import { useObserveStore, type ObsItem } from '@/stores/observe'
 import { LEDGER_UNNAMED } from '@/config/ledger'
 import { useSkinClass } from '@/composables/useSkin'
 import { navigateTo, ROUTES } from '@/router/routes'
+import { showModal } from '@/utils/dialog'
 
 const store = useObserveStore()
 const skinClass = useSkinClass()
@@ -221,7 +217,7 @@ function stateText(it: ObsItem): string {
  */
 function handle(id: string): void {
   if (!store.canDeepRead(id)) {
-    uni.showModal({
+    showModal({
       title: '今天的深度阅读用完了',
       content: `每日 ${store.quotaTotal()} 次，只用来读「今天新存进来」的东西。\n这条明天再读；前几天存下的补处理不占额，现在就能处理。`,
       showCancel: false,
@@ -229,7 +225,7 @@ function handle(id: string): void {
     })
     return
   }
-  uni.showModal({
+  showModal({
     title: '写下你的一句话',
     editable: true,
     placeholderText: '它让你想到什么 / 哪里不成立',
@@ -246,7 +242,7 @@ function handle(id: string): void {
 }
 
 function drop(id: string): void {
-  uni.showModal({
+  showModal({
     title: '删掉这条',
     content: '删了就找不回来了',
     confirmText: '删',
@@ -294,14 +290,6 @@ function goEdit(id: string): void {
   navigateTo(ROUTES.observeCompose, { id })
 }
 
-function goBack(): void {
-  const pages = getCurrentPages()
-  if (pages.length > 1) {
-    uni.navigateBack()
-  } else {
-    uni.switchTab({ url: ROUTES.tabObserve })
-  }
-}
 
 onLoad((query) => {
   const q = (query ?? {}) as Record<string, string>

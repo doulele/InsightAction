@@ -58,6 +58,7 @@ function later(): void {
 </script>
 
 <style lang="scss" scoped>
+@import '../../styles/hover';
 .prompt {
   margin-bottom: 22rpx;
   padding: 24rpx 26rpx;

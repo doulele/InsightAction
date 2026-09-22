@@ -141,9 +141,12 @@ export function domainOf(card: KnowledgeCard): CardDomain {
   return card.domain ?? 'life'
 }
 
-export function depthColor(depth: CardDepth): string {
-  return depth === 1 ? '#84A268' : depth === 2 ? '#4E8FD4' : '#9C8AC4'
-}
+/**
+ * 深度配色：唯一真相搬到 `config/palette.ts`（与 uni.scss 的 `$gz-depth-*` 成对）。
+ * 这里只做**转出** —— 既有调用点（library / reflect / board）的 import 路径不必改。
+ * 2026-09-22 收敛：原先这里、board、growth、AiBadge 各写一份同一组蓝绿紫。
+ */
+export { depthColor } from '@/config/palette'
 
 let uniq = 1
 

@@ -1,13 +1,7 @@
 <template>
   <view class="page" :class="skinClass">
     <!-- 顶栏：返回 + 标题（子页统一样式） -->
-    <view class="nav">
-      <view class="nav__side" hover-class="gz-hover" @click="goBack">
-        <text class="nav__back">‹</text>
-      </view>
-      <text class="nav__title">专注统计</text>
-      <view class="nav__side" />
-    </view>
+        <SubNav :fallback="ROUTES.tabPause">专注统计</SubNav>
 
     <!-- 今日 / 本周 / 本月 -->
     <view class="cards">
@@ -148,14 +142,6 @@ function toSandglass(): void {
   navigateTo(ROUTES.pauseSandglass)
 }
 
-function goBack(): void {
-  const pages = getCurrentPages()
-  if (pages.length > 1) {
-    uni.navigateBack()
-  } else {
-    uni.switchTab({ url: ROUTES.tabPause })
-  }
-}
 </script>
 
 <style lang="scss" scoped>

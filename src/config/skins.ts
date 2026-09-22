@@ -28,17 +28,18 @@ export interface SkinTokens {
   /** 皮肤名（中文短名） */
   label: string
 
-  /* ---- CSS 侧：用于 .gz-skin--xxx 选择器中的 CSS 变量值 ---- */
-  accent: string
-  accentSoft: string
-  paper: string
-  paperDeep: string
-  surface: string
-  ink: string
-  ink2: string
-  ink3: string
-  line: string
-  lineSoft: string
+  /**
+   * 只有 **JS 读得到的颜色**才放在这里 —— 即原生控件与 canvas。
+   * 页面/组件的纯 CSS 侧一律走 App.scss 的 `--gz-*` 变量（三套皮肤一份真相）。
+   *
+   * ⚠️ 2026-09-22 清理：这里原先还抄了一份 `accentSoft / paper / paperDeep /
+   * surface / ink2 / ink3 / line / lineSoft`，全项目**无人消费**，却已经和
+   * App.scss 漂移（tech 的 surface / ink3 / line、dao 的 paper / surface / ink3
+   * 都对不上）。抄一份不用的色板 = 迟早变成第二份撒谎的真相，所以直接删掉。
+   * 下面这两个字段是例外，它们**必须**与 App.scss 保持一致：
+   */
+  accent: string // ↑ 与 --gz-accent 同值（「我」页 canvas 雷达图用它描边）
+  ink: string //    ↑ 与 --gz-ink 同值（同上，canvas 读不到 CSS 变量）
 
   /* ---- 原生控件侧：运行时通过 uni API 应用 ---- */
   navigationBar: { frontColor: '#000000' | '#ffffff'; backgroundColor: string }
@@ -66,16 +67,8 @@ export const SKINS: Record<ModeId, SkinTokens> = {
   normal: {
     id: 'normal',
     label: '普通',
-    accent: '#6D8B3F',
-    accentSoft: 'rgba(109,139,63,.12)',
-    paper: '#F4EFE4',
-    paperDeep: '#EDE6D6',
-    surface: '#FCFAF4',
-    ink: '#26231E',
-    ink2: '#6B655B',
-    ink3: '#9C9589',
-    line: 'rgba(38,35,30,.10)',
-    lineSoft: 'rgba(38,35,30,.05)',
+    accent: '#6D8B3F', // = App.scss --gz-accent
+    ink: '#26231E', //    = App.scss --gz-ink
     navigationBar: { frontColor: '#000000', backgroundColor: '#F4EFE4' },
     windowBackground: '#F4EFE4',
     tabBar: { color: '#A9A196', selectedColor: '#6D8B3F', backgroundColor: '#FCFAF4', borderStyle: 'white' },
@@ -84,16 +77,8 @@ export const SKINS: Record<ModeId, SkinTokens> = {
   tech: {
     id: 'tech',
     label: '科技',
-    accent: '#3FA9FF',
-    accentSoft: 'rgba(63,169,255,.14)',
-    paper: '#0D1117',
-    paperDeep: '#151B24',
-    surface: '#151B24',
-    ink: '#E6EDF5',
-    ink2: '#9AA7B8',
-    ink3: '#66748A',
-    line: 'rgba(230,237,245,.10)',
-    lineSoft: 'rgba(230,237,245,.05)',
+    accent: '#3FA9FF', // = App.scss --gz-accent
+    ink: '#E6EDF5', //    = App.scss --gz-ink
     navigationBar: { frontColor: '#ffffff', backgroundColor: '#0D1117' },
     windowBackground: '#0D1117',
     tabBar: { color: '#66748A', selectedColor: '#3FA9FF', backgroundColor: '#151B24', borderStyle: 'black' },
@@ -102,16 +87,8 @@ export const SKINS: Record<ModeId, SkinTokens> = {
   dao: {
     id: 'dao',
     label: '修仙',
-    accent: '#A4471F',
-    accentSoft: 'rgba(164,71,31,.12)',
-    paper: '#F1EDE0',
-    paperDeep: '#EAE3D1',
-    surface: '#F9F5EA',
-    ink: '#2A251E',
-    ink2: '#6E6759',
-    ink3: '#A29A89',
-    line: 'rgba(42,37,30,.16)',
-    lineSoft: 'rgba(42,37,30,.07)',
+    accent: '#A4471F', // = App.scss --gz-accent
+    ink: '#2A251E', //    = App.scss --gz-ink
     navigationBar: { frontColor: '#000000', backgroundColor: '#E7DFC9' },
     windowBackground: '#F1EDE0',
     tabBar: { color: '#A29A89', selectedColor: '#A4471F', backgroundColor: '#F9F5EA', borderStyle: 'white' },

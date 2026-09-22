@@ -3,6 +3,8 @@
  * 由 components/PlanReflect/PlanReflect.vue 通过 @import 引入（样式超过 100 行，按项目约定外置）。
  */
 
+@import '../../styles/hover';
+
 .overlay {
   position: fixed;
   inset: 0;
@@ -58,7 +60,7 @@
   margin-top: 14rpx;
   font-size: $gz-fs-caption;
   line-height: 1.7;
-  color: $gz-ink-3;
+  color: $gz-ink-2;
 }
 
 .sheet__row {

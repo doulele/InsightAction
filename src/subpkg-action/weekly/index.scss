@@ -1,45 +1,11 @@
-/**
+﻿/**
  * index.vue 的样式（超过 100 行，按项目约定外置到同目录 index.scss）。
  * 由 index.vue 通过 @import 引入；以后改样式改本文件。
  */
 .page {
   min-height: 100vh;
-  padding: calc(var(--status-bar-height) + 16rpx) $gz-page-pad 60rpx;
+  padding: 0 $gz-page-pad 60rpx;
   box-sizing: border-box;
-}
-
-.nav {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 8rpx 0 10rpx;
-}
-
-.nav__side {
-  width: 76rpx;
-  height: 76rpx;
-}
-
-.nav__back {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 76rpx;
-  height: 76rpx;
-  border: 1rpx solid $gz-line;
-  border-radius: 50%;
-  background: $gz-surface;
-  color: $gz-ink-2;
-  font-size: 52rpx;
-  line-height: 1;
-  padding-bottom: 8rpx;
-}
-
-.nav__title {
-  font-size: 34rpx;
-  font-weight: 700;
-  letter-spacing: 0.08em;
-  color: $gz-ink;
 }
 
 .head {
@@ -207,7 +173,7 @@
 
 .bar-col__label {
   margin-top: 4rpx;
-  font-size: 18rpx;
+  font-size: 20rpx;
   color: $gz-ink-3;
   transform: scale(0.92);
 }
@@ -221,7 +187,7 @@
   display: block;
   margin-top: 14rpx;
   font-size: $gz-fs-caption;
-  color: $gz-ink-3;
+  color: $gz-ink-2;
 }
 
 /* 明细 */
@@ -261,21 +227,21 @@
   background: #9c8ac4;
 }
 
-/* 四环配色：观 / 止 / 知 / 行 */
+/* 四环配色：观 / 止 / 知 / 行（身份色收在 uni.scss，2026-09-22 与看板/小枢对齐） */
 .mini__dot.is-observe {
-  background: #84a268;
+  background: $gz-dim-observe;
 }
 
 .mini__dot.is-pause {
-  background: #4e8fd4;
+  background: $gz-dim-pause;
 }
 
 .mini__dot.is-reflect {
-  background: #9c8ac4;
+  background: $gz-dim-reflect;
 }
 
 .mini__dot.is-action {
-  background: #c98a4b;
+  background: $gz-dim-action;
 }
 
 .mini__label {
@@ -293,7 +259,7 @@
 
 .mini__time {
   flex: none;
-  font-size: 18rpx;
+  font-size: 20rpx;
   color: $gz-ink-3;
 }
 
@@ -302,7 +268,7 @@
   padding: 30rpx 20rpx;
   text-align: center;
   font-size: $gz-fs-caption;
-  color: $gz-ink-3;
+  color: $gz-ink-2;
   border: 1rpx dashed $gz-line;
   border-radius: $gz-radius-md;
 }
@@ -350,21 +316,21 @@
   font-weight: 600;
 }
 
-/* 四环配色与痕迹流的小圆点保持一致 */
+/* 四环配色与痕迹流的小圆点保持一致（身份色，见 uni.scss） */
 .sum__hall.is-observe {
-  color: #84a268;
+  color: $gz-dim-observe;
 }
 
 .sum__hall.is-pause {
-  color: #4e8fd4;
+  color: $gz-dim-pause;
 }
 
 .sum__hall.is-reflect {
-  color: #9c8ac4;
+  color: $gz-dim-reflect;
 }
 
 .sum__hall.is-action {
-  color: #c98a4b;
+  color: $gz-dim-action;
 }
 
 /* 一条路 */
@@ -413,19 +379,19 @@
 }
 
 .hrow__mark.is-observe {
-  background: #84a268;
+  background: $gz-dim-observe;
 }
 
 .hrow__mark.is-pause {
-  background: #4e8fd4;
+  background: $gz-dim-pause;
 }
 
 .hrow__mark.is-reflect {
-  background: #9c8ac4;
+  background: $gz-dim-reflect;
 }
 
 .hrow__mark.is-action {
-  background: #c98a4b;
+  background: $gz-dim-action;
 }
 
 .hrow__text {
@@ -442,7 +408,7 @@
   margin-top: 32rpx;
   padding: 24rpx 26rpx;
   border-radius: $gz-radius-md;
-  background: rgba($gz-accent, 0.06);
+  background: $gz-accent-a06;
 }
 
 .buddy__mark {
@@ -489,7 +455,7 @@
   display: block;
   margin-top: 12rpx;
   font-size: $gz-fs-caption;
-  color: $gz-ink-3;
+  color: $gz-ink-2;
 }
 
 .foot {

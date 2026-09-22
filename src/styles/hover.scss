@@ -1,0 +1,30 @@
+/**
+ * 按压反馈（hover-class）。
+ *
+ * 为什么要有这个文件、为什么每个组件都要各引一份：
+ * App.scss 是 app.wxss，而自定义组件的 `styleIsolation` 默认是 `isolated` ——
+ * **app.wxss 里的类选择器对组件内部无效**（只有标签名选择器会穿透）。
+ * 所以 13 个组件里那 30 处 `hover-class="gz-hover"` 一直是**静默没反应**的
+ * （2026-09-22 排查确认：构建产物 components/BuddyFloat/BuddyFloat.wxss 里根本没有
+ * `.gz-hover` 这条规则，而组件 json 也没写 styleIsolation）。
+ *
+ * 于是把这两条规则抽成本文件，由用到 hover-class 的组件各自 `@import` 一份 ——
+ * 编译期就内联进该组件的 wxss，作用域问题不复存在。
+ * 页面侧仍然用 App.scss 里那份（页面能看到 app.wxss）。
+ *
+ * 加了新的按压类，记得三处同步：本文件、App.scss、以及需要它的组件。
+ */
+.gz-hover {
+  opacity: 0.72;
+  transition: opacity 0.2s ease;
+}
+
+/*
+ * 主按钮专用：比 .gz-hover 多一档轻微内缩。
+ * 只给**独立的大按钮**用（弹框主键 / 收功键 / 结算键），卡片与长列表行别用。
+ */
+.gz-hover-btn {
+  opacity: 0.88;
+  transform: scale(0.985);
+  transition: opacity 0.15s ease, transform 0.15s ease;
+}

@@ -266,6 +266,7 @@ import type { RoutePath } from '@/router/routes'
 import { todayKey } from '@/stores/daily'
 import GzDialog from '@/components/GzDialog/GzDialog.vue'
 import type { EntryBadge } from '@/components/EntryItem/EntryItem.vue'
+import { showModal } from '@/utils/dialog'
 
 const modeStore = useModeStore()
 const skinClass = useSkinClass()
@@ -697,7 +698,7 @@ const stateText = computed(() => hallStatus('observe', modeStore.id, { read: use
  * 这道闸门才真的能影响他「这篇值不值得占名额」的判断。
  */
 function explainQuota(): void {
-  uni.showModal({
+  showModal({
     title: '今日信息配额',
     content: `今日 ${usedQuota.value}/${quota.value} 次。\n\n「一次」= 今天新存进来的内容，今天读完并写下自己的话。前几天存下的补处理不占额 —— 还债不受限。\n\n用「导入文件」进来的不占额：一篇长文常常要读好几天，不该一口吃掉当天的名额。\n\n${observe.quotaNote()}`,
     showCancel: false,
@@ -737,7 +738,7 @@ function doAction(id: (typeof ACTIONS)[number]['id']): void {
       break
     }
     case 'refute':
-      uni.showModal({
+      showModal({
         title: '它哪里不成立',
         editable: true,
         placeholderText: '举一个反例，或说出不适用的条件',
@@ -764,7 +765,7 @@ function doAction(id: (typeof ACTIONS)[number]['id']): void {
       })
       break
     case 'note':
-      uni.showModal({
+      showModal({
         title: '就这一则，写一句',
         editable: true,
         placeholderText: '它让你想到什么',

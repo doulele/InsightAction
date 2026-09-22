@@ -4,34 +4,8 @@
  */
 .page {
   min-height: 100vh;
-  padding: 24rpx $gz-page-pad 60rpx;
-}
-
-.nav {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 8rpx 0 20rpx;
-}
-
-.nav__side {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 72rpx;
-  height: 72rpx;
-}
-
-.nav__back {
-  font-size: 56rpx;
-  color: $gz-ink-2;
-  line-height: 1;
-}
-
-.nav__title {
-  font-size: $gz-fs-title;
-  font-weight: 700;
-  color: $gz-ink;
+  /* 顶距为 0：状态栏那一份由 SubNav 让（原先这 7 页写 24rpx 且没让状态栏，返回键顶到胶囊上） */
+  padding: 0 $gz-page-pad 60rpx;
 }
 
 /* ---- 到期（排最前） ---- */
@@ -59,7 +33,7 @@
 .due__meta {
   display: block;
   font-size: $gz-fs-caption;
-  color: $gz-ink-3;
+  color: $gz-ink-2;
 }
 
 .due__sealed {
@@ -161,7 +135,7 @@
   margin: 18rpx 0 22rpx;
   font-size: $gz-fs-caption;
   line-height: 1.7;
-  color: $gz-ink-3;
+  color: $gz-ink-2;
 }
 
 .write__btn {
@@ -240,7 +214,7 @@
   display: block;
   margin-top: 8rpx;
   font-size: $gz-fs-caption;
-  color: $gz-ink-3;
+  color: $gz-ink-2;
 }
 
 .row__quote {
@@ -279,7 +253,7 @@
   font-size: 56rpx;
   line-height: 118rpx;
   text-align: center;
-  color: $gz-ink-3;
+  color: $gz-ink-2;
   border: 2rpx solid $gz-line;
   border-radius: $gz-radius-md;
 }
@@ -293,7 +267,7 @@
 .empty__desc {
   margin-top: 10rpx;
   font-size: $gz-fs-small;
-  color: $gz-ink-3;
+  color: $gz-ink-2;
   text-align: center;
 }
 

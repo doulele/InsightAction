@@ -1,13 +1,7 @@
 <template>
   <view class="page" :class="skinClass">
     <!-- 顶栏：返回 + 标题 -->
-    <view class="nav">
-      <view class="nav__side" hover-class="gz-hover" @click="goBack">
-        <text class="nav__back">‹</text>
-      </view>
-      <text class="nav__title">微行动盲盒</text>
-      <view class="nav__side" />
-    </view>
+        <SubNav :fallback="ROUTES.tabAction">微行动盲盒</SubNav>
 
     <!-- 已抽中 -->
     <view v-if="current" class="stage">
@@ -138,14 +132,6 @@ function goAction(): void {
   navigateTo(ROUTES.tabAction)
 }
 
-function goBack(): void {
-  const pages = getCurrentPages()
-  if (pages.length > 1) {
-    uni.navigateBack()
-  } else {
-    uni.switchTab({ url: ROUTES.tabAction })
-  }
-}
 </script>
 
 <style lang="scss" scoped>

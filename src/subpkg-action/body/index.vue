@@ -1,13 +1,7 @@
 <template>
   <view class="page" :class="skinClass">
     <!-- 顶栏 -->
-    <view class="nav">
-      <view class="nav__side" hover-class="gz-hover" @click="goBack">
-        <text class="nav__back">‹</text>
-      </view>
-      <text class="nav__title">身体电量</text>
-      <view class="nav__side" />
-    </view>
+        <SubNav @back="goBack">身体电量</SubNav>
 
     <!-- 今日电量 -->
     <view class="bat">
@@ -176,6 +170,7 @@ import type { BodyBar } from '@/stores/body'
 import { dayStats } from '@/utils/growth'
 import { WerunError, openWeRunSetting, readWeRun } from '@/utils/werun'
 import { logTrace } from '@/utils/traceLog'
+import { showModal } from '@/utils/dialog'
 
 const skinClass = useSkinClass()
 const body = useBodyStore()
@@ -341,7 +336,7 @@ async function onSync(): Promise<void> {
        * 「没在隐私指引里声明该信息类型」和「手机没开微信运动」长得完全不一样，
        * 截断了就等于没报。
        */
-      uni.showModal({ title: '读取步数失败', content: err.message, showCancel: false, confirmText: '知道了' })
+      showModal({ title: '读取步数失败', content: err.message, showCancel: false, confirmText: '知道了' })
     }
   } finally {
     syncing.value = false

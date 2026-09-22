@@ -1,13 +1,7 @@
 <template>
   <view class="page" :class="skinClass">
     <!-- 顶栏：从分享卡片进来时页面栈里只有这一页，返回要兜底回「观」 -->
-    <view class="nav">
-      <view class="nav__side" hover-class="gz-hover" @click="goBack">
-        <text class="nav__back">‹</text>
-      </view>
-      <text class="nav__title">一条分享</text>
-      <view class="nav__side" />
-    </view>
+        <SubNav @back="goBack">一条分享</SubNav>
 
     <view v-if="loading" class="hint">
       <text class="hint__text">正在打开…</text>

@@ -4,44 +4,11 @@
  */
 .page {
   min-height: 100vh;
-  padding: calc(var(--status-bar-height) + 16rpx) $gz-page-pad 60rpx;
+  padding: 0 $gz-page-pad 60rpx;
   box-sizing: border-box;
 }
 
 /* 顶栏（子页同款） */
-.nav {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 8rpx 0 10rpx;
-}
-
-.nav__side {
-  width: 76rpx;
-  height: 76rpx;
-}
-
-.nav__back {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 76rpx;
-  height: 76rpx;
-  border: 1rpx solid $gz-line;
-  border-radius: 50%;
-  background: $gz-surface;
-  color: $gz-ink-2;
-  font-size: 52rpx;
-  line-height: 1;
-  padding-bottom: 8rpx;
-}
-
-.nav__title {
-  font-size: 34rpx;
-  font-weight: 700;
-  letter-spacing: 0.08em;
-  color: $gz-ink;
-}
 
 /* 说明 */
 .lead {
@@ -64,7 +31,7 @@
   margin-top: 12rpx;
   font-size: $gz-fs-small;
   line-height: 1.9;
-  color: $gz-ink-3;
+  color: $gz-ink-2;
   white-space: pre-line;
 }
 
@@ -94,7 +61,7 @@
 }
 
 .sum__n.is-warn {
-  color: #c4602e;
+  color: $gz-warn;
 }
 
 .sum__cap {
@@ -231,7 +198,7 @@
   font-size: $gz-fs-small;
   line-height: 1.9;
   text-align: center;
-  color: $gz-ink-3;
+  color: $gz-ink-2;
 }
 
 .foot {

@@ -1,4 +1,4 @@
-/**
+﻿/**
  * 来源标识。
  * 颜色不引主题变量：组件可能被任意页面复用，写死色值保证任何皮肤下都可读。
  * AI 用蓝（与深度 Lv.2 同色系，暗示"加工过"），本地用灰（中性、不抢眼）。
@@ -15,7 +15,7 @@
 
   &.is-ai {
     background: rgba(78, 143, 212, 0.12);
-    color: #4e8fd4;
+    color: $gz-depth-2; // 「加工过」= 知识深度 Lv.2 的蓝（身份色，见 uni.scss）
   }
 
   &.is-local {
@@ -27,7 +27,7 @@
   &.is-mini {
     padding: 0 6rpx;
     margin-left: 4rpx;
-    font-size: 16rpx;
+    font-size: 20rpx;
     line-height: 1.4;
   }
 }

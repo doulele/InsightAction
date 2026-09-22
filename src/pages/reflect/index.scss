@@ -4,7 +4,8 @@
  */
 .page {
   min-height: 100vh;
-  padding: 24rpx $gz-page-pad 60rpx;
+  /* 底部留白 180rpx：避开小枢悬浮球（108rpx @ bottom 40rpx）压住页尾 */
+  padding: 24rpx $gz-page-pad 180rpx;
 }
 
 /* 止念条：不劝多写，劝去用 */
@@ -126,7 +127,7 @@
   display: block;
   margin-top: 16rpx;
   font-size: $gz-fs-caption;
-  color: $gz-ink-3;
+  color: $gz-ink-2;
 }
 
 .section {
@@ -150,7 +151,7 @@
 .section__hint {
   display: block;
   font-size: $gz-fs-caption;
-  color: $gz-ink-3;
+  color: $gz-ink-2;
 }
 
 .section__badge {
@@ -186,7 +187,7 @@
 
 .card__src {
   font-size: $gz-fs-caption;
-  color: $gz-ink-3;
+  color: $gz-ink-2;
 }
 
 .card__title {
@@ -261,7 +262,7 @@
   font-size: $gz-fs-caption;
   line-height: 1.9;
   text-align: center;
-  color: $gz-ink-3;
+  color: $gz-ink-2;
   white-space: pre-line;
 }
 
@@ -303,7 +304,7 @@
 
 .sheet__src {
   font-size: $gz-fs-caption;
-  color: $gz-ink-3;
+  color: $gz-ink-2;
 }
 
 .sheet__title {
@@ -369,7 +370,7 @@
   padding: 16rpx 0;
   background: transparent;
   border: 1rpx solid rgba(196, 96, 46, 0.5);
-  color: #b25a2c;
+  color: $gz-warn;
   font-size: $gz-fs-small;
   border-radius: $gz-radius-md;
 }
@@ -388,7 +389,7 @@
   margin-top: 10rpx;
   font-size: $gz-fs-caption;
   line-height: 1.8;
-  color: $gz-ink-3;
+  color: $gz-ink-2;
 }
 
 .probe {
@@ -446,7 +447,7 @@
   padding: 40rpx 0;
   text-align: center;
   font-size: $gz-fs-small;
-  color: $gz-ink-3;
+  color: $gz-ink-2;
 }
 
 /* ---- 自我画像（§9.4）：只摆形状，所以版式也压到最轻 ---- */
@@ -570,7 +571,7 @@
   border-top: 1rpx solid $gz-line-soft;
   font-size: $gz-fs-caption;
   line-height: 1.7;
-  color: $gz-ink-3;
+  color: $gz-ink-2;
 }
 
 /* summary 在时，note 不重复画第二条线 */

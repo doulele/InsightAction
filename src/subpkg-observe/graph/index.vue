@@ -1,13 +1,7 @@
 <template>
   <view class="page" :class="skinClass">
     <!-- 顶栏 -->
-    <view class="nav">
-      <view class="nav__side" hover-class="gz-hover" @click="goBack">
-        <text class="nav__back">‹</text>
-      </view>
-      <text class="nav__title">理道图谱</text>
-      <view class="nav__side" />
-    </view>
+        <SubNav @back="goBack">理道图谱</SubNav>
 
     <view class="intro">
       <text class="intro__text">

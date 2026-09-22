@@ -1,12 +1,6 @@
 <template>
   <view class="page" :class="skinClass">
-    <view class="nav">
-      <view class="nav__side" hover-class="gz-hover" @click="goBack">
-        <text class="nav__back">‹</text>
-      </view>
-      <text class="nav__title">旧卡重逢</text>
-      <view class="nav__side" />
-    </view>
+        <SubNav :fallback="ROUTES.tabReflect">旧卡重逢</SubNav>
 
     <!-- 今天这一条 -->
     <view v-if="shown" class="card">
@@ -162,14 +156,6 @@ function goLibrary(): void {
   navigateTo(ROUTES.reflectLibrary)
 }
 
-function goBack(): void {
-  const pages = getCurrentPages()
-  if (pages.length > 1) {
-    uni.navigateBack()
-  } else {
-    uni.switchTab({ url: ROUTES.tabReflect })
-  }
-}
 </script>
 
 <style lang="scss" scoped>

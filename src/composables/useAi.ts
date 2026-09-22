@@ -24,6 +24,7 @@ import { useRemoteStore } from '@/stores/remote'
 import { aiFeynman, aiTags, aiDigest } from '@/api/modules/ai'
 import { localFeynman, localTags, localDigest } from '@/utils/localAi'
 import type { AiSource, DigestResult, FeynmanResult, TagsResult } from '@/api/modules/ai'
+import { showModal } from '@/utils/dialog'
 
 type AiKind = 'feynman' | 'tags' | 'digest'
 
@@ -50,7 +51,7 @@ export function useAi() {
   async function ensureAiConsent(): Promise<boolean> {
     if (account.aiConsent) return true
     const ok = await new Promise<boolean>((resolve) => {
-      uni.showModal({
+      showModal({
         title: '这段内容会发给 AI',
         content:
           '你写的这段文字将离开手机，发给我们接入的 AI 服务商（深度求索 DeepSeek）用于生成结果，'

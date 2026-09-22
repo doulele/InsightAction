@@ -1,12 +1,6 @@
 <template>
   <view class="page" :class="skinClass">
-    <view class="nav">
-      <view class="nav__side" hover-class="gz-hover" @click="goBack">
-        <text class="nav__back">‹</text>
-      </view>
-      <text class="nav__title">立约</text>
-      <view class="nav__side" />
-    </view>
+        <SubNav :fallback="ROUTES.tabPause">立约</SubNav>
 
     <!-- 今日状态 -->
     <view class="head">
@@ -172,6 +166,7 @@ import { useSkinClass } from '@/composables/useSkin'
 import SceneProbe from '@/components/SceneProbe/SceneProbe.vue'
 import { todayKey } from '@/stores/daily'
 import { ROUTES } from '@/router/routes'
+import { showModal } from '@/utils/dialog'
 
 const vow = useVowStore()
 const skinClass = useSkinClass()
@@ -232,7 +227,7 @@ function doBreak(): void {
 }
 
 function doReset(): void {
-  uni.showModal({
+  showModal({
     title: '重新立一条？',
     content: '今天的这条回看记录会一并撤掉。',
     confirmText: '重立',
@@ -254,14 +249,6 @@ function statusText(v: Vow): string {
   return v.status === 'kept' ? '守住' : '破了'
 }
 
-function goBack(): void {
-  const pages = getCurrentPages()
-  if (pages.length > 1) {
-    uni.navigateBack()
-  } else {
-    uni.switchTab({ url: ROUTES.tabPause })
-  }
-}
 </script>
 
 <style lang="scss" scoped>

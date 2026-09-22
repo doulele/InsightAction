@@ -42,6 +42,7 @@ import { useRemoteStore } from '@/stores/remote'
 import { useModeStore } from '@/stores/mode'
 import { applyUpdateNow, updateReady } from '@/utils/update'
 import { getRunningVersion } from '@/utils/version'
+import { showModal } from '@/utils/dialog'
 
 const remote = useRemoteStore()
 const modeStore = useModeStore()
@@ -90,7 +91,7 @@ function onUpdateConfirm(): void {
 
   // 还没拿到新包（例如强制更新但后台尚未下载完）：引导用户手动重进
   remote.closeUpdate()
-  uni.showModal({
+  showModal({
     title: '暂未获取到新版本',
     content: '请关闭小程序后重新进入；若仍提示更新，请删除小程序后再重新打开。',
     showCancel: false,

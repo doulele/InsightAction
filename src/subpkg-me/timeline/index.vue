@@ -1,13 +1,7 @@
 <template>
   <view class="page" :class="skinClass">
     <!-- 顶栏 -->
-    <view class="nav">
-      <view class="nav__side" hover-class="gz-hover" @click="goBack">
-        <text class="nav__back">‹</text>
-      </view>
-      <text class="nav__title">痕迹时间轴</text>
-      <view class="nav__side" />
-    </view>
+        <SubNav :fallback="ROUTES.tabMe">痕迹时间轴</SubNav>
 
     <!-- 汇总 -->
     <view class="head">
@@ -152,14 +146,6 @@ function labelOf(kind: TraceKind): string {
   return TRACE_LABEL[kind] ?? '痕迹'
 }
 
-function goBack(): void {
-  const pages = getCurrentPages()
-  if (pages.length > 1) {
-    uni.navigateBack()
-  } else {
-    uni.switchTab({ url: ROUTES.tabMe })
-  }
-}
 </script>
 
 <style lang="scss" scoped>

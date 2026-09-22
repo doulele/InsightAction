@@ -1,12 +1,6 @@
 <template>
   <view class="page" :class="skinClass">
-    <view class="nav">
-      <view class="nav__side" hover-class="gz-hover" @click="goBack">
-        <text class="nav__back">‹</text>
-      </view>
-      <text class="nav__title">止念一刻</text>
-      <view class="nav__side" />
-    </view>
+        <SubNav :fallback="ROUTES.tabPause">止念一刻</SubNav>
 
     <view class="tabs">
       <view
@@ -339,6 +333,7 @@ import { playCue, teardownAudio } from '@/utils/audio'
 import { useSkinClass } from '@/composables/useSkin'
 import SceneProbe from '@/components/SceneProbe/SceneProbe.vue'
 import { ROUTES } from '@/router/routes'
+import { showModal } from '@/utils/dialog'
 
 const thought = useThoughtStore()
 /** 认领反刍线索时落一张卡进「知」（与箴言转卡、播种收成同一条路） */
@@ -537,7 +532,7 @@ function whenOf(at: number): string {
 }
 
 function remove(id: number): void {
-  uni.showModal({
+  showModal({
     title: '删掉这一念？',
     content: '它会从列表里移除，已入账的修为不退。',
     confirmText: '删除',
@@ -551,14 +546,6 @@ function remove(id: number): void {
 /* 离页收干净：落定那一记不该跟着回到大厅还在响 */
 onUnload(() => teardownAudio())
 
-function goBack(): void {
-  const pages = getCurrentPages()
-  if (pages.length > 1) {
-    uni.navigateBack()
-  } else {
-    uni.switchTab({ url: ROUTES.tabPause })
-  }
-}
 </script>
 
 <style lang="scss" scoped>

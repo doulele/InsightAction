@@ -72,6 +72,7 @@ function onTap(): void {
 </script>
 
 <style lang="scss" scoped>
+@import '../../styles/hover';
 .entry {
   display: flex;
   align-items: center;
@@ -80,7 +81,6 @@ function onTap(): void {
   background: $gz-surface;
   border: 1rpx solid $gz-line;
   border-radius: $gz-radius-md;
-  transition: opacity 0.2s ease;
 }
 
 .entry__mark {
@@ -115,12 +115,17 @@ function onTap(): void {
   color: $gz-ink;
 }
 
+/*
+ * 入口说明文字：走 `$gz-ink-2` 而不是 `$gz-ink-3`。
+ * 它是「这一项是干什么的」，是五个大厅里被读得最多的一行字；
+ * `ink-3` 在浅色皮肤上只有约 2.8:1 的对比度（不够读），见 App.scss 的口径说明。
+ */
 .entry__sub {
   display: block;
   margin-top: 6rpx;
   font-size: $gz-fs-small;
   line-height: 1.6;
-  color: $gz-ink-3;
+  color: $gz-ink-2;
 }
 
 .entry__badge {
@@ -141,11 +146,11 @@ function onTap(): void {
   color: $gz-ink-3;
 }
 
+/* 箭头：原先挂了一条 `transition: transform`，但全项目没有任何地方改它的 transform（死属性） */
 .entry__arrow {
   flex: none;
   color: $gz-ink-3;
   font-size: 32rpx;
-  transition: transform 0.2s ease;
 }
 
 /* 禁用态降饱和 */

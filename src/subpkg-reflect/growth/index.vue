@@ -1,13 +1,7 @@
 <template>
   <view class="page" :class="skinClass">
     <!-- 顶栏：返回 + 标题（子页统一样式） -->
-    <view class="nav">
-      <view class="nav__side" hover-class="gz-hover" @click="goBack">
-        <text class="nav__back">‹</text>
-      </view>
-      <text class="nav__title">认知成长曲线</text>
-      <view class="nav__side" />
-    </view>
+        <SubNav :fallback="ROUTES.tabReflect">认知成长曲线</SubNav>
 
     <!-- 总览 -->
     <view class="overview">
@@ -186,14 +180,6 @@ function segWidth(part: number, all: number): string {
   return `${Math.max(6, Math.round((part / all) * 100))}%`
 }
 
-function goBack(): void {
-  const pages = getCurrentPages()
-  if (pages.length > 1) {
-    uni.navigateBack()
-  } else {
-    uni.switchTab({ url: ROUTES.tabReflect })
-  }
-}
 </script>
 
 <style lang="scss" scoped>

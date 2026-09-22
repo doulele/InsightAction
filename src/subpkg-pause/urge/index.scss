@@ -1,4 +1,4 @@
-/**
+﻿/**
  * 止 · 冲动记录 + 触发点地图 + 冷却期 —— 样式外置（超过 100 行，按项目约定拆出）。
  * 由 subpkg-pause/urge/index.vue 通过 @import 引入。
  */
@@ -6,41 +6,7 @@
 .page {
   min-height: 100vh;
   box-sizing: border-box;
-  padding: calc(var(--status-bar-height) + 16rpx) $gz-page-pad 60rpx;
-}
-
-.nav {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 8rpx 0 10rpx;
-}
-
-.nav__side {
-  width: 76rpx;
-  height: 76rpx;
-}
-
-.nav__back {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 76rpx;
-  height: 76rpx;
-  border: 1rpx solid $gz-line;
-  border-radius: 50%;
-  background: $gz-surface;
-  color: $gz-ink-2;
-  font-size: 52rpx;
-  line-height: 1;
-  padding-bottom: 8rpx;
-}
-
-.nav__title {
-  font-size: 34rpx;
-  font-weight: 700;
-  letter-spacing: 0.08em;
-  color: $gz-ink;
+  padding: 0 $gz-page-pad 60rpx;
 }
 
 /* ---- Tab ---- */
@@ -111,7 +77,7 @@
 }
 
 .cool--idle .cool__note {
-  color: $gz-ink-3;
+  color: $gz-ink-2;
   opacity: 1;
 }
 
@@ -126,7 +92,7 @@
   text-align: center;
   font-size: $gz-fs-caption;
   line-height: 1.7;
-  color: $gz-ink-3;
+  color: $gz-ink-2;
 }
 
 .cool__btn {
@@ -232,7 +198,7 @@
   margin-top: 16rpx;
   font-size: $gz-fs-caption;
   line-height: 1.8;
-  color: $gz-ink-3;
+  color: $gz-ink-2;
 }
 
 /* ---- 地图 ---- */
@@ -265,7 +231,7 @@
   display: block;
   margin-top: 12rpx;
   font-size: $gz-fs-caption;
-  color: $gz-ink-3;
+  color: $gz-ink-2;
 }
 
 .rows {
@@ -309,7 +275,7 @@
   display: block;
   margin-top: 10rpx;
   font-size: $gz-fs-caption;
-  color: $gz-ink-3;
+  color: $gz-ink-2;
 }
 
 .bands {
@@ -356,7 +322,7 @@
 }
 
 .band__label {
-  font-size: 18rpx;
+  font-size: 20rpx;
   color: $gz-ink-3;
 }
 
@@ -413,7 +379,7 @@
   padding: 24rpx 0;
   font-size: $gz-fs-caption;
   line-height: 1.8;
-  color: $gz-ink-3;
+  color: $gz-ink-2;
 }
 
 /* 步数联动（2026-09-17）：忍住之后给身体一个出口 */

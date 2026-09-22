@@ -1,0 +1,134 @@
+/**
+ * SubNav —— 39 个子页共用的顶栏。
+ *
+ * 这一套数值取自 2026-09-22 迁移前的**多数派**（31 / 39 页的圆框返回键 + 76rpx 热区），
+ * 不是新设计：原先各页手写、有 30 多种小变体（72 / 76rpx、朴素 / 圆框、标题字距…），
+ * 统一到这里之后，剩下 7 个"朴素"的页面（它们也正好是漏了状态栏顶距的那 7 个）跟着对齐。
+ *
+ * 顶距为什么在这里而不是各页 `.page` 上：这 39 页都是 `navigationStyle: custom`，
+ * 页面从屏幕最顶端开始渲染，所以**必须**自己让开状态栏。
+ * 原先各页各写一遍（`calc(var(--status-bar-height) + 16rpx)`），抄漏 7 页；
+ * 归到组件后一处生效，同时各页 `.page` 的顶距必须**去掉**（否则状态栏会被让两次）。
+ *
+ * ⚠️ 顶距的**真值**由 SubNav.vue 用 `utils/safeArea.ts` 算好后经内联 `--nav-top` 下发：
+ * uni-app 在微信小程序端把 `--status-bar-height` **写死成 25px**（不随机型），
+ * 刘海屏上远小于真实状态栏高度，返回键会整个落进状态栏（2026-09-22 用户报"返回按钮飘走"）。
+ * 下面 `.nav` 里的 `--nav-top` 只是**退无可退的兜底**（JS 没跑起来时），
+ * 正常情况下一定被内联值覆盖；`padding-top` 与标题的绝对定位 `top` 必须共用同一个变量，
+ * 否则标题会和返回键错行。
+ *
+ * ⚠️ 皮肤覆盖为什么要写成复合选择器（`.nav.gz-skin--tech`）：本组件是自定义组件，
+ * 组件 wxss 选不中组件外的祖先类，`.gz-skin--tech .nav__title` 会静默失效。
+ * 所以皮肤类由 SubNav.vue 挂在**自己**的根节点上（与 GzDialog / PrivacyGate / HallHead 同一做法）。
+ *
+ * ⚠️ 挂 `gz-skin` 会带上全局 `.gz-skin { min-height: 100vh }`，必须自己压掉 ——
+ * CSS 里 min-height 大于 max-height 时 min 胜，不压就会把顶栏撑成一屏高。
+ */
+
+@import '../../styles/hover';
+.nav {
+  /* 兜底值：正常情况下由 SubNav.vue 的内联 --nav-top 覆盖 */
+  --nav-top: calc(var(--status-bar-height) + 24rpx);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  min-height: 76rpx;
+  /* 24rpx = 原先各页「状态栏 + 16rpx（.page 顶距）+ 8rpx（.nav 顶距）」的合计 */
+  padding: var(--nav-top) 0 10rpx;
+  /* 标题要脱离 flex 自己居中（见下面那条说明），这里是它的定位参照 */
+  position: relative;
+}
+
+/*
+ * 标题**屏幕居中**（2026-09-22）。
+ * 为什么不用 flex 居中：右侧动作盒为了让开微信胶囊带了 ~104px 右边距，
+ * 两端占位不再对称（左边贴边、右边内缩），space-between 会把标题整体推偏半个让位宽度。
+ * 所以标题自己绝对铺满整行居中 —— 左右两侧按钮的位置因此互不影响。
+ *   · `pointer-events: none` 必须留：标题铺满整行，不穿透就会盖住返回键与右侧动作的点击；
+ *   · 左右 padding 是给超长标题留的走廊，避免它压到两边按钮底下。
+ */
+.nav > .nav__title,
+.nav > .nav__mid {
+  position: absolute;
+  /* 与 .nav 的 padding-top 同一个变量（两处必须一致，否则标题与返回键错行） */
+  top: var(--nav-top);
+  left: 0;
+  right: 0;
+  padding: 0 190rpx;
+  box-sizing: border-box;
+  pointer-events: none;
+}
+
+.nav > .nav__title {
+  text-align: center;
+  line-height: 76rpx;
+  /* 超长标题截断而不是折行压到副标题上（详情页的「事 · 文章」这类都很短，属保险） */
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.nav__side {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 76rpx;
+  height: 76rpx;
+}
+
+/* 返回键：圆框（多数派）。描边 + 面色随皮肤走，所以不需要按模式各写一套 */
+.nav__back {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 76rpx;
+  height: 76rpx;
+  border: 1rpx solid $gz-line;
+  border-radius: 50%;
+  background: $gz-surface;
+  color: $gz-ink-2;
+  font-size: 52rpx;
+  line-height: 1;
+  /* ‹ 这个字形视觉重心偏上，压 8rpx 才在圆框里居中 */
+  padding-bottom: 8rpx;
+}
+
+.nav__title {
+  font-size: 34rpx;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  color: $gz-ink;
+}
+
+/* 两行版（记一笔 / 一条详情）：标题在上、副标题在下，整块占满中间 */
+.nav__mid {
+  min-height: 76rpx;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+}
+
+.nav__sub {
+  margin-top: 4rpx;
+  font-size: $gz-fs-caption;
+  color: $gz-ink-2;
+}
+
+/*
+ * 右侧动作盒子：与左侧返回键同宽同热区。
+ * 右边距由 SubNav.vue 按胶囊真实位置下发（inline style）——
+ * 不写在这里，因为胶囊是系统控件、物理尺寸固定，rpx 会随屏宽缩放，写死在小屏上让不够。
+ */
+.nav__side--right {
+  justify-content: flex-end;
+}
+
+/* 排印语汇（规格 C4）：同一行标题，三模式三种读感（原先在 App.scss，随组件迁过来） */
+.nav.gz-skin--tech .nav__title {
+  letter-spacing: 0.02em;
+}
+
+.nav.gz-skin--dao .nav__title {
+  letter-spacing: 0.14em;
+}

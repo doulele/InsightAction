@@ -4,7 +4,9 @@
  */
 .page {
   min-height: 100vh;
-  padding: calc(var(--status-bar-height) + 48rpx) $gz-page-pad 70rpx;
+  /* 顶部不在这里给：状态栏真值由 mode-select.vue 内联（见 utils/safeArea.ts）——
+     CSS 变量 --status-bar-height 在小程序端固定 25px，刘海屏上不够 */
+  padding: 0 $gz-page-pad 70rpx;
   box-sizing: border-box;
 }
 
@@ -228,5 +230,5 @@
   font-size: $gz-fs-caption;
   line-height: 1.7;
   text-align: center;
-  color: $gz-ink-3;
+  color: $gz-ink-2;
 }

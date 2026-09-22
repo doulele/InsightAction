@@ -1,4 +1,4 @@
-/**
+﻿/**
  * 行 · 计划详情（节点增删改勾选 / 排期 / 收束回望 / 搁置重启）—— 样式外置（超过 100 行）。
  * 由 subpkg-action/plans/detail.vue 通过 @import 引入。
  */
@@ -6,49 +6,12 @@
 .page {
   min-height: 100vh;
   box-sizing: border-box;
-  padding: calc(var(--status-bar-height) + 16rpx) $gz-page-pad 60rpx;
-}
-
-.nav {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 8rpx 0 10rpx;
-}
-
-.nav__side {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 76rpx;
-  height: 76rpx;
-}
-
-.nav__back {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 76rpx;
-  height: 76rpx;
-  border: 1rpx solid $gz-line;
-  border-radius: 50%;
-  background: $gz-surface;
-  color: $gz-ink-2;
-  font-size: 52rpx;
-  line-height: 1;
-  padding-bottom: 8rpx;
+  padding: 0 $gz-page-pad 60rpx;
 }
 
 .nav__edit {
   font-size: $gz-fs-small;
   color: $gz-accent;
-}
-
-.nav__title {
-  font-size: 34rpx;
-  font-weight: 700;
-  letter-spacing: 0.08em;
-  color: $gz-ink;
 }
 
 .missing {
@@ -89,7 +52,7 @@
   padding: 2rpx 12rpx;
   border: 1rpx solid $gz-line;
   border-radius: 999rpx;
-  font-size: 18rpx;
+  font-size: 20rpx;
   color: $gz-ink-3;
 }
 
@@ -107,7 +70,7 @@
   margin-top: 10rpx;
   font-size: $gz-fs-small;
   line-height: 1.7;
-  color: $gz-ink-3;
+  color: $gz-ink-2;
 }
 
 .bar {
@@ -198,7 +161,7 @@
   margin-top: 20rpx;
   font-size: $gz-fs-caption;
   line-height: 1.8;
-  color: $gz-ink-3;
+  color: $gz-ink-2;
 }
 
 .steps {
@@ -554,7 +517,7 @@
   margin-top: 14rpx;
   font-size: $gz-fs-caption;
   line-height: 1.7;
-  color: $gz-ink-3;
+  color: $gz-ink-2;
 }
 
 .dots {
@@ -590,7 +553,7 @@
   margin-top: 12rpx;
   font-size: $gz-fs-caption;
   line-height: 1.7;
-  color: $gz-ink-3;
+  color: $gz-ink-2;
 }
 
 /* 自定义目标天数（2026-09-17）：输入 + 单位 + 「改」（改已有日课走"填好再点改"） */

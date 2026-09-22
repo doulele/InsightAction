@@ -9,9 +9,40 @@
 $gz-brand: #a4471f; // 品牌朱砂
 $gz-brand-soft: rgba(164, 71, 31, 0.08);
 
+/* ---------- 身份色板（不随皮肤变化：同一件事在三个模式下必须是同一个颜色） ----------
+ * 2026-09-22 收敛。这两组色原先散落在 15 个文件里各写一遍，而且**四环色有两套
+ * 互相打架的映射**：看板 / 小枢 / 年度回顾把「观」当蓝、「止」当绿，行动周报与
+ * 痕迹时间轴却正好反过来 —— 同一个用户在两个页面看到「观」是两种颜色。
+ * 现在以看板 / 小枢那一套为准（语义也更顺：观=天蓝、止=静绿、知=紫、行=火色），
+ * 统一在这里定义，页面与组件**不许再写死 hex**。TS 侧的同名常量见 config/palette.ts。
+ */
+$gz-dim-observe: #4E8FD4; // 观
+$gz-dim-pause: #84A268; //   止
+$gz-dim-reflect: #9C8AC4; // 知
+$gz-dim-action: #C4602E; //  行
+
+/* 知识深度 Lv.1 / 2 / 3（知识库 / 成长曲线 / AI 标注共用一套） */
+$gz-depth-1: #84A268;
+$gz-depth-2: #4E8FD4;
+$gz-depth-3: #9C8AC4;
+
+/* 警示橙（超限 / 待处理 / 该清理了）：比品牌朱砂更亮，两者别混用 */
+$gz-warn: #B25A2C;
+
 /* ---------- 皮肤色板：值由 .gz-skin--xxx 在 App.vue 注入；此处只引用 ---------- */
 $gz-accent: var(--gz-accent);
 $gz-accent-soft: var(--gz-accent-soft);
+/*
+ * accent 的固定透明度档位（值由 App.scss 的三套皮肤各给一套）。
+ * ⚠️ **不要写 `rgba($gz-accent, 0.1)`** —— `$gz-accent` 是 `var(--gz-accent)`，
+ * `rgba()` 的首参只能是数值通道，于是编译产物 `rgba(var(--gz-accent), .1)` 是非法 CSS，
+ * 整条声明会被静默丢弃（背景变透明）。要新的档位就往 App.scss 的三套皮肤里各加一个变量。
+ */
+$gz-accent-a04: var(--gz-accent-a04); // 极轻底（提示条 / 入口条）
+$gz-accent-a06: var(--gz-accent-a06); // 轻底（小枢一句话 / 选中项）
+$gz-accent-a10: var(--gz-accent-a10); // 药丸底 / 小徽章
+$gz-accent-a12: var(--gz-accent-a12); // 稍重的标签底
+$gz-accent-a55: var(--gz-accent-a55); // 强填充（进度条 / 柱图）
 $gz-ink: var(--gz-ink);
 $gz-ink-2: var(--gz-ink-2);
 $gz-ink-3: var(--gz-ink-3);

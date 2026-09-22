@@ -1,13 +1,7 @@
 <template>
   <view class="page" :class="skinClass">
     <!-- 顶栏 -->
-    <view class="nav">
-      <view class="nav__side" hover-class="gz-hover" @click="goBack">
-        <text class="nav__back">‹</text>
-      </view>
-      <text class="nav__title">{{ year }} 年度回顾</text>
-      <view class="nav__side" />
-    </view>
+        <SubNav :fallback="ROUTES.tabMe">{{ year }} 年度回顾</SubNav>
 
     <!-- 头：一年里最该先看见的一个数 -->
     <view class="hero">
@@ -108,6 +102,7 @@ import { useSkinClass } from '@/composables/useSkin'
 import { useDimLabel } from '@/composables/usePhrase'
 import { dayStats, yearStats } from '@/utils/growth'
 import { ROUTES } from '@/router/routes'
+import { DIM_COLOR } from '@/config/palette'
 
 const modeStore = useModeStore()
 const proverbs = useProverbStore()
@@ -119,12 +114,8 @@ const year = new Date().getFullYear()
 const s = yearStats(year)
 
 /* —— 四环 —— */
-const HALL_COLOR: Record<'observe' | 'pause' | 'reflect' | 'action', string> = {
-  observe: '#6D8B3F',
-  pause: '#C4602E',
-  reflect: '#4E8FD4',
-  action: '#7AA0B2',
-}
+/* 身份色统一取 config/palette.ts（2026-09-22 收敛前这里是与看板/周报都不同的第三套） */
+const HALL_COLOR = DIM_COLOR
 const hallRows = computed(() => {
   const keys = ['observe', 'pause', 'reflect', 'action'] as const
   const max = Math.max(1, ...keys.map((k) => s.halls[k]))
@@ -213,14 +204,6 @@ function copyText(): void {
   })
 }
 
-function goBack(): void {
-  const pages = getCurrentPages()
-  if (pages.length > 1) {
-    uni.navigateBack()
-  } else {
-    uni.switchTab({ url: ROUTES.tabMe })
-  }
-}
 </script>
 
 <style lang="scss" scoped>

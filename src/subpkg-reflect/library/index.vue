@@ -1,13 +1,7 @@
 <template>
   <view class="page" :class="skinClass">
     <!-- 顶栏：返回 + 标题（子页统一样式） -->
-    <view class="nav">
-      <view class="nav__side" hover-class="gz-hover" @click="goBack">
-        <text class="nav__back">‹</text>
-      </view>
-      <text class="nav__title">知识库</text>
-      <view class="nav__side" />
-    </view>
+        <SubNav :fallback="ROUTES.tabReflect">知识库</SubNav>
 
     <!--
       书架（2026-09-17）：自省/生活 与 工作/面试 分开检索，互不污染。
@@ -382,6 +376,7 @@ import { useAi } from '@/composables/useAi'
 import { startVoice, voiceAvailable, type VoiceSession } from '@/utils/voice'
 import { ROUTES } from '@/router/routes'
 import type { DigestResult, FeynmanResult } from '@/api/modules/ai'
+import { showModal } from '@/utils/dialog'
 
 const knowledge = useKnowledgeStore()
 const seed = useSeedStore()
@@ -642,7 +637,7 @@ function onVoiceStart(): void {
       voiceHint.value = ''
       if (f.reason === 'denied') {
         /* 不硬讨授权：给一条同样走得通的路（手打字），别把用户堵在门口 */
-        uni.showModal({
+        showModal({
           title: '需要麦克风权限',
           content: '语音转写要用麦克风。可以在设置里打开权限，也可以直接手打 —— 两条路都通向同一张卡片。',
           confirmText: '去设置',
@@ -747,7 +742,7 @@ function openDetail(c: RowItem): void {
   detailOpen.value = true
 }
 
-const activeColor = computed(() => activeDetail.value?.color ?? '#84A268')
+const activeColor = computed(() => activeDetail.value?.color ?? depthColor(1))
 const activeColorSoft = computed(() => activeDetail.value?.colorSoft ?? 'rgba(132,162,104,0.14)')
 
 function deepen(): void {
@@ -772,14 +767,6 @@ function dropConfirm(): void {
   detailOpen.value = false
 }
 
-function goBack(): void {
-  const pages = getCurrentPages()
-  if (pages.length > 1) {
-    uni.navigateBack()
-  } else {
-    uni.switchTab({ url: ROUTES.tabReflect })
-  }
-}
 
 /**
  * `?add=1` = 直接展开转述面板。

@@ -4,29 +4,11 @@
  */
 .page {
   min-height: 100vh;
-  padding: calc(var(--status-bar-height) + 16rpx) $gz-page-pad 60rpx;
+  padding: 0 $gz-page-pad 60rpx;
   box-sizing: border-box;
 }
 
-.nav {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 8rpx 0 10rpx;
-}
-
-.nav__side {
-  width: 76rpx;
-  height: 76rpx;
-}
-
-.nav__side--right {
-  display: flex;
-  align-items: center;
-  justify-content: flex-end;
-}
-
-.nav__back,
+/* 右侧「＋」是 #right 插槽的内容（算页面的节点），所以留在这里；返回键已归 SubNav */
 .nav__add {
   display: flex;
   align-items: center;
@@ -39,18 +21,6 @@
   color: $gz-ink-2;
   font-size: 46rpx;
   line-height: 1;
-}
-
-.nav__back {
-  font-size: 52rpx;
-  padding-bottom: 8rpx;
-}
-
-.nav__title {
-  font-size: 34rpx;
-  font-weight: 700;
-  letter-spacing: 0.08em;
-  color: $gz-ink;
 }
 
 /* 分区 */
@@ -88,7 +58,7 @@
   background: $gz-surface;
   border: 1rpx solid $gz-line;
   font-size: $gz-fs-caption;
-  color: $gz-ink-3;
+  color: $gz-ink-2;
 }
 
 .subtab.is-on {
@@ -186,7 +156,7 @@
   padding: 4rpx 16rpx;
   border-radius: 999rpx;
   background: #eaf0f8;
-  color: #4e8fd4;
+  color: $gz-depth-2;
   font-size: $gz-fs-caption;
 }
 
@@ -306,7 +276,7 @@
 .card__src {
   padding: 4rpx 0;
   font-size: $gz-fs-caption;
-  color: $gz-ink-3;
+  color: $gz-ink-2;
 }
 
 .ops {
@@ -569,7 +539,7 @@
   font-size: $gz-fs-small;
   line-height: 1.9;
   text-align: center;
-  color: $gz-ink-3;
+  color: $gz-ink-2;
   white-space: pre-line;
 }
 
@@ -602,7 +572,7 @@
   display: block;
   margin-top: 8rpx;
   font-size: $gz-fs-small;
-  color: $gz-ink-3;
+  color: $gz-ink-2;
 }
 
 .sheet__area {
@@ -663,7 +633,7 @@
 
 .presets__sub {
   font-size: $gz-fs-caption;
-  color: $gz-ink-3;
+  color: $gz-ink-2;
 }
 
 .presets__none {

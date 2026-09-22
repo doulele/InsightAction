@@ -1,13 +1,7 @@
 <template>
   <view class="page" :class="skinClass">
     <!-- 顶栏：返回 + 标题 -->
-    <view class="nav">
-      <view class="nav__side" hover-class="gz-hover" @click="goBack">
-        <text class="nav__back">‹</text>
-      </view>
-      <text class="nav__title">小枢羁绊</text>
-      <view class="nav__side" />
-    </view>
+        <SubNav :fallback="ROUTES.tabMe">小枢羁绊</SubNav>
 
     <!-- 羁绊卡 -->
     <view class="bond">
@@ -254,14 +248,6 @@ function copyLine(text: string): void {
   })
 }
 
-function goBack(): void {
-  const pages = getCurrentPages()
-  if (pages.length > 1) {
-    uni.navigateBack()
-  } else {
-    uni.switchTab({ url: ROUTES.tabMe })
-  }
-}
 </script>
 
 <style lang="scss" scoped>

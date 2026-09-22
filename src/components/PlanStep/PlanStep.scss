@@ -1,7 +1,9 @@
-/**
+﻿/**
  * PlanStep —— 一条「步子」行（今天要走的步子 / 待办池 / 计划详情共用）。
  * 由 components/PlanStep/PlanStep.vue 通过 @import 引入（样式超过 100 行，按项目约定外置）。
  */
+
+@import '../../styles/hover';
 
 .step {
   display: flex;
@@ -69,7 +71,7 @@
   padding: 2rpx 12rpx;
   border-radius: 999rpx;
   border: 1rpx solid $gz-line;
-  font-size: 18rpx;
+  font-size: 20rpx;
   color: $gz-ink-3;
 }
 

@@ -30,6 +30,7 @@ import { useXpStore } from '@/stores/xp'
 import { useCapsuleStore } from '@/stores/capsule'
 import { useKnowledgeStore } from '@/stores/knowledge'
 import { isSabbathToday, sabbathLine } from '@/utils/sabbath'
+import { DIM_COLOR } from '@/config/palette'
 import { LEVEL_NAMES, LEVEL_THRESHOLDS, levelIndexFromXp } from '@/config/levels'
 import {
   BODY_NAMES,
@@ -165,16 +166,17 @@ export const dims = computed<BuddyDim[]>(() => {
   const done = daily.doneCount
   const plan = daily.planCount || 3
   return [
-    { key: 'observe', label: dl('observe'), value: `${st.value.obsN} 条`, on: st.value.obsN > 0, color: '#6D8B3F' },
-    { key: 'pause', label: dl('pause'), value: `${st.value.focusMin} 分`, on: st.value.focusMin > 0, color: '#C4602E' },
+    /* 四维身份色统一取 config/palette.ts（2026-09-22 收敛前这里是与看板/周报都不同的一套） */
+    { key: 'observe', label: dl('observe'), value: `${st.value.obsN} 条`, on: st.value.obsN > 0, color: DIM_COLOR.observe },
+    { key: 'pause', label: dl('pause'), value: `${st.value.focusMin} 分`, on: st.value.focusMin > 0, color: DIM_COLOR.pause },
     {
       key: 'reflect',
       label: dl('reflect'),
       value: `${st.value.cards} 卡`,
       on: st.value.cards > 0 || st.value.answered,
-      color: '#4E8FD4',
+      color: DIM_COLOR.reflect,
     },
-    { key: 'action', label: dl('action'), value: `${done}/${plan} 件`, on: done > 0, color: '#7AA0B2' },
+    { key: 'action', label: dl('action'), value: `${done}/${plan} 件`, on: done > 0, color: DIM_COLOR.action },
   ]
 })
 
@@ -601,7 +603,13 @@ export const settleData = computed<SettleData>(() => {
   const lit = litCount.value
   const missing = dims.value.find((d) => !d.on)
 
-  const title = modeStore.id === 'dao' ? '今日收功' : modeStore.id === 'tech' ? '当日汇总' : '今日结算'
+  /*
+   * 名字刻意**不与「今日收功」重复**（2026-09-22）：这个小枢面板是**读数**（今天四维得了多少），
+   * 收功卡片是**写一句**（你自己给今天留的话）—— 两件事。
+   * 早先 dao 模式下这块也叫「今日收功」，用户在两个地方看到同一个名字却做着不同的事，
+   * 于是改叫「今日行持」；tech 的「当日汇总」本来就没撞名，保持不动。
+   */
+  const title = modeStore.id === 'dao' ? '今日行持' : modeStore.id === 'tech' ? '当日汇总' : '今日结算'
   const comment =
     lit === 4
       ? modeStore.id === 'dao'

@@ -8,7 +8,9 @@
   flex-direction: column;
   align-items: center;
   min-height: 100vh;
-  padding: calc(var(--status-bar-height) + 72rpx) $gz-page-pad 64rpx;
+  /* 顶部不在这里给：状态栏真值由 startup.vue 内联（见 utils/safeArea.ts）——
+     CSS 变量 --status-bar-height 在小程序端固定 25px，刘海屏上不够 */
+  padding: 0 $gz-page-pad 64rpx;
   box-sizing: border-box;
 }
 
@@ -122,7 +124,7 @@
 .startup__hint {
   font-size: $gz-fs-caption;
   letter-spacing: 0.1em;
-  color: $gz-ink-3;
+  color: $gz-ink-2;
   animation: gz-breathe 2.4s ease-in-out infinite;
 }
 
@@ -146,7 +148,7 @@
 .startup__favnote {
   margin-top: 20rpx;
   font-size: $gz-fs-caption;
-  color: $gz-ink-3;
+  color: $gz-ink-2;
   opacity: 0.8;
 }
 

@@ -16,20 +16,31 @@
 
     <!-- 今日三件事 -->
     <!-- id="today"：第一周引导「立一件事」的滚动落点（WeekGuide 的 #today），改名要同步改 config/unlock.ts -->
-    <view id="today" class="today">
-      <view class="today__head">
-        <text class="today__label">今日三件事</text>
+    <view id="today" class="block block--hero today">
+      <view class="block__head">
+        <!--
+          标题右边的「？」= 这三块到底有什么区别（2026-09-22）。
+          之前每块只有一行小字说明「它是什么」，用户仍然看不懂 → 现在点开是一整篇：
+          定义 + 举例 + **忘了做会怎样**（后者才是三块真正的分界）。
+        -->
+        <view class="block__title">
+          <text class="block__mark">{{ MARK.three }}</text>
+          <text class="block__label">今日三件事</text>
+          <text class="today__ask" hover-class="gz-hover" @click="ask('three')">?</text>
+        </view>
         <!-- 安息日不报完成度：那天没有"还差几件"这回事 -->
-        <text class="today__count">{{ sabbath ? '—' : `${daily.doneCount}/${daily.planCount || 3}` }}</text>
+        <text class="block__badge is-accent">{{ sabbath ? '—' : `${daily.doneCount}/${daily.planCount || 3}` }}</text>
       </view>
-      <!-- 三本待办账的分工说明（见 config/lexicon.ts 的 ACTION_SPLIT）：不说清就像重复了三遍 -->
-      <text class="block-hint">{{ ACTION_SPLIT.three }}</text>
+      <!-- 三本待办账的分工说明（见 config/lexicon.ts 的 actionSplit）：不说清就像重复了三遍 -->
+      <text class="block-hint">{{ exThree.hint }}</text>
 
       <!--
         每条三件事的「出处」（规格 §4.4 回应式行动）：
-        没有来源时诚实标「无出处」，挂错的理比不挂更糟 —— 它会污染脊椎的 ref。
-        2026-09-17 排版收紧：出处由"输入框下面一行"改成"同一行右侧的小药丸"，
-        三条三件事少掉整三行，首屏能多露出一块；出处正文过长时省略，点开仍看得全。
+        没挂来源时诚实标一个「＋」，挂错的理比不挂更糟 —— 它会污染脊椎的 ref。
+        2026-09-22 定案：**一行一事，出处是行尾一枚极窄的单字标记**。
+        两行式（出处另起一行）更好认，但三条就多出三行、首屏立刻吃亏；
+        单行式里若摆"品类 + 摘要"的药丸，它会吃掉 45% 宽、把窄屏输入框压到十来个字 ——
+        所以标记只回答"挂没挂、挂的是哪一类"（理 / 卡 / 冲 / 念 / 计），点开面板才看全。
       -->
       <view v-for="todo in daily.todos" :key="todo.id" class="todo" :class="{ 'is-done': todo.done }">
         <view class="todo__check" :class="{ 'is-on': todo.done }" @click="onToggleTodo(todo)">
@@ -51,15 +62,26 @@
           @click="openSource(todo)"
         >
           <text class="todo__src-tag">{{ srcTag(todo) }}</text>
-          <text class="todo__src-text">{{ srcText(todo) }}</text>
         </view>
-        <text v-if="todo.ref" class="todo__src-x" @click.stop="onClearRef(todo)">解</text>
       </view>
 
       <view v-if="daily.allDone" class="today__done">
         <text class="today__done-title">今日三事已成。</text>
         <text class="today__done-sub" hover-class="gz-hover" @click="openBox">
           已完成已回写【知】 · 去开一只微行动盲盒 →
+        </text>
+        <!--
+          做完了 → 给今天收个尾（2026-09-22）。
+          收功原先埋在页尾一屏半之外，"做完了想留一句"的人根本找不到它；
+          这里只在**三件事全成且今天还没收**时出现，送人到那一块并摊开。
+        -->
+        <text
+          v-if="!sabbath && !closing.todayClosed"
+          class="today__done-close"
+          hover-class="gz-hover"
+          @click="gotoClosing"
+        >
+          {{ cw.title }} · 留一句给今天 →
         </text>
       </view>
     </view>
@@ -69,63 +91,93 @@
       三态是「守住 / 破了 / 没记」—— 没记只是空白，不是破了（不自我审判）。
       "破了"只有戒断型（abstain）才有这一颗按钮：锻炼没做不等于破戒。
     -->
-    <view v-if="dailyItems.length" class="dailies">
-      <view class="dailies__head">
-        <text class="dailies__label">{{ planW.daily }} · 今天</text>
-        <text class="dailies__n">{{ dailyKept }}/{{ dailyItems.length }}</text>
-      </view>
-      <text class="block-hint">{{ ACTION_SPLIT.daily }}</text>
-      <view
-        v-for="d in dailyItems"
-        :key="d.planId"
-        class="daily"
-        :class="{ 'is-kept': d.state === 'kept', 'is-broken': d.state === 'broken' }"
-      >
-        <view class="daily__main">
-          <text class="daily__title">{{ d.title }}</text>
-          <text class="daily__meta">守住 {{ d.kept }} 天 / 共 {{ d.target }} 天</text>
+    <view v-if="dailyItems.length" class="block dailies">
+      <view class="block__head block__head--fold" hover-class="gz-hover" @click="dailyOpen = !dailyOpen">
+        <view class="block__title">
+          <text class="block__mark">{{ MARK.daily }}</text>
+          <text class="block__label">{{ planW.daily }} · 今天</text>
+          <text class="today__ask" hover-class="gz-hover" @click.stop="ask('daily')">?</text>
         </view>
-        <view class="daily__act" hover-class="gz-hover" @click="onCheckDaily(d)">{{ dailyActText(d) }}</view>
-        <view v-if="d.challenge === 'abstain'" class="daily__break" hover-class="gz-hover" @click="onBreakDaily(d)">
-          破了
+        <view class="block__right">
+          <text class="block__badge" :class="dailyKept < dailyItems.length ? 'is-accent' : 'is-muted'">
+            {{ dailyKept }}/{{ dailyItems.length }}
+          </text>
+          <text class="block__fold">{{ dailyOpen ? FOLD.close : FOLD.open }}</text>
         </view>
       </view>
-      <text class="dailies__hint">{{ planW.dailyHint }}</text>
+      <template v-if="dailyOpen">
+        <text class="block-hint">{{ exDaily.hint }}</text>
+        <view
+          v-for="d in dailyItems"
+          :key="d.planId"
+          class="daily"
+          :class="{ 'is-kept': d.state === 'kept', 'is-broken': d.state === 'broken' }"
+        >
+          <view class="daily__main">
+            <text class="daily__title">{{ d.title }}</text>
+            <text class="daily__meta">守住 {{ d.kept }} 天 / 共 {{ d.target }} 天</text>
+          </view>
+          <view class="daily__act" hover-class="gz-hover" @click="onCheckDaily(d)">{{ dailyActText(d) }}</view>
+          <view v-if="d.challenge === 'abstain'" class="daily__break" hover-class="gz-hover" @click="onBreakDaily(d)">
+            破了
+          </view>
+        </view>
+        <!--
+          日课与习惯打卡的区别（2026-09-22）：两者都是"每天重复一次"，
+          不说清这一句，用户就不知道该建哪个 —— 答案只有"有没有期限"。
+        -->
+        <text class="block-hint block-hint--tail">{{ dailyVs }}</text>
+        <text class="block-hint block-hint--tail">{{ planW.dailyHint }}</text>
+      </template>
     </view>
     <!--
       今天要走的步子（2026-09-15 计划模块）：
       三件事是「今天最重要的三件」，这里是「三件之外还要往前挪的步子」——
       派到今天的节点 + 只活今天的一件事。未完成的会过期待办池，不催办、不扣分。
     -->
-    <view class="steps">
-      <view class="steps__head">
-        <text class="steps__label">{{ planW.today }}</text>
-        <text class="steps__n">{{ stepDone }}/{{ todaySteps.length }}</text>
+    <view class="block steps">
+      <view class="block__head block__head--fold" hover-class="gz-hover" @click="stepOpen = !stepOpen">
+        <view class="block__title">
+          <text class="block__mark">{{ MARK.step }}</text>
+          <text class="block__label">{{ planW.today }}</text>
+          <text class="today__ask" hover-class="gz-hover" @click.stop="ask('step')">?</text>
+        </view>
+        <view class="block__right">
+          <text
+            class="block__badge"
+            :class="todaySteps.length === 0 || stepDone < todaySteps.length ? 'is-accent' : 'is-muted'"
+          >
+            {{ stepDone }}/{{ todaySteps.length }}
+          </text>
+          <text class="block__fold">{{ stepOpen ? FOLD.close : FOLD.open }}</text>
+        </view>
       </view>
-      <text class="block-hint">{{ ACTION_SPLIT.step }}</text>
+      <template v-if="stepOpen">
+        <text class="block-hint">{{ exStep.hint }}</text>
 
-      <view v-if="todaySteps.length" class="steps__list">
-        <PlanStep v-for="s in todaySteps" :key="s.key" :item="s" @toggle="onToggleStep" />
-      </view>
-      <text v-else class="steps__empty">今天还没有额外的步子 —— 有想推进的，写一条。</text>
+        <view v-if="todaySteps.length" class="steps__list">
+          <PlanStep v-for="s in todaySteps" :key="s.key" :item="s" @toggle="onToggleStep" />
+        </view>
+        <text v-else class="steps__empty">今天还没有额外的步子 —— 有想推进的，写一条。</text>
 
-      <view class="steps__quick">
-        <input
-          v-model="newStep"
-          class="steps__input"
-          :placeholder="planW.newToday"
-          placeholder-class="steps__ph"
-          :maxlength="30"
-          confirm-type="done"
-          @confirm="addStep"
-        />
-        <view class="steps__btn" hover-class="gz-hover" @click="addStep">加</view>
-      </view>
+        <view class="steps__quick">
+          <input
+            v-model="newStep"
+            class="steps__input"
+            :placeholder="planW.newToday"
+            placeholder-class="steps__ph"
+            :maxlength="30"
+            confirm-type="done"
+            @confirm="addStep"
+          />
+          <view class="steps__btn" hover-class="gz-hover" @click="addStep">加</view>
+        </view>
 
-      <text v-if="todaySteps.length > TODAY_STEP_COMFORT" class="steps__warn">
-        今天排了 {{ todaySteps.length }} 条 —— 比平时多，走得完吗？
-      </text>
-      <text v-if="poolHint" class="steps__pool" hover-class="gz-hover" @click="goPlans">{{ poolHint }}</text>
+        <text v-if="todaySteps.length > TODAY_STEP_COMFORT" class="steps__warn">
+          今天排了 {{ todaySteps.length }} 条 —— 比平时多，走得完吗？
+        </text>
+        <text v-if="poolHint" class="steps__pool" hover-class="gz-hover" @click="goPlans">{{ poolHint }}</text>
+      </template>
     </view>
 
     <!-- 在走的长路 -->
@@ -150,31 +202,6 @@
       </view>
     </view>
 
-    <!-- 今日收功（2026-09-17）：一天结束前把它收个尾。安息日那天不出现 -->
-    <view v-if="!sabbath" class="closing">
-      <view class="closing__head">
-        <text class="closing__label">今日收功</text>
-        <text v-if="closing.todayClosed" class="closing__tag">已收</text>
-      </view>
-      <!-- 收尾时顺手带一句身体读数（2026-09-21）：今天没读数就整句不出现，不留空壳 -->
-      <text v-if="bodyTodayLine" class="closing__body">{{ bodyTodayLine }}</text>
-      <template v-if="closing.todayClosed">
-        <text class="closing__done">{{ closing.todayRecord?.text || '今天收了 —— 不留字也算。' }}</text>
-        <text class="closing__redo" hover-class="gz-hover" @click="closing.reopen()">还想再做点什么 · 撤销收功</text>
-      </template>
-      <template v-else>
-        <textarea
-          v-model="closeDraft"
-          class="closing__input"
-          maxlength="120"
-          auto-height
-          placeholder="今天最想留下的一句（可留空，直接收也行）"
-          placeholder-class="closing__ph"
-        />
-        <view class="closing__btn" hover-class="gz-hover" @click="doClose">收功</view>
-      </template>
-    </view>
-
     <!-- 行动入口 -->
     <view class="section">
       <view class="section__head">
@@ -194,6 +221,60 @@
       </view>
     </view>
 
+    <!--
+      今日收功（2026-09-17 建；09-22 改形态与位置）：一天结束前把它收个尾。安息日那天不出现。
+
+      四条形态：
+        1. **全页最后一块**：原先它夹在「在走的长路」与「把念头变成痕迹」之间 ——
+           语义上它是"一天的句号"，却排在两块"还能继续做"的内容中间。
+        2. **默认摊开**（09-22 定案）：不按钟点自浮 —— 白天也展开，收起只是用户自己的选择；
+           三件事已成时那条捷径（`gotoClosing`）仍会把它摊开并滚过来。
+        3. **收起态不做成卡片**：`is-fold` 时只留一条窄行（约 76rpx）。
+        4. **已收态给足落点**：那句自己写给自己的话排成引文 + 落款时间 ——
+           它不该是整页最轻的一个"完成了"反馈。
+    -->
+    <view v-if="!sabbath" id="closing" class="closing" :class="{ 'is-fold': !closeShown }">
+      <view class="closing__head">
+        <view class="block__title">
+          <text class="block__mark">{{ cw.mark }}</text>
+          <text class="closing__label">{{ cw.title }}</text>
+        </view>
+        <text v-if="closing.todayClosed" class="closing__stamp">{{ cw.tag }} · {{ closedAt }}</text>
+        <text v-else class="block__fold" hover-class="gz-hover" @click="closeOpen = !closeOpen">
+          {{ closeOpen ? FOLD.close : FOLD.open }}
+        </text>
+      </view>
+
+      <!-- 折叠态：一条窄行，点了摊开 -->
+      <text v-if="!closeShown" class="closing__fold" hover-class="gz-hover" @click="closeOpen = true">
+        {{ cw.fold }}
+      </text>
+
+      <template v-else>
+        <!-- 收尾时顺手带一句身体读数（2026-09-21）：今天没读数就整句不出现，不留空壳 -->
+        <text v-if="bodyTodayLine" class="closing__body">{{ bodyTodayLine }}</text>
+        <template v-if="closing.todayClosed">
+          <view v-if="closing.todayRecord?.text" class="closing__quote">
+            <text class="closing__quote-text">{{ closing.todayRecord?.text }}</text>
+          </view>
+          <text v-else class="closing__none">{{ cw.none }}</text>
+          <text class="closing__redo" hover-class="gz-hover" @click="closing.reopen()">{{ cw.redo }}</text>
+        </template>
+        <template v-else>
+          <text class="closing__hint">{{ cw.hint }}</text>
+          <textarea
+            v-model="closeDraft"
+            class="closing__input"
+            maxlength="120"
+            auto-height
+            :placeholder="cw.ph"
+            placeholder-class="closing__ph"
+          />
+          <view class="closing__btn" hover-class="gz-hover-btn" @click="doClose">{{ cw.act }}</view>
+        </template>
+      </template>
+    </view>
+
     <!-- 批次 D · 小枢全局浮层 -->
     <BuddyFloat />
 
@@ -210,6 +291,29 @@
 
     <!-- 三件事的关联来源（§4.4 回应式行动） -->
     <TodoSource :show="!!sourceOn" :current="sourceOn?.ref ?? ''" @pick="onPickSource" @close="sourceOn = null" />
+
+    <!--
+      三份「今日清单」各自的解释（2026-09-22）。
+      点哪一块的「?」就把那一块排到最前 —— 用户是带着具体那一块的疑问点开的。
+      说明类弹框关掉横幅（省 240rpx，见 GzDialog 的 banner 注释）。
+    -->
+    <GzDialog
+      v-model:show="explainOpen"
+      title="这三个清单，分别管什么"
+      subtitle="它们长得像，但不是一回事"
+      :banner="false"
+      confirm-text="知道了"
+      :show-cancel="false"
+    >
+      <view class="exp">
+        <view v-for="b in explainList" :key="b.key" class="exp__item" :class="{ 'is-on': b.key === askedKey }">
+          <text class="exp__name">{{ b.name }}</text>
+          <text class="exp__what">{{ b.what }}</text>
+          <text class="exp__eg">例：{{ b.eg }}</text>
+          <text class="exp__fate">{{ b.fate }}</text>
+        </view>
+      </view>
+    </GzDialog>
   </view>
 </template>
 
@@ -219,7 +323,7 @@
  * 三件事勾选完成即回写【知】知识卡片（Lv.2 行动回写）并留下痕迹；
  * 习惯打卡 / 微行动盲盒 / 行动周报均为真实子页。
  */
-import { computed, ref } from 'vue'
+import { computed, nextTick, ref } from 'vue'
 import HallHead from '@/components/HallHead/HallHead.vue'
 import WeekGuide from '@/components/WeekGuide/WeekGuide.vue'
 import { onShow } from '@dcloudio/uni-app'
@@ -239,11 +343,24 @@ import { poke } from '@/composables/useBuddy'
 import { useXpStore } from '@/stores/xp'
 import { useWishStore } from '@/stores/wish'
 import { syncTabBar } from '@/utils/skin'
-import { ACTION_SPLIT, CHALLENGE_LABEL, HORIZON_LABEL, hallLine, planWords } from '@/config/lexicon'
+import {
+  ACTION_BLOCK_MARK,
+  ACTION_BLOCK_ORDER,
+  ACTION_FOLD_WORDS,
+  CHALLENGE_LABEL,
+  HORIZON_LABEL,
+  actionSplit,
+  closingWords,
+  dailyVsHabit,
+  hallLine,
+  planWords,
+  type ActionBlockKey,
+} from '@/config/lexicon'
 import { navigateTo, ROUTES } from '@/router/routes'
 import type { RoutePath } from '@/router/routes'
 import type { EntryBadge } from '@/components/EntryItem/EntryItem.vue'
-import { REF_KIND_LABEL, type RefOption } from '@/utils/refSource'
+import { REF_KIND_SHORT, type RefOption } from '@/utils/refSource'
+import { showModal } from '@/utils/dialog'
 
 const modeStore = useModeStore()
 /** 远端功能开关（features.box / teahouse …）：入口整块可控隐藏，页面代码无需改动 */
@@ -261,6 +378,9 @@ const body = useBodyStore()
 /** 今日收功（2026-09-17）：一天结束前把它收个尾 */
 const closing = useClosingStore()
 const planW = computed(() => planWords(modeStore.id))
+/** 三块今日清单的小印字 + 展开/收起措辞（与「把念头变成痕迹」入口行同一套语言） */
+const MARK = ACTION_BLOCK_MARK
+const FOLD = ACTION_FOLD_WORDS
 
 /* ---------------- 安息日（2026-09-17） ----------------
  * 一周留一天，什么都不必记：功能全开、只是不入账、也不催（见 utils/sabbath.ts）。
@@ -269,8 +389,77 @@ const planW = computed(() => planWords(modeStore.id))
 const sabbath = computed(() => isSabbathToday())
 const sabbathText = computed(() => sabbathLine(modeStore.id))
 
-/* ---------------- 今日收功 ---------------- */
+/* ---------------- 三份今日清单的「各自是什么」（2026-09-22）----------------
+ * 三块的名词跟着模式走（日课 / 每日任务 / 日行），所以解释统一由 actionSplit 现取，
+ * 页面不写死任何一句说明文案。
+ */
+const exThree = computed(() => actionSplit('three', planW.value))
+const exDaily = computed(() => actionSplit('daily', planW.value))
+const exStep = computed(() => actionSplit('step', planW.value))
+
+/** 日课与习惯打卡的区别（有日课时才可能显示） */
+const dailyVs = computed(() => dailyVsHabit(planW.value.daily))
+
+/** 正在被问的那一块；弹窗里把它排到最前 */
+const askedKey = ref<ActionBlockKey>('three')
+const explainOpen = ref(false)
+
+const explainList = computed(() =>
+  [askedKey.value, ...ACTION_BLOCK_ORDER.filter((k) => k !== askedKey.value)].map((k) => ({
+    key: k,
+    ...actionSplit(k, planW.value),
+  })),
+)
+
+function ask(key: ActionBlockKey): void {
+  askedKey.value = key
+  explainOpen.value = true
+}
+
+/* ---------------- 今日收功 ----------------
+ * **默认摊开**（2026-09-22 定案）：不按钟点自浮 —— 白天也展开，收起只是用户自己的选择。
+ * 其余仍照旧：今天已经收了（要看那句）、三件事已成（捷径滚过来）、
+ * 小枢结算面板点了「留一句」（`takeFocus`）都会把它摊开。
+ */
+const cw = computed(() => closingWords(modeStore.id))
 const closeDraft = ref('')
+const closeOpen = ref(true)
+
+/**
+ * 已收落款的时间（2026-09-22）：收功那一刻的钟点。
+ * 不放进文案表，因为它是**数据格式化**（HH:mm），不是可替换的措辞。
+ */
+function fmtClock(ts: number): string {
+  const d = new Date(ts)
+  return `${`${d.getHours()}`.padStart(2, '0')}:${`${d.getMinutes()}`.padStart(2, '0')}`
+}
+
+const closedAt = computed(() => (closing.todayRecord ? fmtClock(closing.todayRecord.createdAt) : ''))
+
+/* ---------------- 分类行的展开态（2026-09-22） ----------------
+ * 三块今日清单里，三件事是主角（恒展开、就地可编辑）；日课与步子收成分类行，点了才摊开。
+ * 初值每次进页面重算（见 onShow）：还有没做完的就默认摊开，全做完了才收成一行 ——
+ * **不记住上次的手动开合**，免得"上次收起了，今天忘了看"。
+ */
+const dailyOpen = ref(true)
+const stepOpen = ref(true)
+
+/** 摊开与否的最终判定：已收 → 恒摊；否则看上面那三条 */
+const closeShown = computed(() => closing.todayClosed || closeOpen.value)
+
+/** 滚到收功那一块（三件事已成时的小捷径、小枢唤起来时用） */
+function gotoClosing(): void {
+  closeOpen.value = true
+  nextTick(() => {
+    uni.pageScrollTo({
+      selector: '#closing',
+      duration: 300,
+      fail: () => {
+        uni.showToast({ title: '往下翻一点，就在下面', icon: 'none' })
+      },
+    })
+  })
+}
 
 /**
  * 收功时带一句身体读数（2026-09-21）：
@@ -280,9 +469,15 @@ const closeDraft = ref('')
 const bodyTodayLine = computed(() => (body.todayStep === null ? '' : `今天走了 ${body.todayStep} 步。`))
 
 function doClose(): void {
+  const wrote = !!closeDraft.value.trim()
   const first = closing.close(closeDraft.value)
   closeDraft.value = ''
-  uni.showToast({ title: first ? '今天收了 · 记一笔痕迹' : '已更新这句', icon: 'none' })
+  /* 写了字的如实说一句它去了哪儿（回写【知】）；没写字也一样算收了 —— 不写字不是失败 */
+  const tail = wrote ? ' · 这句已存进【知】' : ' · 不留字也算'
+  uni.showToast({
+    title: (first ? `${cw.value.tag}${tail}` : `已更新这句${tail}`),
+    icon: 'none',
+  })
 }
 
 /* ---------------- 今天要守的日课 ---------------- */
@@ -310,7 +505,7 @@ function onCheckDaily(d: DailyItem): void {
 
 /** 破了：不归零、不扣分 —— 可以写一句为什么，那一句会进【知】的省察 */
 function onBreakDaily(d: DailyItem): void {
-  uni.showModal({
+  showModal({
     title: `「${d.title}」· ${planW.value.brokenAct}`,
     content: '',
     editable: true,
@@ -344,6 +539,18 @@ onShow(() => {
   }
   /* 搁置满 3 天的「今天做的一件事」自动收走（静默，不打扰） */
   planStore.sweep()
+  /*
+   * 分类行的初值（2026-09-22）：日课还有没守住的、步子还有没走完的（或一条都还没排），
+   * 就默认摊开；全做完了才收成一行。**不记住上次的手动开合** ——
+   * 免得"上次收起了，今天忘了看"。
+   */
+  dailyOpen.value = dailyKept.value < dailyItems.value.length
+  stepOpen.value = todaySteps.value.length === 0 || stepDone.value < todaySteps.value.length
+  /*
+   * 小枢结算面板（23:00 后）点了「留一句」→ 直接摊开并滚过去。
+   * （收工现在**默认摊开**，所以这里不再按钟点重算 `closeOpen`。）
+   */
+  if (closing.takeFocus()) gotoClosing()
   /*
    * 身体电量静默续接（2026-09-21）：授权过之后，隔几天进「行」时补一次步数。
    * 不 await —— 它不该挡住页面；失败也不提示（见 autoSyncWeRun 的说明）。
@@ -499,16 +706,9 @@ function onPickSource(o: RefOption | null): void {
   else daily.setRef(t.id, '', 'none', '')
 }
 
-function onClearRef(todo: DailyTodo): void {
-  daily.clearRef(todo.id)
-}
-
+/** 行尾那枚出处标记：挂了显示品类单字，没挂显示「＋」（点开面板去挂） */
 function srcTag(todo: DailyTodo): string {
-  return todo.ref ? REF_KIND_LABEL[todo.refKind ?? 'none'] : '无出处'
-}
-
-function srcText(todo: DailyTodo): string {
-  return todo.ref ? todo.refText || '已关联' : '关联 ›'
+  return todo.ref ? REF_KIND_SHORT[todo.refKind ?? 'none'] : '＋'
 }
 
 function openBox(): void {
@@ -549,7 +749,8 @@ const moreEntries = computed<MoreEntry[]>(() => {
     {
       mark: '惯',
       title: '习惯打卡',
-      subtitle: '自定义习惯列表 · 每日一勾；想给它一个期限，用「立为日课」',
+      /* 与日课的区别当场说清：习惯**没有期限**，日课守满就收束 */
+      subtitle: `没有期限的每天一勾 · 想给它一个期限，就用「立为${planW.value.daily}」`,
       badge:
         habitTotal > 0
           ? todayDone > 0

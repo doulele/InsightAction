@@ -1,13 +1,7 @@
 <template>
   <view class="page" :class="skinClass">
     <!-- 顶栏：返回 + 标题（子页统一样式） -->
-    <view class="nav">
-      <view class="nav__side" hover-class="gz-hover" @click="goBack">
-        <text class="nav__back">‹</text>
-      </view>
-      <text class="nav__title">来源账本</text>
-      <view class="nav__side" />
-    </view>
+        <SubNav :fallback="ROUTES.tabObserve">来源账本</SubNav>
 
     <!-- 规则说明 -->
     <view class="lead">
@@ -105,14 +99,6 @@ function open(r: SourceRow): void {
   navigateTo(ROUTES.observeInbox, { src: r.name })
 }
 
-function goBack(): void {
-  const pages = getCurrentPages()
-  if (pages.length > 1) {
-    uni.navigateBack()
-  } else {
-    uni.switchTab({ url: ROUTES.tabObserve })
-  }
-}
 </script>
 
 <style lang="scss" scoped>

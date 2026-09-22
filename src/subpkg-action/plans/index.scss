@@ -1,4 +1,4 @@
-/**
+﻿/**
  * 行 · 计划列表（今天 / 长期）—— 样式外置（超过 100 行，按项目约定拆出）。
  * 由 subpkg-action/plans/index.vue 通过 @import 引入。
  */
@@ -6,41 +6,7 @@
 .page {
   min-height: 100vh;
   box-sizing: border-box;
-  padding: calc(var(--status-bar-height) + 16rpx) $gz-page-pad 60rpx;
-}
-
-.nav {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 8rpx 0 10rpx;
-}
-
-.nav__side {
-  width: 76rpx;
-  height: 76rpx;
-}
-
-.nav__back {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 76rpx;
-  height: 76rpx;
-  border: 1rpx solid $gz-line;
-  border-radius: 50%;
-  background: $gz-surface;
-  color: $gz-ink-2;
-  font-size: 52rpx;
-  line-height: 1;
-  padding-bottom: 8rpx;
-}
-
-.nav__title {
-  font-size: 34rpx;
-  font-weight: 700;
-  letter-spacing: 0.08em;
-  color: $gz-ink;
+  padding: 0 $gz-page-pad 60rpx;
 }
 
 /* ---- Tab（四档：今日 / 短期 / 中期 / 长期，横向要能一行放下） ---- */
@@ -105,7 +71,7 @@
   display: block;
   margin-top: 8rpx;
   font-size: $gz-fs-caption;
-  color: $gz-ink-3;
+  color: $gz-ink-2;
 }
 
 .bar {
@@ -133,7 +99,7 @@
   font-size: $gz-fs-caption;
   line-height: 1.8;
   white-space: pre-line;
-  color: $gz-ink-3;
+  color: $gz-ink-2;
 }
 
 /* ---- 快速加一条 ---- */
@@ -190,7 +156,7 @@
   display: block;
   margin: -8rpx 0 18rpx;
   font-size: $gz-fs-caption;
-  color: $gz-ink-3;
+  color: $gz-ink-2;
 }
 
 /* ---- 短期 / 中期 / 长期 ---- */
@@ -239,7 +205,7 @@
   padding: 2rpx 12rpx;
   border: 1rpx solid $gz-line;
   border-radius: 999rpx;
-  font-size: 18rpx;
+  font-size: 20rpx;
   color: $gz-ink-3;
 }
 
@@ -257,7 +223,7 @@
   margin-top: 8rpx;
   font-size: $gz-fs-caption;
   line-height: 1.7;
-  color: $gz-ink-3;
+  color: $gz-ink-2;
 }
 
 .plan__meta {
@@ -318,7 +284,7 @@
   flex: none;
   padding: 2rpx 12rpx;
   border-radius: 999rpx;
-  background: rgba($gz-accent, 0.12);
+  background: $gz-accent-a12;
   font-size: 20rpx;
   color: $gz-accent;
 }
@@ -339,7 +305,7 @@
   display: block;
   margin-top: 4rpx;
   font-size: $gz-fs-caption;
-  color: $gz-ink-3;
+  color: $gz-ink-2;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -380,7 +346,7 @@
   line-height: 1.9;
   text-align: center;
   white-space: pre-line;
-  color: $gz-ink-3;
+  color: $gz-ink-2;
 }
 
 .add {
@@ -481,7 +447,7 @@
   display: block;
   margin-top: 12rpx;
   font-size: $gz-fs-caption;
-  color: $gz-ink-3;
+  color: $gz-ink-2;
 }
 
 .sheet__row {

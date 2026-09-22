@@ -8,6 +8,19 @@ page {
   /* 普通 · 温暖树影：纸墨暖白 + 明快橄榄绿 */
   --gz-accent: #6D8B3F;
   --gz-accent-soft: rgba(109, 139, 63, 0.12);
+  /*
+   * accent 的**固定透明度档位**（04 / 06 / 10 / 12 / 55）。
+   * 为什么要有这几个变量：SCSS 里写 `rgba($gz-accent, 0.06)` 是**无效 CSS** ——
+   * `$gz-accent` 的值是 `var(--gz-accent)`，编译出来是 `rgba(var(--gz-accent), .06)`，
+   * 而 `rgba()` 的首参只能是数值通道，不能是颜色 → 整条声明在计算值阶段作废，
+   * 背景静默回落成透明（2026-09-22 排查发现，当时全项目 9 处都没生效）。
+   * 要更多的透明度档位，就在这里按皮肤补一个变量，不要回到 `rgba($gz-accent, …)`。
+   */
+  --gz-accent-a04: rgba(109, 139, 63, 0.04);
+  --gz-accent-a06: rgba(109, 139, 63, 0.06);
+  --gz-accent-a10: rgba(109, 139, 63, 0.1);
+  --gz-accent-a12: rgba(109, 139, 63, 0.12);
+  --gz-accent-a55: rgba(109, 139, 63, 0.55);
   --gz-paper: #F4EFE4;
   --gz-paper-deep: #EDE6D6;
   --gz-surface: #FCFAF4;
@@ -15,7 +28,12 @@ page {
   --gz-input-bg: #F6F0E2;
   --gz-ink: #26231E;
   --gz-ink-2: #6B655B;
-  --gz-ink-3: #9C9589;
+  /*
+   * ink-3 是「最轻的一档」，只配装饰（序号 / 分隔 / 落款 / 图标），不配要读的说明。
+   * 2026-09-22 压深一档：#9C9589 在纸面上仅 2.8:1，20rpx 的小字读不动；
+   * 现在约 3.6:1 —— 仍刻意留出与 ink-2 的层次差，所以**要读的说明一律用 ink-2**。
+   */
+  --gz-ink-3: #8A8376;
   --gz-line: rgba(38, 35, 30, 0.10);
   --gz-line-soft: rgba(38, 35, 30, 0.05);
   --gz-cta-bg: #6D8B3F;
@@ -169,6 +187,17 @@ button {
   transition: opacity 0.2s ease;
 }
 
+/*
+ * 主按钮专用按压反馈：比 .gz-hover 多一档轻微内缩，手感更"按得动"。
+ * 只给**独立的大按钮**用（弹框主键 / 收功键 / 结算键）——
+ * 卡片与长列表行别用，缩放会让整列跟着抖。
+ */
+.gz-hover-btn {
+  opacity: 0.88;
+  transform: scale(0.985);
+  transition: opacity 0.15s ease, transform 0.15s ease;
+}
+
 /* ---------- 三套皮肤 CSS 变量 ---------- */
 /**
  * 用类名挂在**页面根 view**：<view class="page gz-skin gz-skin--tech">。
@@ -220,6 +249,11 @@ button {
   /* 科技 · 夜间实验室：极暗蓝黑 + 电光蓝，锐利圆角 */
   --gz-accent: #3FA9FF;
   --gz-accent-soft: rgba(63, 169, 255, 0.16);
+  --gz-accent-a04: rgba(63, 169, 255, 0.05);
+  --gz-accent-a06: rgba(63, 169, 255, 0.08);
+  --gz-accent-a10: rgba(63, 169, 255, 0.14);
+  --gz-accent-a12: rgba(63, 169, 255, 0.17);
+  --gz-accent-a55: rgba(63, 169, 255, 0.6);
   --gz-paper: #0D1117;
   --gz-paper-deep: #151B24;
   --gz-surface: #141C27;
@@ -227,7 +261,7 @@ button {
   --gz-input-bg: #1A2431;
   --gz-ink: #E6EDF5;
   --gz-ink-2: #9AA7B8;
-  --gz-ink-3: #5F6E84;
+  --gz-ink-3: #6E7D93; /* 2026-09-22 提亮一档：原 #5F6E84 在深底上只有 3.4:1 */
   --gz-line: rgba(230, 237, 245, 0.12);
   --gz-line-soft: rgba(230, 237, 245, 0.06);
   --gz-cta-bg: #2E90FF;
@@ -262,6 +296,11 @@ button {
   /* 修仙 · 水墨仙山：旧纸黄底（明显区别于普通暖白）+ 朱砂印章，墨线描边 */
   --gz-accent: #A4471F;
   --gz-accent-soft: rgba(164, 71, 31, 0.14);
+  --gz-accent-a04: rgba(164, 71, 31, 0.05);
+  --gz-accent-a06: rgba(164, 71, 31, 0.07);
+  --gz-accent-a10: rgba(164, 71, 31, 0.12);
+  --gz-accent-a12: rgba(164, 71, 31, 0.15);
+  --gz-accent-a55: rgba(164, 71, 31, 0.58);
   --gz-paper: #E7DFC9;
   --gz-paper-deep: #DCD0B3;
   --gz-surface: #F5EEDC;
@@ -329,14 +368,9 @@ button {
 }
 
 /*
- * 大厅头（.hall-head__name）的同名规则**不在这里** —— 它在组件内，全局/页面样式选不中它，
- * 见 components/HallHead/HallHead.scss 末尾那两条（皮肤类挂在组件根节点上）。
- * 这里只留子页顶栏：它由各页面模板直接渲染，是本文件的势力范围。
+ * 大厅头（.hall-head__name）与子页顶栏（.nav__title）的同名规则**都不在这里** ——
+ * 两者现在都在自定义组件内部，而组件 wxss / 全局样式选不中组件内的节点（见规格 §6.4）。
+ * 分别落在：
+ *   · components/HallHead/HallHead.scss 末尾两条；
+ *   · components/SubNav/SubNav.scss 末尾两条（2026-09-22 顶栏抽成组件时迁过去的）。
  */
-.gz-skin--tech .nav__title {
-  letter-spacing: 0.02em;
-}
-
-.gz-skin--dao .nav__title {
-  letter-spacing: 0.14em;
-}

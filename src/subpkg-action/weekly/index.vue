@@ -1,13 +1,7 @@
 <template>
   <view class="page" :class="skinClass">
     <!-- 顶栏：返回 + 标题 -->
-    <view class="nav">
-      <view class="nav__side" hover-class="gz-hover" @click="goBack">
-        <text class="nav__back">‹</text>
-      </view>
-      <text class="nav__title">行动周报 · 痕迹</text>
-      <view class="nav__side" />
-    </view>
+        <SubNav :fallback="ROUTES.tabAction">行动周报 · 痕迹</SubNav>
 
     <!-- 周总况 -->
     <view class="head">
@@ -325,14 +319,6 @@ function goMe(): void {
   navigateTo(ROUTES.tabMe)
 }
 
-function goBack(): void {
-  const pages = getCurrentPages()
-  if (pages.length > 1) {
-    uni.navigateBack()
-  } else {
-    uni.switchTab({ url: ROUTES.tabAction })
-  }
-}
 </script>
 
 <style lang="scss" scoped>

@@ -1,12 +1,6 @@
 <template>
   <view class="page" :class="skinClass">
-    <view class="nav">
-      <view class="nav__side" hover-class="gz-hover" @click="goBack">
-        <text class="nav__back">‹</text>
-      </view>
-      <text class="nav__title">时间胶囊</text>
-      <view class="nav__side" />
-    </view>
+        <SubNav :fallback="ROUTES.tabMe">时间胶囊</SubNav>
 
     <!-- 到期：先拆（这是这个页面存在的理由，排最前） -->
     <view v-if="capsule.dueCount" class="due">
@@ -134,6 +128,7 @@ import {
 } from '@/stores/capsule'
 import { todayKey } from '@/stores/daily'
 import { ROUTES } from '@/router/routes'
+import { showModal } from '@/utils/dialog'
 
 const capsule = useCapsuleStore()
 const skinClass = useSkinClass()
@@ -199,7 +194,7 @@ function seal(): void {
 }
 
 function drop(c: Capsule): void {
-  uni.showModal({
+  showModal({
     title: '撤掉这条胶囊？',
     content: '写的这句会一并删掉，不可找回。',
     confirmText: '撤掉',
@@ -210,14 +205,6 @@ function drop(c: Capsule): void {
   })
 }
 
-function goBack(): void {
-  const pages = getCurrentPages()
-  if (pages.length > 1) {
-    uni.navigateBack()
-  } else {
-    uni.switchTab({ url: ROUTES.tabMe })
-  }
-}
 </script>
 
 <style lang="scss" scoped>

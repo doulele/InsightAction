@@ -41,6 +41,22 @@ export const REF_KIND_LABEL: Record<RefKind, string> = {
   none: '无出处',
 }
 
+/**
+ * 单字短标（2026-09-22）：给"行内极窄的出处标记"用。
+ *
+ * 三件事那一行要让高度省回一行，就没地方摆"卡片 · 三个字摘要"那样的药丸；
+ * 短标只回答"挂没挂、挂的是哪一类"，点开面板才看全（`TodoSource` 会把当前项高亮）。
+ * `none` 留空 —— 未挂时页面显示一个「＋」，由页面决定这个符号。
+ */
+export const REF_KIND_SHORT: Record<RefKind, string> = {
+  theory: '理',
+  card: '卡',
+  urge: '冲',
+  thought: '念',
+  plan: '计',
+  none: '',
+}
+
 /** 候选条数：够选就行，太长反而挑花眼 */
 const CANDIDATE_CAP = 8
 

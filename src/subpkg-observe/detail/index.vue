@@ -1,23 +1,15 @@
 <template>
   <view class="page" :class="skinClass">
-    <!-- 顶栏 -->
-    <view class="nav">
-      <view class="nav__side" hover-class="gz-hover" @click="goBack">
-        <text class="nav__back">‹</text>
-      </view>
-      <view class="nav__mid">
-        <text class="nav__title">{{ headTitle }}</text>
-        <text v-if="item" class="nav__sub">{{ timeLabel(item.createdAt) }} 存入</text>
-      </view>
-      <!--
-        分享的入口**只在这一页**（2026-09-21）：收件匣 / 理库 / 母题库的卡片上不给。
-        理由：分享是"对外"的动作，二列表页最容易点错，错一下就把自己的笔记发进群了；
-        而详情页是"读过之后"的地方，也是三种形态的公共落点 —— 一处开发，事 / 理 / 道 全覆盖。
-      -->
-      <view class="nav__side" hover-class="gz-hover" @click="openShare">
-        <text class="nav__share">分享</text>
-      </view>
-    </view>
+    <!--
+      顶栏（顶距与样式统一在 components/SubNav）。
+      分享的入口**只在这一页**（2026-09-21）：收件匣 / 理库 / 母题库的卡片上不给。
+      理由：分享是"对外"的动作，二列表页最容易点错，错一下就把自己的笔记发进群了；
+      而详情页是"读过之后"的地方，也是三种形态的公共落点 —— 一处开发，事 / 理 / 道 全覆盖。
+    -->
+    <SubNav @back="goBack" :subtitle="navSub" @right="openShare">
+      {{ headTitle }}
+      <template #right><text class="nav__share">分享</text></template>
+    </SubNav>
 
     <!-- 找不到（可能刚在别处删了） -->
     <view v-if="!item" class="empty">
@@ -329,12 +321,16 @@ import {
   type SpeechState,
 } from '@/utils/speech'
 import { navigateTo, ROUTES } from '@/router/routes'
+import { showModal } from '@/utils/dialog'
 
 const store = useObserveStore()
 const skinClass = useSkinClass()
 
 const id = ref('')
 const item = computed(() => (id.value ? store.find(id.value) : undefined))
+
+/** 顶栏副标题（SubNav 的两行版）：没有这一条时不显示第二行 */
+const navSub = computed(() => (item.value ? `${timeLabel(item.value.createdAt)} 存入` : ''))
 
 const headTitle = computed(() => {
   const it = item.value
@@ -549,7 +545,7 @@ function handle(): void {
   const it = item.value
   if (!it) return
   if (!canRead.value) {
-    uni.showModal({
+    showModal({
       title: '今天的深度阅读用完了',
       content: `每日 ${store.quotaTotal()} 次，只用来读「今天新存进来」的东西。\n这条明天再读；前几天存下的补处理不占额，现在就能处理。`,
       showCancel: false,
@@ -557,7 +553,7 @@ function handle(): void {
     })
     return
   }
-  uni.showModal({
+  showModal({
     title: '写下你的一句话',
     editable: true,
     placeholderText: '它让你想到什么 / 哪里不成立',
@@ -576,7 +572,7 @@ function handle(): void {
 function drop(): void {
   const it = item.value
   if (!it) return
-  uni.showModal({
+  showModal({
     title: '删掉这条',
     content: '删了就找不回来了',
     confirmText: '删',
@@ -610,7 +606,7 @@ const daoMother = computed(() => {
 
 /** 写 / 改某条道的凝练句（详情页这一条自己就是道时也走它） */
 function editDaoLine(motherId: string, current?: string): void {
-  uni.showModal({
+  showModal({
     title: '凝练成一句',
     content: current ? `现在是：「${current}」` : `把它压成一句你能带走的话（${DAO_LINE_MAX} 字以内）。`,
     editable: true,
@@ -639,7 +635,7 @@ function condenseToDao(): void {
     editDaoLine(daoMother.value.id, daoMother.value.daoLine)
     return
   }
-  uni.showModal({
+  showModal({
     title: '凝练成一句',
     content: `把这一条压成一句你能带走的话（${DAO_LINE_MAX} 字以内）。`,
     editable: true,
@@ -685,7 +681,7 @@ function pickDaoFor(line: string): void {
 function createDao(line: string): void {
   const it = item.value
   if (!it) return
-  uni.showModal({
+  showModal({
     title: '给这条道起个名字',
     content: '问句最好 —— 它得是你反复会遇见的那个问题。',
     editable: true,
@@ -789,7 +785,7 @@ function shareBodyOf(it: ObsItem): ShareBody {
 /** 发布前的一次确认 —— 把"会发生什么"说清，而不是点一下就上传 */
 function confirmShare(): Promise<boolean> {
   return new Promise((resolve) => {
-    uni.showModal({
+    showModal({
       title: '分享这一条？',
       content:
         '会把这一条（标题、一句话总结、正文，以及你写的金句 / 观点 / 感悟）放到服务器上生成链接，'
@@ -820,7 +816,7 @@ async function publishNow(): Promise<ShareRecord | null> {
     shareStore.record(rec)
     return rec
   } catch (e) {
-    uni.showModal({
+    showModal({
       title: '没能分享出去',
       content: e instanceof BizError ? e.message : '网络不通，稍后再试',
       showCancel: false,
@@ -859,7 +855,7 @@ function copyH5(): void {
 function doRevoke(): void {
   const rec = sharedRecord.value
   if (!rec) return
-  uni.showModal({
+  showModal({
     title: '撤回这条分享？',
     content: '撤回后链接立刻失效（小程序卡片与网页链接都会打不开），服务器上的那一份会被删除。',
     confirmText: '撤回',

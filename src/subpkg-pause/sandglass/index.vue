@@ -1,13 +1,7 @@
 <template>
   <view class="page" :class="skinClass">
     <!-- 顶栏：返回 + 标题（子页统一样式） -->
-    <view class="nav">
-      <view class="nav__side" hover-class="gz-hover" @click="goBack">
-        <text class="nav__back">‹</text>
-      </view>
-      <text class="nav__title">禅定沙漏</text>
-      <view class="nav__side" />
-    </view>
+        <SubNav @back="goBack">禅定沙漏</SubNav>
 
     <!-- 选时 -->
     <template v-if="phase === 'idle'">

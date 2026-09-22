@@ -1,13 +1,7 @@
 <template>
   <view class="page" :class="skinClass">
     <!-- 顶栏：返回 + 标题 -->
-    <view class="nav">
-      <view class="nav__side" hover-class="gz-hover" @click="goBack">
-        <text class="nav__back">‹</text>
-      </view>
-      <text class="nav__title">静心茶室</text>
-      <view class="nav__side" />
-    </view>
+        <SubNav @back="goBack">静心茶室</SubNav>
 
     <!-- 选盏 -->
     <template v-if="phase === 'pick'">

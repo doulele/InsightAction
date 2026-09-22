@@ -1,45 +1,11 @@
-/**
+﻿/**
  * index.vue 的样式（超过 100 行，按项目约定外置到同目录 index.scss）。
  * 由 index.vue 通过 @import 引入；以后改样式改本文件。
  */
 .page {
   min-height: 100vh;
-  padding: calc(var(--status-bar-height) + 16rpx) $gz-page-pad 60rpx;
+  padding: 0 $gz-page-pad 60rpx;
   box-sizing: border-box;
-}
-
-.nav {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 8rpx 0 10rpx;
-}
-
-.nav__side {
-  width: 76rpx;
-  height: 76rpx;
-}
-
-.nav__back {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 76rpx;
-  height: 76rpx;
-  border: 1rpx solid $gz-line;
-  border-radius: 50%;
-  background: $gz-surface;
-  color: $gz-ink-2;
-  font-size: 52rpx;
-  line-height: 1;
-  padding-bottom: 8rpx;
-}
-
-.nav__title {
-  font-size: 34rpx;
-  font-weight: 700;
-  letter-spacing: 0.08em;
-  color: $gz-ink;
 }
 
 /* 总览 */
@@ -78,7 +44,7 @@
   margin-top: 16rpx;
   font-size: $gz-fs-caption;
   line-height: 1.7;
-  color: $gz-ink-3;
+  color: $gz-ink-2;
 }
 
 .section {
@@ -107,7 +73,7 @@
   display: flex;
   align-items: center;
   gap: 6rpx;
-  font-size: 18rpx;
+  font-size: 20rpx;
   color: $gz-ink-3;
 }
 
@@ -118,15 +84,15 @@
 }
 
 .legend__dot.is-1 {
-  background: #84a268;
+  background: $gz-depth-1;
 }
 
 .legend__dot.is-2 {
-  background: #4e8fd4;
+  background: $gz-depth-2;
 }
 
 .legend__dot.is-3 {
-  background: #9c8ac4;
+  background: $gz-depth-3;
 }
 
 /* 空态 */
@@ -163,7 +129,7 @@
   font-size: $gz-fs-small;
   line-height: 1.9;
   text-align: center;
-  color: $gz-ink-3;
+  color: $gz-ink-2;
   white-space: pre-line;
 }
 
@@ -203,7 +169,7 @@
 .row__date {
   display: block;
   margin-top: 4rpx;
-  font-size: 18rpx;
+  font-size: 20rpx;
   color: $gz-ink-3;
 }
 
@@ -228,15 +194,15 @@
 }
 
 .row__seg.is-1 {
-  background: #84a268;
+  background: $gz-depth-1;
 }
 
 .row__seg.is-2 {
-  background: #4e8fd4;
+  background: $gz-depth-2;
 }
 
 .row__seg.is-3 {
-  background: #9c8ac4;
+  background: $gz-depth-3;
 }
 
 .row__total {
@@ -253,7 +219,7 @@
   margin-top: 20rpx;
   font-size: $gz-fs-caption;
   line-height: 1.7;
-  color: $gz-ink-3;
+  color: $gz-ink-2;
 }
 
 .foot {

@@ -1,14 +1,10 @@
 <template>
   <view class="page" :class="skinClass">
-    <view class="nav">
-      <view class="nav__side" hover-class="gz-hover" @click="goBack">
-        <text class="nav__back">‹</text>
-      </view>
-      <text class="nav__title">{{ w.plan }}</text>
-      <view class="nav__side" hover-class="gz-hover" @click="editOpen = true">
-        <text class="nav__edit">改</text>
-      </view>
-    </view>
+    <!-- 顶栏（顶距与样式统一在 components/SubNav；右侧「改」走 #right 插槽） -->
+    <SubNav @back="goBack" @right="editOpen = true">
+      {{ w.plan }}
+      <template #right><text class="nav__edit">改</text></template>
+    </SubNav>
 
     <view v-if="!item" class="missing">
       <text class="missing__text">这条{{ w.plan }}已经不在了（可能已被删除）。</text>
@@ -291,6 +287,7 @@ import { useModeStore } from '@/stores/mode'
 import { useSkinClass } from '@/composables/useSkin'
 import { todayKey } from '@/stores/daily'
 import { ROUTES } from '@/router/routes'
+import { showModal } from '@/utils/dialog'
 
 const plan = usePlanStore()
 const mode = useModeStore()
@@ -405,7 +402,7 @@ function checkToday(): void {
 function breakToday(): void {
   const p = item.value
   if (!p) return
-  uni.showModal({
+  showModal({
     title: w.value.brokenAct,
     content: '',
     editable: true,
@@ -543,7 +540,7 @@ function addChild(r: TreeRow): void {
     uni.showToast({ title: `最多 ${MAX_NODE_DEPTH} 层 —— 再往下拆，不如另立一条路`, icon: 'none' })
     return
   }
-  uni.showModal({
+  showModal({
     title: `在「${r.node.title}」下面加一步`,
     editable: true,
     placeholderText: '这一步要做什么（它下面还能再拆）',
@@ -591,7 +588,7 @@ function dropNodeRow(r: TreeRow): void {
   const p = item.value
   if (!p) return
   const n = r.hasChildren ? plan.subtreeIds(p, r.node.id).length : 1
-  uni.showModal({
+  showModal({
     title: n > 1 ? `拿掉「${r.node.title}」和它下面的 ${n - 1} 步？` : '拿掉这一步？',
     content: '其余步骤与进度不受影响。',
     confirmText: '拿掉',
@@ -670,7 +667,7 @@ function onReflectSkip(): void {
 function confirmArchive(): void {
   const p = item.value
   if (!p) return
-  uni.showModal({
+  showModal({
     title: `搁置这条${w.value.plan}？`,
     content: '它会移到「已收起」，不扣修为。想回来随时可以重新开始。',
     confirmText: '搁置',
@@ -693,7 +690,7 @@ function reopen(): void {
 function confirmRemove(): void {
   const p = item.value
   if (!p) return
-  uni.showModal({
+  showModal({
     title: '删除这条记录？',
     content: '它和它的所有步骤都会消失，不可找回。已入账的修为不受影响。',
     confirmText: '删除',

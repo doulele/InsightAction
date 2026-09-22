@@ -2,10 +2,8 @@
  * BuddyFloat.vue 的样式（超过 100 行，按项目约定外置到同目录 BuddyFloat.scss）。
  * 由 BuddyFloat.vue 通过 @import 引入；以后改样式改本文件。
  */
-.bf {
-  /* 本组件不占布局空间 */
-}
 
+@import '../../styles/hover';
 /* ---- 到点激励横幅 ---- */
 .bf__tip {
   position: fixed;
@@ -702,6 +700,16 @@
   font-size: 26rpx;
   line-height: 1.8;
   color: var(--gz-ink-2);
+}
+
+/* 结算 → 去写一句（2026-09-22）：刚看完读数，顺势把人送去留一句。
+   比按钮轻一档 —— 它不是这一步唯一的正解，"收下今天"直接关掉同样合法。 */
+.stl__link {
+  display: block;
+  margin-top: 20rpx;
+  padding: 14rpx 4rpx;
+  font-size: 26rpx;
+  color: var(--gz-accent);
 }
 
 .stl__acts {

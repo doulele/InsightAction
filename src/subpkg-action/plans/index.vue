@@ -1,12 +1,6 @@
 <template>
   <view class="page" :class="skinClass">
-    <view class="nav">
-      <view class="nav__side" hover-class="gz-hover" @click="goBack">
-        <text class="nav__back">‹</text>
-      </view>
-      <text class="nav__title">{{ w.plan }}</text>
-      <view class="nav__side" />
-    </view>
+        <SubNav :fallback="ROUTES.tabAction">{{ w.plan }}</SubNav>
 
     <!-- 今日 / 日课 / 短期 / 中期 / 长期 -->
     <view class="tabs">
@@ -291,6 +285,7 @@ import { useModeStore } from '@/stores/mode'
 import { useSkinClass } from '@/composables/useSkin'
 import { todayKey } from '@/stores/daily'
 import { navigateTo, ROUTES } from '@/router/routes'
+import { showModal } from '@/utils/dialog'
 
 const plan = usePlanStore()
 const mode = useModeStore()
@@ -372,7 +367,7 @@ function reschedule(item: StepItem): void {
 
 /** 待办池：不做了（只移除，不扣分） */
 function dropStep(item: StepItem): void {
-  uni.showModal({
+  showModal({
     title: '不做了？',
     content: item.kind === 'plan' ? '这条今日事会从清单里拿掉。' : '这一步会从计划里拿掉，其余步骤不受影响。',
     confirmText: '拿掉',
@@ -608,14 +603,6 @@ function onReflectSkip(): void {
   uni.showToast({ title: '这条长路走完了', icon: 'none' })
 }
 
-function goBack(): void {
-  const pages = getCurrentPages()
-  if (pages.length > 1) {
-    uni.navigateBack()
-  } else {
-    uni.switchTab({ url: ROUTES.tabAction })
-  }
-}
 </script>
 
 <style lang="scss" scoped>

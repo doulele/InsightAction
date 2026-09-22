@@ -1,4 +1,4 @@
-/**
+﻿/**
  * 止 · 立约（当日档）—— 样式外置（超过 100 行，按项目约定拆出）。
  * 由 subpkg-pause/vow/index.vue 通过 @import 引入。
  */
@@ -6,41 +6,7 @@
 .page {
   min-height: 100vh;
   box-sizing: border-box;
-  padding: calc(var(--status-bar-height) + 16rpx) $gz-page-pad 60rpx;
-}
-
-.nav {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 8rpx 0 10rpx;
-}
-
-.nav__side {
-  width: 76rpx;
-  height: 76rpx;
-}
-
-.nav__back {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 76rpx;
-  height: 76rpx;
-  border: 1rpx solid $gz-line;
-  border-radius: 50%;
-  background: $gz-surface;
-  color: $gz-ink-2;
-  font-size: 52rpx;
-  line-height: 1;
-  padding-bottom: 8rpx;
-}
-
-.nav__title {
-  font-size: 34rpx;
-  font-weight: 700;
-  letter-spacing: 0.08em;
-  color: $gz-ink;
+  padding: 0 $gz-page-pad 60rpx;
 }
 
 /* ---- 头部 ---- */
@@ -68,7 +34,7 @@
   margin-top: 10rpx;
   font-size: $gz-fs-small;
   line-height: 1.7;
-  color: $gz-ink-3;
+  color: $gz-ink-2;
 }
 
 /* ---- 表单 ---- */
@@ -122,7 +88,7 @@
   margin-top: 16rpx;
   font-size: $gz-fs-caption;
   line-height: 1.8;
-  color: $gz-ink-3;
+  color: $gz-ink-2;
 }
 
 /* ---- 三要素卡 ---- */
@@ -204,7 +170,7 @@
   margin-top: 14rpx;
   font-size: $gz-fs-caption;
   line-height: 1.8;
-  color: $gz-ink-3;
+  color: $gz-ink-2;
 }
 
 /* ---- 结果 ---- */
@@ -244,7 +210,7 @@
   margin-top: 14rpx;
   font-size: $gz-fs-caption;
   line-height: 1.8;
-  color: $gz-ink-3;
+  color: $gz-ink-2;
 }
 
 .result__reset {
@@ -335,7 +301,7 @@
   flex: none;
   padding: 2rpx 14rpx;
   border-radius: 999rpx;
-  font-size: 18rpx;
+  font-size: 20rpx;
   background: $gz-line-soft;
   color: $gz-ink-3;
 }

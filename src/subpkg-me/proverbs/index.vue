@@ -1,13 +1,7 @@
 <template>
   <view class="page" :class="skinClass">
     <!-- 顶栏 -->
-    <view class="nav">
-      <view class="nav__side" hover-class="gz-hover" @click="goBack">
-        <text class="nav__back">‹</text>
-      </view>
-      <text class="nav__title">我的箴言</text>
-      <view class="nav__side" />
-    </view>
+        <SubNav :fallback="ROUTES.tabMe">我的箴言</SubNav>
 
     <!-- 概览 -->
     <view class="sum">
@@ -114,6 +108,7 @@ import { useSkinClass } from '@/composables/useSkin'
 import { logTrace } from '@/utils/traceLog'
 import { refOfCard } from '@/utils/refSource'
 import { ROUTES } from '@/router/routes'
+import { showModal } from '@/utils/dialog'
 
 const store = useProverbStore()
 const knowledge = useKnowledgeStore()
@@ -175,7 +170,7 @@ function toCard(item: ProverbItem): void {
     uni.showToast({ title: '这句已经在知识库里了', icon: 'none' })
     return
   }
-  uni.showModal({
+  showModal({
     title: '转到知识库',
     content: item.note,
     editable: true,
@@ -206,7 +201,7 @@ function toCard(item: ProverbItem): void {
 }
 
 function remove(id: number): void {
-  uni.showModal({
+  showModal({
     title: '移除这句箴言？',
     content: '移除后不可恢复（本机数据，不上传服务器）。',
     confirmText: '移除',
@@ -223,14 +218,6 @@ function togglePin(id: number): void {
   store.togglePin(id)
 }
 
-function goBack(): void {
-  const pages = getCurrentPages()
-  if (pages.length > 1) {
-    uni.navigateBack()
-  } else {
-    uni.switchTab({ url: ROUTES.tabMe })
-  }
-}
 </script>
 
 <style lang="scss" scoped>

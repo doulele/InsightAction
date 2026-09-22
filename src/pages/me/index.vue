@@ -245,6 +245,7 @@ import type { RoutePath } from '@/router/routes'
 import { navigateTo, ROUTES } from '@/router/routes'
 import type { PhraseKey } from '@/config/phrases'
 import { useDimLabel } from '@/composables/usePhrase'
+import { DIM_COLOR } from '@/config/palette'
 import type { EntryBadge } from '@/components/EntryItem/EntryItem.vue'
 
 const appStore = useAppStore()
@@ -469,10 +470,11 @@ const dims = computed<Dim[]>(() => {
   /* 今日知识产出 = 新建卡片 + 今日拷问作答（答卡即时 Lv.3，未落库故并列计入） */
   const know = st.cards + (st.answered ? 1 : 0)
   return [
-    { label: dl('observe'), cur: st.obsN, goal: 5, pct: Math.min(100, Math.round((st.obsN / 5) * 100)), color: '#4E8FD4' },
-    { label: dl('pause'), cur: st.focusMin, goal: focusGoal, pct: Math.min(100, Math.round((st.focusMin / focusGoal) * 100)), color: '#84A268' },
-    { label: dl('reflect'), cur: know, goal: 3, pct: Math.min(100, Math.round((know / 3) * 100)), color: '#9C8AC4' },
-    { label: dl('action'), cur: daily.doneCount, goal: plan, pct: Math.round((daily.doneCount / plan) * 100), color: '#C4602E' },
+    /* 四维身份色统一取 config/palette.ts（2026-09-22 收敛前与周报/时间轴不是同一套） */
+    { label: dl('observe'), cur: st.obsN, goal: 5, pct: Math.min(100, Math.round((st.obsN / 5) * 100)), color: DIM_COLOR.observe },
+    { label: dl('pause'), cur: st.focusMin, goal: focusGoal, pct: Math.min(100, Math.round((st.focusMin / focusGoal) * 100)), color: DIM_COLOR.pause },
+    { label: dl('reflect'), cur: know, goal: 3, pct: Math.min(100, Math.round((know / 3) * 100)), color: DIM_COLOR.reflect },
+    { label: dl('action'), cur: daily.doneCount, goal: plan, pct: Math.round((daily.doneCount / plan) * 100), color: DIM_COLOR.action },
   ]
 })
 

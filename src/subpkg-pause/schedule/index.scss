@@ -4,42 +4,8 @@
  */
 .page {
   min-height: 100vh;
-  padding: calc(var(--status-bar-height) + 16rpx) $gz-page-pad 60rpx;
+  padding: 0 $gz-page-pad 60rpx;
   box-sizing: border-box;
-}
-
-.nav {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 8rpx 0 10rpx;
-}
-
-.nav__side {
-  width: 76rpx;
-  height: 76rpx;
-}
-
-.nav__back {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 76rpx;
-  height: 76rpx;
-  border: 1rpx solid $gz-line;
-  border-radius: 50%;
-  background: $gz-surface;
-  color: $gz-ink-2;
-  font-size: 52rpx;
-  line-height: 1;
-  padding-bottom: 8rpx;
-}
-
-.nav__title {
-  font-size: 34rpx;
-  font-weight: 700;
-  letter-spacing: 0.08em;
-  color: $gz-ink;
 }
 
 /* 下一段入定 */
@@ -85,7 +51,7 @@
   display: block;
   margin-top: 14rpx;
   font-size: $gz-fs-caption;
-  color: $gz-ink-3;
+  color: $gz-ink-2;
 }
 
 /* 模板 */
@@ -138,7 +104,7 @@
 
 .section__hint {
   font-size: $gz-fs-caption;
-  color: $gz-ink-3;
+  color: $gz-ink-2;
 }
 
 .void {
@@ -162,7 +128,7 @@
   font-size: $gz-fs-caption;
   line-height: 1.7;
   text-align: center;
-  color: $gz-ink-3;
+  color: $gz-ink-2;
 }
 
 .list {
@@ -255,7 +221,7 @@
 
 .add__hint {
   font-size: $gz-fs-caption;
-  color: $gz-ink-3;
+  color: $gz-ink-2;
 }
 
 .add__pick {

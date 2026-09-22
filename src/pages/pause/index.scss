@@ -4,7 +4,8 @@
  */
 .page {
   min-height: 100vh;
-  padding: 24rpx $gz-page-pad 60rpx;
+  /* 底部留白 180rpx：避开小枢悬浮球（108rpx @ bottom 40rpx）压住页尾 */
+  padding: 24rpx $gz-page-pad 180rpx;
 }
 
 .today {
@@ -44,7 +45,7 @@
   display: block;
   margin-top: 8rpx;
   font-size: $gz-fs-caption;
-  color: $gz-ink-3;
+  color: $gz-ink-2;
 }
 
 .today__num {
@@ -99,7 +100,7 @@
 
 .section__hint {
   font-size: $gz-fs-caption;
-  color: $gz-ink-3;
+  color: $gz-ink-2;
 }
 
 .pills {
@@ -218,7 +219,7 @@
   display: block;
   margin-top: 6rpx;
   font-size: $gz-fs-caption;
-  color: $gz-ink-3;
+  color: $gz-ink-2;
 }
 
 /* 层头的下一段（沙漏 / 茶室 / 层内第二组入口）不必再撑一个大间距 */

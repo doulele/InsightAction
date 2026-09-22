@@ -1,13 +1,7 @@
 <template>
   <view class="page" :class="skinClass">
     <!-- 顶栏 -->
-    <view class="nav">
-      <view class="nav__side" hover-class="gz-hover" @click="goBack">
-        <text class="nav__back">‹</text>
-      </view>
-      <text class="nav__title">母题库</text>
-      <view class="nav__side" />
-    </view>
+        <SubNav :fallback="ROUTES.tabObserve">母题库</SubNav>
 
     <view class="intro">
       <text class="intro__text">
@@ -159,6 +153,7 @@ import { DAO_LINE_MAX } from '@/config/dao'
 import { useObserveStore, type ObsItem } from '@/stores/observe'
 import { useSkinClass } from '@/composables/useSkin'
 import { navigateTo, ROUTES } from '@/router/routes'
+import { showModal } from '@/utils/dialog'
 
 const observe = useObserveStore()
 const skinClass = useSkinClass()
@@ -239,7 +234,7 @@ const tagHints = computed<TagHint[]>(() => {
  * 这里换成一次确认：多选那一步在手机上太重，而多数情况用户就是想全挂。
  */
 function promoteFromTag(h: TagHint): void {
-  uni.showModal({
+  showModal({
     title: '提炼成一个母题',
     content: `你有 ${h.count} 条理都打了「${h.tag}」这个标签。给它一个名字 —— 问句最好。`,
     editable: true,
@@ -261,7 +256,7 @@ function promoteFromTag(h: TagHint): void {
         uni.showToast({ title: '已提炼 · 收下这 20 点修为', icon: 'none' })
         return
       }
-      uni.showModal({
+      showModal({
         title: '顺手挂上？',
         content: `还有 ${others.length} 条理也打了「${h.tag}」，要一起挂到「${name}」下吗？`,
         confirmText: '一起挂',
@@ -284,7 +279,7 @@ function promoteFromTag(h: TagHint): void {
  * 认领的门槛若变成"先写好一句"，用户会直接不认领了。
  */
 function adopt(p: PresetMother): void {
-  uni.showModal({
+  showModal({
     title: p.name,
     content: p.probe,
     editable: true,
@@ -321,7 +316,7 @@ function adopt(p: PresetMother): void {
  *   认领时跳过 = 先收下以后补；卡片上补写时取消 = 不改，调用方各自判断即可。
  */
 function askDaoLine(done: (line: string) => void, current = ''): void {
-  uni.showModal({
+  showModal({
     title: '凝练成一句',
     content: current
       ? `现在是：「${current}」`
@@ -356,7 +351,7 @@ function editDao(m: ObsItem): void {
 function attachTo(motherId: string): void {
   const free = observe.theories.filter((i) => !i.motherId).slice(0, 8)
   if (!free.length) {
-    uni.showModal({
+    showModal({
       title: '没有可挂的理',
       content: '去理库立一条新理，或直接就这个母题写一笔？',
       confirmText: '写一笔',
@@ -420,14 +415,6 @@ function dropConfirm(): void {
   uni.showToast({ title: '已删', icon: 'none' })
 }
 
-function goBack(): void {
-  const pages = getCurrentPages()
-  if (pages.length > 1) {
-    uni.navigateBack()
-  } else {
-    uni.switchTab({ url: ROUTES.tabObserve })
-  }
-}
 </script>
 
 <style lang="scss" scoped>

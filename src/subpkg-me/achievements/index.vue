@@ -1,13 +1,7 @@
 <template>
   <view class="page" :class="skinClass">
     <!-- 顶栏 -->
-    <view class="nav">
-      <view class="nav__side" hover-class="gz-hover" @click="goBack">
-        <text class="nav__back">‹</text>
-      </view>
-      <text class="nav__title">成就墙 · 徽章</text>
-      <view class="nav__side" />
-    </view>
+        <SubNav :fallback="ROUTES.tabMe">成就墙 · 徽章</SubNav>
 
     <!-- 模式专属标志物：盖章册 / 解锁矩阵 / 功勋碑（图缺失时整块隐身） -->
     <ModuleMark mark="me.achievement" size="md" />
@@ -174,14 +168,6 @@ function openEgg(e: EggResult): void {
   eggOpen.value = true
 }
 
-function goBack(): void {
-  const pages = getCurrentPages()
-  if (pages.length > 1) {
-    uni.navigateBack()
-  } else {
-    uni.switchTab({ url: ROUTES.tabMe })
-  }
-}
 </script>
 
 <style lang="scss" scoped>

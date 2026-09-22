@@ -194,21 +194,68 @@ export const HORIZON_DESC: Record<PlanHorizonKey, string> = {
   long: '一个月以上，或者干脆不定日子',
 }
 
+export type ActionBlockKey = 'three' | 'daily' | 'step'
+
 /**
- * 行大厅三本待办账的**分工说明**（2026-09-17）。
+ * 一块"今日清单"该怎么被解释清楚（2026-09-22 重写）。
  *
- * 为什么必须有这一行：行这一环同时摆着三份长得像待办清单的东西（三件事 / 日课 / 今天要走的步子），
- * 用户第一反应是"这不是重复了吗"。所以每块标题下面都要有一句"它管什么" ——
- * 承诺 / 重复 / 推进，三者不重叠，但不说清就看不出来。
+ * 起因：这一页同时摆着三份长得像待办清单的东西，老版本只讲**形态**
+ * （"跨天清零""勾满就收束"）—— 术语准确但没人看得懂，结果三块被当成同一个东西，
+ * 也就谈不上"用"。现在每块给四件东西：
+ *   hint —— 标题下那一行：**一句话人话**，回答"它管什么"；
+ *   what —— 弹窗里的定义（讲它是怎么来的）；
+ *   eg   —— **举例**（抽象定义不如一句例子顶用）；
+ *   fate —— **忘了做会怎样**。这才是三块真正的分界：清零 / 累积不断 / 顺延到待办池。
+ *
+ * `{daily}` `{step}` 是名词占位符 —— 日课与步子的叫法跟着模式走（见 `planWords`），
+ * 由 `actionSplit(key, words)` 填。
  */
-export const ACTION_SPLIT = {
-  /** 今日三件事 */
-  three: '今天最重要的三件 · 跨天清零',
-  /** 日课 */
-  daily: '每天重复一次 · 勾满就收束',
-  /** 今天要走的步子 */
-  step: '跨天目标派到今天的一段',
-} as const
+export interface ActionBlockExplain {
+  /** 标题下那一行 */
+  hint: string
+  /** 弹窗里的名字 */
+  name: string
+  /** 一句话定义 */
+  what: string
+  /** 举例 */
+  eg: string
+  /** 忘了做会怎样（三者的真正分界） */
+  fate: string
+}
+
+const LOCAL_ACTION_SPLIT: Record<ActionBlockKey, ActionBlockExplain> = {
+  three: {
+    hint: '今天临时冒出来的三件 · 明天整块清空',
+    name: '今日三件事',
+    what: '今天才定下来的事。早上是空的，得你自己往上写；一共只有三条，是逼你挑最重要的那三件。',
+    eg: '「下午把方案发出去」「给家里打个电话」',
+    fate: '只活今天：过了零点整块清空，没做完的不欠账、也不滚到明天。做成一件会回写【知】，还能挂上"它从哪儿来的"。',
+  },
+  daily: {
+    hint: '早就答应自己每天做的 · 一次立好，之后每天都在',
+    name: '{daily}',
+    what: '内容基本不变的那几件 —— 早点睡、每天走一会儿、睡前不刷手机。它的清单不用重填，每天只问一句"今天这一次做到了没有"。',
+    eg: '早睡 / 走二十分钟 / 睡前不刷手机',
+    fate: '会累积：守住一天记一天，守满目标天数就收束（可以写一句回望）。今天没勾只是空白、不算破；真破了也不归零。',
+  },
+  step: {
+    hint: '早就立好的目标里 · 派到今天的那一段',
+    name: '{step}',
+    what: '从长期那条路拆下来的具体节点，外加临时想加的一条。它是"除了三件事之外还在往前挪"的那部分。',
+    eg: '「写完第三章」排在今天 → 今天就认这一段',
+    fate: '不会清零：今天没走的进待办池，明天还在。不催办，也不扣分。',
+  },
+}
+
+/**
+ * `{daily}` 与「习惯打卡」的区别（2026-09-22）。
+ *
+ * 两者看起来都是"每天重复一次"，用户必然会问"那我该建哪个"。答案只有一句：**有没有期限** ——
+ * `{daily}` 守满就收束，习惯永不到期。桥在这一页也给：习惯页的「立为{daily}」会把记录一起带过去。
+ */
+export function dailyVsHabit(dailyName: string): string {
+  return `${dailyName}有期限：守满目标天数就收束，还能写一句回望；习惯打卡没有期限 —— 想给习惯一个期限，去习惯页点「立为${dailyName}」，已有的记录会一并带过去。`
+}
 
 /** 未标挑战类型的普通计划，收束时的通用回望提问 */
 export const PLAN_REFLECT_DEFAULT = '这段路走完，最想留下的一句话是什么？'
@@ -396,4 +443,109 @@ const LOCAL_PLAN_WORDS: Record<ModeId, PlanWords> = {
 /** 计划的三模式叫法（纯内置；改动随发版，故不接远端下发） */
 export function planWords(mode: ModeId): PlanWords {
   return LOCAL_PLAN_WORDS[mode] ?? LOCAL_PLAN_WORDS.normal
+}
+
+/**
+ * 取某一块今日清单的解释，并把里面的名词占位符换成当前模式的叫法。
+ * @param words 当前模式的计划词表（`planWords(mode.id)`）
+ */
+export function actionSplit(key: ActionBlockKey, words: PlanWords): ActionBlockExplain {
+  const b = LOCAL_ACTION_SPLIT[key]
+  const fill = (s: string) => s.replace(/\{daily\}/g, words.daily).replace(/\{step\}/g, words.today)
+  return { hint: fill(b.hint), name: fill(b.name), what: fill(b.what), eg: fill(b.eg), fate: fill(b.fate) }
+}
+
+/** 三块清单的固定顺序（弹解释时被点的那块会排到最前） */
+export const ACTION_BLOCK_ORDER: ActionBlockKey[] = ['three', 'daily', 'step']
+
+/**
+ * 三块「今日清单」的小印字（2026-09-22）。
+ *
+ * 与「把念头变成痕迹」那一串入口行（`EntryItem.mark`）同一套语言：一瞥即知是哪一类，
+ * 不必先读标题。三块共用一套字、不随模式变 —— 模式只改名词（见 `actionSplit` / `planWords`）。
+ */
+export const ACTION_BLOCK_MARK: Record<ActionBlockKey, string> = {
+  three: '三',
+  daily: '日',
+  step: '步',
+}
+
+/**
+ * 分类行的展开 / 收起（2026-09-22）。
+ * 三块今日清单与「今日收功」共用一处措辞，免得各写一份、各差一个字。
+ */
+export const ACTION_FOLD_WORDS = { open: '展开', close: '收起' }
+
+/* ==========================================================================
+ * 今日收功（2026-09-22：三模式词表 + 位置与形态）
+ *
+ * 三件事记在这里：
+ *  1. **名词不再写死**：原先卡片标题硬编码「今日收功」，科技模式下与同页的「每日任务」不搭，
+ *     也与小枢 23:00 那个结算面板同名（后者只是**读数**，这里是**写一句**，两回事）；
+ *     现在写一句走本词表，读数那个仍叫「当日汇总」（见 `useBuddy.ts` 的 `settleData`）。
+ *  2. **它默认摊开**（09-22 定案）：白天也展开 —— 收起只是用户自己的选择（「收起」按钮）。
+ *     原先那套"白天折一行、到 20 点自动摊开"的判据（`CLOSING_AUTO_HOUR`）已删。
+ *  3. **标题带小印字**（收 / 结）：与三块今日清单的 mark 同一套语言。
+ * ========================================================================== */
+
+export interface ClosingWords {
+  /** 标题左侧的小印字（与三块今日清单的 mark 同一套语言） */
+  mark: string
+  /** 区块标题 */
+  title: string
+  /** 折叠态那一行（还没收时才出现） */
+  fold: string
+  /** 输入框上边的说明 */
+  hint: string
+  /** 输入框占位提示 */
+  ph: string
+  /** 主按钮 */
+  act: string
+  /** 已收标记 */
+  tag: string
+  /** 收了但没留字时显示的那句 */
+  none: string
+  /** 撤销（还想再做点什么） */
+  redo: string
+}
+
+const LOCAL_CLOSING_WORDS: Record<ModeId, ClosingWords> = {
+  normal: {
+    mark: '收',
+    title: '今日收功',
+    fold: '今天还没收 · 留一句给今天 ›',
+    hint: '一天结束前，给自己留一句（可留空，直接收也行）',
+    ph: '今天最想留下的一句',
+    act: '收功',
+    tag: '已收',
+    none: '今天收了 —— 不留字也算。',
+    redo: '还想再做点什么 · 撤销收功',
+  },
+  tech: {
+    mark: '结',
+    title: '今日结算',
+    fold: '今天还没结算 · 记一条今天的结论 ›',
+    hint: '收尾前记一条今天最重要的结论（可留空，直接结算也行）',
+    ph: '今天最重要的一个结论',
+    act: '结算',
+    tag: '已结算',
+    none: '今天已结算 —— 没留记录。',
+    redo: '还要补点什么 · 撤销结算',
+  },
+  dao: {
+    mark: '收',
+    title: '今日收功',
+    fold: '今日尚未收功 · 留一句 ›',
+    hint: '一日将尽，留下一句今日所得（不留字亦可）',
+    ph: '今日所悟',
+    act: '收功',
+    tag: '已收',
+    none: '今日已收功 —— 未留字。',
+    redo: '尚有未了之事 · 撤销收功',
+  },
+}
+
+/** 今日收功的三模式说法（与另一处"读数的结算"刻意不同名，见本段的说明） */
+export function closingWords(mode: ModeId): ClosingWords {
+  return LOCAL_CLOSING_WORDS[mode] ?? LOCAL_CLOSING_WORDS.normal
 }

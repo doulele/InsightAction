@@ -1,5 +1,5 @@
 <template>
-  <view class="startup" :class="skinClass" hover-class="none" @click="go">
+  <view class="startup" :class="skinClass" :style="pageStyle" hover-class="none" @click="go">
     <!-- 品牌 -->
     <view class="startup__brand">
       <BrandSeal :size="84" />
@@ -65,6 +65,7 @@ import { onLoad, onUnload } from '@dcloudio/uni-app'
 import { computed, ref } from 'vue'
 import { useAppStore } from '@/stores/app'
 import { useSkinClass } from '@/composables/useSkin'
+import { safeTopPx } from '@/utils/safeArea'
 import { REVIEW_DAYS, reviewFinished, useProverbStore } from '@/stores/proverb'
 import { useObserveStore } from '@/stores/observe'
 import { todayKey } from '@/stores/daily'
@@ -85,6 +86,9 @@ const appStore = useAppStore()
 
 /** 皮肤跟随已保存的模式（normal / tech / dao），三种开屏随用户上次的选择出现 */
 const skinClass = useSkinClass()
+
+/** 页首顶距：状态栏真值 + 72rpx（原 `calc(var(--status-bar-height) + 72rpx)`，见 utils/safeArea.ts） */
+const pageStyle = { paddingTop: `${safeTopPx(72)}px` }
 
 /* ---------------- 今日这句：回响 → 自己的道 → 按偏好加权挑一句 ---------------- */
 const proverbs = useProverbStore()

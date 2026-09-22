@@ -1,13 +1,7 @@
 <template>
   <view class="page" :class="skinClass">
     <!-- 顶栏：返回 + 标题（子页统一样式） -->
-    <view class="nav">
-      <view class="nav__side" hover-class="gz-hover" @click="goBack">
-        <text class="nav__back">‹</text>
-      </view>
-      <text class="nav__title">定时入定</text>
-      <view class="nav__side" />
-    </view>
+        <SubNav :fallback="ROUTES.tabPause">定时入定</SubNav>
 
     <!-- 下一段入定 -->
     <view class="next" :class="{ 'is-now': isActiveNow }">
@@ -216,14 +210,6 @@ function toSandglass(): void {
   navigateTo(ROUTES.pauseSandglass)
 }
 
-function goBack(): void {
-  const pages = getCurrentPages()
-  if (pages.length > 1) {
-    uni.navigateBack()
-  } else {
-    uni.switchTab({ url: ROUTES.tabPause })
-  }
-}
 
 onShow(() => {
   nowTick.value = Date.now()

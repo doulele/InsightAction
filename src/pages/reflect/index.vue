@@ -244,6 +244,7 @@ import { refOfCard } from '@/utils/refSource'
 import { navigateTo, ROUTES } from '@/router/routes'
 import type { RouteParams, RoutePath } from '@/router/routes'
 import type { EntryBadge } from '@/components/EntryItem/EntryItem.vue'
+import { showModal } from '@/utils/dialog'
 
 const modeStore = useModeStore()
 const skinClass = useSkinClass()
@@ -511,7 +512,7 @@ function applyCard(): void {
 
 function dropCard(): void {
   if (!active.value?.raw) return
-  uni.showModal({
+  showModal({
     title: '移除这张卡？',
     content: '它会从你的知识库消失，不可找回。',
     confirmText: '移除',
