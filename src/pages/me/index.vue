@@ -214,7 +214,7 @@
  */
 import { computed, ref } from 'vue'
 import HallHead from '@/components/HallHead/HallHead.vue'
-import { hallLine } from '@/config/lexicon'
+import { hallLine, meEntryWords } from '@/config/lexicon'
 import WeekGuide from '@/components/WeekGuide/WeekGuide.vue'
 import { onShow } from '@dcloudio/uni-app'
 import { useAppStore } from '@/stores/app'
@@ -269,6 +269,13 @@ const p = (key: PhraseKey, mode: ModeId = modeStore.id): string => contentStore.
 
 /** 四维标签（观 · 辨源 / 观 · 摄入 / 观 · 鉴源）：大厅符号固定，职能词随模式 */
 const dl = useDimLabel()
+
+/**
+ * 入口卡片的说明句与徽标（2026-09-22）。
+ * 卡片**标题**不跟模式变（见 config/lexicon.ts 的 meEntryWords 段首说明），
+ * 变的只有说明句与徽标 —— 这一列的文案原先全是写死的一口普通话。
+ */
+const mw = computed(() => meEntryWords(modeStore.id))
 
 onShow(() => {
   daily.ensureToday()
@@ -515,11 +522,13 @@ interface MoreEntry {
 
 /* 初始测评入口：已建档显示结果与重测倒计时，间隔 30 天 */
 const assessmentEntry = computed<{ subtitle: string; badge: EntryBadge }>(() => {
+  const w = mw.value
   const r = assessment.get(modeMeta.value.id)
   if (!r) {
+    /* 题库名取 contentStore.bankOf（远端可改），与模式选择页那张 chip 同一个来源 */
     return {
-      subtitle: `做一次「${modeMeta.value.assessmentName}」建档，建立你的起点`,
-      badge: { text: '待建档', tone: 'muted' },
+      subtitle: w.assessIdle(contentStore.bankOf(modeMeta.value.id).title),
+      badge: { text: w.assessIdleBadge, tone: 'muted' },
     }
   }
   const bank = getAssessmentBank(modeMeta.value.id)
@@ -529,9 +538,9 @@ const assessmentEntry = computed<{ subtitle: string; badge: EntryBadge }>(() => 
   const remain = assessment.retakeRemainDays(modeMeta.value.id)
   return {
     /* 满分用存档里的 maxScore（老存档 18、新版 24）——写死会造成"分数没变，比例却变了"的困惑 */
-    subtitle: `${tier} · ${r.score}/${r.maxScore} 分 · ${date} 建档`,
+    subtitle: w.assessDone(tier, r.score, r.maxScore, date),
     badge:
-      remain > 0 ? { text: `${remain} 天后可重测`, tone: 'muted' } : { text: '可重测', tone: 'accent' },
+      remain > 0 ? { text: w.assessRetakeIn(remain), tone: 'muted' } : { text: w.assessRetakeNow, tone: 'accent' },
   }
 })
 
@@ -594,7 +603,7 @@ const moreEntries = computed<MoreEntry[]>(() => [
   {
     mark: '课',
     title: '今日日课卡',
-    subtitle: '每日一张 · 境界与四维 · 可转发给同道',
+    subtitle: mw.value.dailyCard,
     url: ROUTES.meDailyCard,
   },
   {
@@ -607,32 +616,34 @@ const moreEntries = computed<MoreEntry[]>(() => [
   {
     mark: '板',
     title: '修行看板 · 四维与转化',
-    subtitle: '四维雷达 · 认知深度分布 · 知→行转化率 · 成长图谱',
+    subtitle: mw.value.board,
     badge:
       trace.traces.length > 0
-        ? { text: `转化 ${conversionPct.value}%`, tone: 'accent' }
-        : { text: '待积累', tone: 'muted' },
+        ? { text: mw.value.boardBadge(conversionPct.value), tone: 'accent' }
+        : { text: mw.value.pending, tone: 'muted' },
     url: ROUTES.meBoard,
   },
   {
     mark: '勋',
     title: '成就墙 · 徽章',
-    subtitle: `已解锁 ${badgeUnlocked.value} / ${BADGE_RULES.length} 枚 · 每一枚都是一段真实的坚持`,
+    subtitle: mw.value.badges(badgeUnlocked.value, BADGE_RULES.length),
     badge: badgeUnlocked.value > 0 ? { text: `${badgeUnlocked.value}/${BADGE_RULES.length}`, tone: 'accent' } : undefined,
     url: ROUTES.meAchievements,
   },
   {
     mark: '历',
     title: '活跃日历',
-    subtitle: '本月已活跃 ' + activeMonth.value + ' 天 · 每一天的投入都看得见',
-    badge: activeMonth.value > 0 ? { text: `${activeMonth.value} 天`, tone: 'accent' } : undefined,
+    subtitle: mw.value.calendar(activeMonth.value),
+    badge: activeMonth.value > 0 ? { text: mw.value.calendarBadge(activeMonth.value), tone: 'accent' } : undefined,
     url: ROUTES.meCalendar,
   },
   {
     mark: '时',
     title: '痕迹时间轴',
-    subtitle: trace.traces.length > 0 ? `累计留下 ${trace.traces.length} 条痕迹 · 在真实世界的回响` : '从今天的第一件小事开始留痕',
-    badge: trace.traces.length > 0 ? { text: `${trace.traces.length} 条`, tone: 'accent' } : undefined,
+    subtitle:
+      trace.traces.length > 0 ? mw.value.timeline(trace.traces.length) : mw.value.timelineEmpty,
+    badge:
+      trace.traces.length > 0 ? { text: mw.value.timelineBadge(trace.traces.length), tone: 'accent' } : undefined,
     url: ROUTES.meTimeline,
   },
   {
@@ -640,9 +651,14 @@ const moreEntries = computed<MoreEntry[]>(() => [
     title: '我的箴言',
     subtitle:
       proverbs.count > 0
-        ? `已记住 ${proverbs.count} 句 · 开屏 ${proverbs.countBySource.startup} · 小枢 ${proverbs.countBySource.buddy}`
-        : '遇到想留住的句子，点亮「记住这句」就收进这里',
-    badge: proverbs.count > 0 ? { text: `${proverbs.count} 句`, tone: 'accent' } : undefined,
+        ? mw.value.proverbs(
+            proverbs.count,
+            proverbs.countBySource.startup,
+            proverbs.countBySource.buddy,
+          )
+        : mw.value.proverbsEmpty,
+    badge:
+      proverbs.count > 0 ? { text: mw.value.proverbsBadge(proverbs.count), tone: 'accent' } : undefined,
     url: ROUTES.meProverbs,
   },
   /*
@@ -655,13 +671,13 @@ const moreEntries = computed<MoreEntry[]>(() => [
     title: '时间胶囊',
     subtitle:
       capsule.count > 0
-        ? `封着 ${capsule.sealed.length} 条 · 拆开过 ${capsule.opened.length} 条 · 只在本机留存`
-        : '给未来的自己留一句话，选个日子，到期那天递给你',
+        ? mw.value.capsule(capsule.sealed.length, capsule.opened.length)
+        : mw.value.capsuleEmpty,
     badge: capsule.dueCount
-      ? { text: `${capsule.dueCount} 条到期`, tone: 'accent' }
+      ? { text: mw.value.capsuleDue(capsule.dueCount), tone: 'accent' }
       : capsule.sealed.length
-        ? { text: `${capsule.sealed[0].dueDay} 见`, tone: 'muted' }
-        : { text: '封一条', tone: 'muted' },
+        ? { text: mw.value.capsuleNext(capsule.sealed[0].dueDay), tone: 'muted' }
+        : { text: mw.value.capsuleSeal, tone: 'muted' },
     url: ROUTES.meCapsule,
   },
   {
@@ -669,22 +685,22 @@ const moreEntries = computed<MoreEntry[]>(() => [
     title: '年度回顾',
     subtitle:
       yearStat.value.activeDays > 0
-        ? `今年 ${yearStat.value.activeDays} 天有痕迹 · 入账修为 ${yearStat.value.xp} 点`
-        : '一年到头回头看一眼：今年你留下了什么',
+        ? mw.value.review(yearStat.value.activeDays, yearStat.value.xp)
+        : mw.value.reviewEmpty,
     badge:
       yearStat.value.activeDays > 0
-        ? { text: `${yearStat.value.activeDays} 天`, tone: 'accent' }
-        : { text: '待积累', tone: 'muted' },
+        ? { text: mw.value.reviewBadge(yearStat.value.activeDays), tone: 'accent' }
+        : { text: mw.value.pending, tone: 'muted' },
     url: ROUTES.meReview,
   },
   {
     mark: '羁',
     title: '小枢羁绊 · 对话录',
-    subtitle: `与「${modeMeta.value.assistantName}」相见 ${bondXp.value} 次 · 形态「${buddyStageName.value}」· 对话与箴言都在这里`,
+    subtitle: mw.value.bond(modeMeta.value.assistantName, bondXp.value, buddyStageName.value),
     badge:
       bondLv.value > 1
-        ? { text: `Lv.${bondLv.value}`, tone: 'accent' }
-        : { text: '初遇', tone: 'muted' },
+        ? { text: mw.value.bondBadge(bondLv.value), tone: 'accent' }
+        : { text: mw.value.bondNew, tone: 'muted' },
     url: ROUTES.meBond,
   },
   /*
@@ -700,14 +716,14 @@ const moreEntries = computed<MoreEntry[]>(() => [
   {
     mark: '伴',
     title: `道侣 · ${modeMeta.value.companionName}`,
-    subtitle: '结缘码绑定、互看今日完成度、低频事件提醒 —— 已排入后续，当前不做',
-    badge: { text: '后续做', tone: 'muted' },
+    subtitle: mw.value.companion,
+    badge: { text: mw.value.companionBadge, tone: 'muted' },
   },
   {
     mark: '设',
     title: '设置',
-    subtitle: '修行语言 · 提醒 · 数据 · 关于',
-    badge: { text: '可用', tone: 'accent' },
+    subtitle: mw.value.settings,
+    badge: { text: mw.value.settingsBadge, tone: 'accent' },
     url: ROUTES.settings,
   },
 ])

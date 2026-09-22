@@ -190,6 +190,13 @@
   color: $gz-ink-3;
 }
 
+/* 「还在记着」：只在到期时出现 —— 用实心主题色，别与副操作的描边样式混在一起 */
+.fav__btn--echo {
+  background: $gz-accent;
+  color: $gz-on-cta;
+  font-weight: 700;
+}
+
 /* 转知识卡：描边强调（这是"沉淀"动作，比复制/置顶更重一步） */
 .fav__btn--card {
   background: transparent;

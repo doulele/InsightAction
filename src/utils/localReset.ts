@@ -50,7 +50,7 @@ export function resetPracticeData(): void {
   daily.$patch({ dateKey: todayKey(), todos: freshTodos() })
   useReminderStore().$patch({ reminders: [] })
   useReadLaterStore().$patch({ items: [] })
-  useProverbStore().$patch({ items: [] })
+  useProverbStore().$patch({ items: [], echoDay: '' })
   useObserveStore().$patch({ items: [] })
   // 草稿也是内容：重置修行数据时一并清掉，免得留一份"看不见的输入"在下一次进录入页时冒出来
   useComposeDraftStore().$patch({ draft: null })

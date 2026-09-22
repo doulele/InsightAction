@@ -66,6 +66,14 @@
           </view>
         </view>
         <view class="fav__acts">
+          <view
+            v-if="isDue(item)"
+            class="fav__btn fav__btn--echo"
+            hover-class="gz-hover"
+            @click="markEcho(item)"
+          >
+            还在记着
+          </view>
           <view class="fav__btn" hover-class="gz-hover" @click="togglePin(item.id)">
             {{ item.pinned ? '取消置顶' : '置顶' }}
           </view>
@@ -92,13 +100,16 @@
 /**
  * 我 · 我的箴言（分包 subpkg-me/proverbs）：收藏句子的统一落点。
  * 数据 = stores/proverb.ts（开屏箴言 / 小枢对话 / 日课三处来源都汇到这里），
- * 支持搜索、来源筛选、置顶、复制、移除；纯本地，随备份体系一起导出/恢复。
+ * 支持搜索、来源筛选、置顶、复制、移除，以及到点的回响在这里显式确认（「还在记着」）；
+ * 纯本地，随备份体系一起导出/恢复。
  */
 import { computed, ref } from 'vue'
 import {
   useProverbStore,
   SOURCE_LABEL,
+  REVIEW_DAYS,
   isDue,
+  reviewFinished,
   reviewHint,
   type ProverbItem,
   type ProverbSource,
@@ -216,6 +227,29 @@ function remove(id: number): void {
 
 function togglePin(id: number): void {
   store.togglePin(id)
+}
+
+/**
+ * 「还在记着」：主动确认还记得 —— 这一条推进下一阶（1 / 3 / 7 天）。
+ *
+ * 为什么列表页也要有：开屏的自动结算（`store.settleEcho`）一天只推一条，
+ * 队列里剩下的在这里可以手动清；而此前 `markReviewed` 全项目只有开屏那个按钮一个调用点，
+ * 那个按钮又基本按不到 —— 阶梯于是永远停在第 1 阶、最早那条天天钉在扉页上（2026-09-22 自查）。
+ * 按钮只在 `isDue()` 时出现：没到点的句子不该被"确认"，也顺带避免一天里被连推两阶。
+ */
+function markEcho(item: ProverbItem): void {
+  /*
+   * 自己判到期（与开屏、与 store 的 settleEcho 同一道守卫）：`markReviewed` 是
+   * **无条件推一阶**的原语，连点两下就会一天连推两阶。第一次推完就不再到期，
+   * 第二次直接返回（按钮也会随之消失）。
+   */
+  if (!isDue(item)) return
+  store.markReviewed(item.id)
+  const done = reviewFinished(item)
+  uni.showToast({
+    title: done ? '这句已经是你的了' : `${REVIEW_DAYS[item.reviewCount]} 天后再回响`,
+    icon: 'none',
+  })
 }
 
 </script>

@@ -178,7 +178,15 @@ export function setSoundEnabled(on: boolean): void {
   if (!on) {
     ambientWanted = null
     silentStop()
+    return
   }
+  /*
+   * 开声音的这一刻顺手预热一记全集（2026-09-22）：
+   * ① `App.onLaunch` 会把上次的开关同步进来 —— 于是**启动即预热**；
+   * ② 用户中途在设置页打开开关也走这里（那声试听不必再等下载）。
+   * 环境音**不在这里预热**（全集 3.1MB，当天大概率只用一项），它们走"进页预热选中项 + immediate"。
+   */
+  prefetchAllCues()
 }
 
 /* ------------------------------------------------------------------ *
@@ -868,6 +876,32 @@ export function prefetchCue(kind: CueKind): void {
 export function prefetchAmbient(files: string[]): void {
   if (!soundOn || !files.length) return
   void resolveChain(files)
+}
+
+/**
+ * 预热**全部一记**（2026-09-22 加）。
+ *
+ * 一记全集只有约 **90KB**（引磬 22K / 收功铃 31K / 呼吸吸 17K / 呼吸呼 16K / 落定 4K），
+ * 一次下齐几乎免费，换来「任何时刻点哪都立刻有声」。它专门解决三个
+ * "用户已经按下去了才开始下载"的场景：
+ *   · **收功铃** —— 沙漏 / 茶室 / 呼吸干预都是跑完那一程（5–60 分钟）才第一次请求，
+ *     中途只靠一个瞬时网络，没网就彻底没有那一声；
+ *   · **落定** —— 止念一刻提交那一刻才请求；
+ *   · **设置页开「静修声音」那声试听** —— 从没进过静修页的用户必然要等。
+ *
+ * 不预热环境音（**刻意的**）：全集 3.1MB，而一次只用一项 ——
+ * 沙漏走时声 1.1MB、茶室五盏 1.6MB，用户往往只待 5 分钟只听一盏；
+ * 它们走「进页预热选中项 + 起播 `immediate` 边下边播」这条更省的折中。
+ *
+ * **幂等**：已解析过的（`cueResolved`）、正在下的（`inflight`）、已有本地文件的都直接返回；
+ * 空链自动跳过（例如当前的 `hold`）。所以可以放心在多个入口重复调。
+ * 调用点：`setSoundEnabled(true)`（含 App 启动同步开关）、「止」大厅 `onShow` 兜底。
+ */
+export function prefetchAllCues(): void {
+  if (!soundOn) return
+  for (const kind of Object.keys(CUE_SOURCES) as CueKind[]) {
+    if (CUE_SOURCES[kind].length > 0) prefetchCue(kind)
+  }
 }
 
 /* ------------------------------------------------------------------ *

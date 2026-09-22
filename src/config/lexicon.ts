@@ -549,3 +549,200 @@ const LOCAL_CLOSING_WORDS: Record<ModeId, ClosingWords> = {
 export function closingWords(mode: ModeId): ClosingWords {
   return LOCAL_CLOSING_WORDS[mode] ?? LOCAL_CLOSING_WORDS.normal
 }
+
+/* ==========================================================================
+ * 「我」页入口卡片（2026-09-22）：那一列卡片的**说明句与徽标**的三套说法
+ *
+ * 起因：「初始测评」那张卡写着「建档」、日课卡写着「境界与同道」（「境界」是修仙的
+ * 成长名，普通是阶位、科技是段位）—— 同一列的兄弟卡也全是写死的一口普通话。
+ * 用户切了模式，最常点的那一列却不变，等于没换模式。
+ *
+ * 三条口径：
+ *  1. **标题不做主题化**（初始测评 / 成就墙 / 痕迹时间轴 / 设置……）：
+ *     标题是"我在哪"的定位词，跟着模式换，换个模式就找不到入口了
+ *     —— 与设置页「行标题保持功能清晰」同一条（见 phrases.ts 顶部注释）。
+ *     小印字（课 / 测 / 板 / 勋…）同理，与 ACTION_BLOCK_MARK 一样属骨架，不随模式变。
+ *     变的只有**说明句与徽标**：那才是"说话的口吻"。
+ *  2. **带参数，所以放 lexicon 而不是 phrases**：这一列的说明句几乎都带数字
+ *     （已记住 N 句 / 封着 N 条 / 本月 N 天），与大厅状态栏同一类；phrases 只放无占位符的固定短语。
+ *  3. **纯内置，不接远端下发** —— 与 planWords / closingWords 同一处理：
+ *     这是入口说明句，改文案随发版即可，不值得为它多开一条 content.json 通道。
+ *     顺序沿用 phrases.ts 的基调：normal 生活感 / tech 指标感 / dao 道统感。
+ * ========================================================================== */
+
+export interface MeEntryWords {
+  /** 今日日课卡 · 说明句 */
+  dailyCard: string
+
+  /* ---- 初始测评：未建档 / 已建档两种形态（徽标另有 待建档 / N 天后可重测 / 可重测 三态） ---- */
+  /** 未建档说明句（`bank` 是题库名：生活基线 / 数字画像 / 灵根检测） */
+  assessIdle: (bank: string) => string
+  assessIdleBadge: string
+  /** 已建档说明句：称号 · 分数 · 日期 */
+  assessDone: (tier: string, score: number, max: number, date: string) => string
+  assessRetakeIn: (days: number) => string
+  assessRetakeNow: string
+
+  /* ---- 修行看板 ---- */
+  board: string
+  boardBadge: (pct: number) => string
+  /** 「还没攒够数据」的通用徽标（修行看板与年度回顾共用） */
+  pending: string
+
+  /* ---- 成就墙 ---- */
+  badges: (got: number, total: number) => string
+
+  /* ---- 活跃日历 ---- */
+  calendar: (days: number) => string
+  calendarBadge: (days: number) => string
+
+  /* ---- 痕迹时间轴 ---- */
+  timeline: (n: number) => string
+  timelineEmpty: string
+  timelineBadge: (n: number) => string
+
+  /* ---- 我的箴言 ---- */
+  /** 已记住 N 句 · 其中开屏 A / 小枢 B */
+  proverbs: (n: number, startup: number, buddy: number) => string
+  proverbsEmpty: string
+  proverbsBadge: (n: number) => string
+
+  /* ---- 时间胶囊 ---- */
+  capsule: (sealed: number, opened: number) => string
+  capsuleEmpty: string
+  capsuleDue: (n: number) => string
+  /** 最近一条的到期日，如「2027-01-01 见」 */
+  capsuleNext: (day: string) => string
+  capsuleSeal: string
+
+  /* ---- 年度回顾 ---- */
+  review: (days: number, xp: number) => string
+  reviewEmpty: string
+  reviewBadge: (days: number) => string
+
+  /* ---- 小枢羁绊 ---- */
+  bond: (name: string, times: number, stage: string) => string
+  bondBadge: (lv: number) => string
+  bondNew: string
+
+  /* ---- 道侣（押后项，只作如实标注） ---- */
+  companion: string
+  companionBadge: string
+
+  /* ---- 设置 ---- */
+  settings: string
+  settingsBadge: string
+}
+
+const LOCAL_ME_ENTRY_WORDS: Record<ModeId, MeEntryWords> = {
+  normal: {
+    dailyCard: '每日一张 · 阶位与四维 · 可转发留存',
+    assessIdle: (bank) => `做一次「${bank}」建档，建立你的起点`,
+    assessIdleBadge: '待建档',
+    assessDone: (tier, score, max, date) => `${tier} · ${score}/${max} 分 · ${date} 建档`,
+    assessRetakeIn: (days) => `${days} 天后可重测`,
+    assessRetakeNow: '可重测',
+    board: '四维雷达 · 认知深度分布 · 知→行转化率 · 成长曲线',
+    boardBadge: (pct) => `转化 ${pct}%`,
+    pending: '待积累',
+    badges: (got, total) => `已点亮 ${got} / ${total} 枚 · 每一枚都是一段真实的坚持`,
+    calendar: (days) => `本月已留下 ${days} 天 · 每一天的投入都看得见`,
+    calendarBadge: (days) => `${days} 天`,
+    timeline: (n) => `累计留下 ${n} 条痕迹 · 都是真实发生过的事`,
+    timelineEmpty: '从今天的第一件小事开始留痕',
+    timelineBadge: (n) => `${n} 条`,
+    proverbs: (n, startup, buddy) => `已记住 ${n} 句 · 开屏 ${startup} · 小枢 ${buddy}`,
+    proverbsEmpty: '遇到想留住的句子，点「记住这句」就收进这里',
+    proverbsBadge: (n) => `${n} 句`,
+    capsule: (sealed, opened) => `封着 ${sealed} 条 · 拆开过 ${opened} 条 · 只在本机留存`,
+    capsuleEmpty: '给未来的自己留一句话，选个日子，到期那天递给你',
+    capsuleDue: (n) => `${n} 条到期`,
+    capsuleNext: (day) => `${day} 见`,
+    capsuleSeal: '封一条',
+    review: (days, xp) => `今年 ${days} 天有痕迹 · 累计 ${xp} 点修为`,
+    reviewEmpty: '一年到头回头看一眼：今年你留下了什么',
+    reviewBadge: (days) => `${days} 天`,
+    bond: (name, times, stage) => `与「${name}」相见 ${times} 次 · 形态「${stage}」· 对话与箴言都在这里`,
+    bondBadge: (lv) => `Lv.${lv}`,
+    bondNew: '初遇',
+    companion: '互加伙伴、互看今日完成度、低频事件提醒 —— 已排入后续，当前不做',
+    companionBadge: '后续做',
+    settings: '修行语言 · 提醒 · 数据 · 关于',
+    settingsBadge: '可用',
+  },
+  tech: {
+    dailyCard: '每日一张 · 段位与指标 · 可导出转发',
+    assessIdle: (bank) => `跑一次「${bank}」采样，建立基线参数`,
+    assessIdleBadge: '待采样',
+    assessDone: (tier, score, max, date) => `${tier} · ${score}/${max} · ${date} 采样`,
+    assessRetakeIn: (days) => `${days} 天后可重采样`,
+    assessRetakeNow: '可重采样',
+    board: '四维雷达 · 加工深度分布 · 知→行转化率 · 增长曲线',
+    boardBadge: (pct) => `转化率 ${pct}%`,
+    pending: '无样本',
+    badges: (got, total) => `已解锁 ${got} / ${total} 枚 · 每枚对应一项已验证的行为`,
+    calendar: (days) => `本月有效 ${days} 天 · 每次投入都有记录`,
+    calendarBadge: (days) => `${days} 天`,
+    timeline: (n) => `累计 ${n} 条事件 · 全部为已发生的行为`,
+    timelineEmpty: '完成第一件事后，事件会写入这里',
+    timelineBadge: (n) => `${n} 条`,
+    proverbs: (n, startup, buddy) => `已收藏 ${n} 条 · 开屏 ${startup} · 小枢 ${buddy}`,
+    proverbsEmpty: '遇到值得留存的内容，点「记住这句」即写入此处',
+    proverbsBadge: (n) => `${n} 条`,
+    capsule: (sealed, opened) => `已封存 ${sealed} 条 · 已解封 ${opened} 条 · 仅存本机`,
+    capsuleEmpty: '写入一条给未来的数据，设定到期日自动送达',
+    capsuleDue: (n) => `${n} 条到期`,
+    capsuleNext: (day) => `${day} 送达`,
+    capsuleSeal: '封一条',
+    review: (days, xp) => `今年 ${days} 天有记录 · 累计 ${xp} 点`,
+    reviewEmpty: '年度数据回看：今年产生了什么',
+    reviewBadge: (days) => `${days} 天`,
+    bond: (name, times, stage) => `与「${name}」交互 ${times} 次 · 形态「${stage}」· 对话与箴言都在此`,
+    bondBadge: (lv) => `Lv.${lv}`,
+    bondNew: '未交互',
+    companion: '配对绑定、共享今日完成度、低频事件提醒 —— 已排入后续，暂不实现',
+    companionBadge: '待实现',
+    settings: '运行模式 · 提醒 · 数据 · 关于',
+    settingsBadge: '就绪',
+  },
+  dao: {
+    dailyCard: '每日一张 · 境界与四维 · 可传于同道',
+    assessIdle: (bank) => `测一次「${bank}」，立下入门根骨`,
+    assessIdleBadge: '未立档',
+    assessDone: (tier, score, max, date) => `${tier} · ${score}/${max} 根骨 · ${date} 立档`,
+    assessRetakeIn: (days) => `${days} 日后可再测`,
+    assessRetakeNow: '可再测',
+    board: '四维雷达 · 悟道深浅分布 · 知→行转化率 · 修行曲线',
+    boardBadge: (pct) => `转化 ${pct}%`,
+    pending: '未起',
+    badges: (got, total) => `已得 ${got} / ${total} 枚徽记 · 每一记皆是一段真实的修行`,
+    calendar: (days) => `本月行持 ${days} 日 · 每一日皆有着落`,
+    calendarBadge: (days) => `${days} 日`,
+    timeline: (n) => `累计 ${n} 道痕迹 · 皆真实所行`,
+    timelineEmpty: '自今日第一桩小事起留痕',
+    timelineBadge: (n) => `${n} 道`,
+    proverbs: (n, startup, buddy) => `已录 ${n} 句 · 开屏 ${startup} · 小枢 ${buddy}`,
+    proverbsEmpty: '遇有可留之句，点「记住这句」便收入囊中',
+    proverbsBadge: (n) => `${n} 句`,
+    capsule: (sealed, opened) => `封存 ${sealed} 条 · 已启 ${opened} 条 · 只留于本机`,
+    capsuleEmpty: '留一句与来日的自己，择期而封，到期自启',
+    capsuleDue: (n) => `${n} 条待启`,
+    capsuleNext: (day) => `${day} 启封`,
+    capsuleSeal: '封一条',
+    review: (days, xp) => `今年 ${days} 日有痕 · 累计修为 ${xp} 点`,
+    reviewEmpty: '岁末回望：这一年的道行何在',
+    reviewBadge: (days) => `${days} 日`,
+    bond: (name, times, stage) => `与「${name}」相会 ${times} 次 · 形态「${stage}」· 对谈与箴言皆录于此`,
+    bondBadge: (lv) => `Lv.${lv}`,
+    bondNew: '初会',
+    companion: '结缘码绑定、互看今日功德、低频提醒 —— 已排入后续，当下不做',
+    companionBadge: '后续',
+    settings: '修行语言 · 提醒 · 数据 · 关于',
+    settingsBadge: '可用',
+  },
+}
+
+/** 「我」页入口卡片的说明句与徽标词表（纯内置，见本段说明） */
+export function meEntryWords(mode: ModeId): MeEntryWords {
+  return LOCAL_ME_ENTRY_WORDS[mode] ?? LOCAL_ME_ENTRY_WORDS.normal
+}

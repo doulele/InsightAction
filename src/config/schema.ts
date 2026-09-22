@@ -7,14 +7,15 @@
  *  - 恢复时若 `备份.schema > SCHEMA_VERSION` → **拒绝恢复**并明确提示
  *    （这是「换机后脊椎变脏数据」的最后一道防线，宁可不让恢复，也不能让界面错乱）。
  *
- * 当前 = 12：新增 stores/badges.ts（徽章点亮的留痕 id + 点亮时刻）—— 徽章原先是纯实时判定，
- * 「持恒 / 守七」这类依赖当下连续状态的会在断掉之后熄灭；现在以留痕为准取并集，点亮不再被收回。
- * 上一版（11）：observe 的「道」增 daoLine（凝练句，≤24 字）。
+ * 当前 = 13：proverb 增 echoDay（开屏回响"今天已结算过"的日期键）—— 1/3/7 天阶梯由
+ * 「点按钮才推进」改成「展示即推进、一天一条」，修掉"不点就永远钉在同一条"的缺陷。
+ * 上一版（12）：新增 stores/badges.ts（徽章点亮的留痕 id + 点亮时刻）。
+ * 再上一版（11）：observe 的「道」增 daoLine（凝练句，≤24 字）。
  * 再上一版（9）：步骤嵌套（plan 的 PlanNode 增 parentId / progress）与两份正文（observe 增
  * contentHtml / imported / handleNote），knowledge 增 domain / qa / ref，
  * 并删掉 stores/quality.ts（信息源质量榜 → 派生的来源账本）。
  */
-export const SCHEMA_VERSION = 12
+export const SCHEMA_VERSION = 13
 
 /** 结构升级记录：给未来的自己看「哪一版改了什么」 */
 export const SCHEMA_HISTORY: ReadonlyArray<{ version: number; note: string }> = [
@@ -44,5 +45,9 @@ export const SCHEMA_HISTORY: ReadonlyArray<{ version: number; note: string }> = 
   {
     version: 12,
     note: '新增 stores/badges.ts：徽章点亮的**留痕**（id + 点亮时刻）。此前徽章是纯实时判定，依赖当下连续状态的「持恒」（习惯连续打卡 7 天）与「守七」（连续 7 天立约守住）会在断掉之后熄灭；现在显示取「当下命中 ∪ 已留痕」，点亮不再被收回。判定规则仍然只有 config/badges.ts 一份。老备份没有这个 store，按"未点亮"兼容，首次进入「我」页会自动把当前该得的那几枚补记下来',
+  },
+  {
+    version: 13,
+    note: 'stores/proverb.ts 增 echoDay（开屏回响"今天已经结算过"的日期键，跨天自动解禁，与 knowledge 的 echoDay 同一范式）：回响的 1/3/7 天阶梯从「点了「还在记着」才推进」改成「开屏展示即推进、一天最多一条」，并在「我 · 我的箴言」补上显式推进入口。老数据没有这一格，按"今天还没结算"兼容（最多当天多推一阶），无需迁移脚本',
   },
 ]

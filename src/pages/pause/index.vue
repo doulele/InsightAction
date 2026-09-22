@@ -172,6 +172,7 @@ import { syncTabBar } from '@/utils/skin'
 import { hallLine } from '@/config/lexicon'
 import { stopPenTip } from '@/utils/growth'
 import { navigateTo, ROUTES } from '@/router/routes'
+import { prefetchAllCues } from '@/utils/audio'
 import type { RouteParams, RoutePath } from '@/router/routes'
 import type { EntryBadge } from '@/components/EntryItem/EntryItem.vue'
 
@@ -212,6 +213,13 @@ onShow(() => {
    * pages.json 里的静态标题只作首帧兜底（它不是动态的），这行让冷启动后立刻对上。
    */
   uni.setNavigationBarTitle({ title: `${dl('pause')}大厅` })
+  /*
+   * 一记全集预热（2026-09-22）：约 90KB 换「从大厅点进任何一页都立刻有声」。
+   * `setSoundEnabled` 那一路已在启动时试过一次，这里是**兜底**：启动那次没网 / 下载失败、
+   * 或用户从通知等入口直接落到本页时，都能补上。函数幂等，反复调无成本。
+   * 环境音刻意不在这里预热（全集 3.1MB，一次只用一项），见 utils/audio.ts 的 prefetchAllCues。
+   */
+  prefetchAllCues()
 })
 
 /** 今日定力：真实专注累计（沙漏/茶室子页写入）；连胜按自然日真实统计 */

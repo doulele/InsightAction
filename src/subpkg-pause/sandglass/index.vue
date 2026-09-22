@@ -195,10 +195,16 @@ function pickAmbient(id: string): void {
   if (phase.value === 'running') applyAmbient()
 }
 
-/** 把当前选中的走时声落到播放器（「静」= 停环境音） */
+/**
+ * 把当前选中的走时声落到播放器（「静」= 停环境音）。
+ *
+ * `immediate`（2026-09-22 加）：**计时中途换走时声**时，若这一项还没缓存，
+ * 先流网络地址立刻出声、同时把文件存好 —— 否则要等整份下完（沙粒 144KB / 滴答 311KB）
+ * 才响，中间静 1–2 秒，用户会以为"点了没反应"。已经缓存时它自动改走本地，没有副作用。
+ */
 function applyAmbient(): void {
   const track = ambient.value.track
-  if (track) startAmbient(track.files, track.volume)
+  if (track) startAmbient(track.files, track.volume, { immediate: true })
   else stopAmbient()
 }
 

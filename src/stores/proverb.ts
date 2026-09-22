@@ -132,6 +132,12 @@ export const useProverbStore = defineStore(
     const count = computed(() => items.value.length)
 
     /**
+     * 今天已经结算过的那一天（跨天自动解禁）—— 与 `stores/knowledge.ts` 的「旧卡重逢」同一范式。
+     * 开屏每次见面只推一阶（见 `settleEcho`），这条就是那道闸。
+     */
+    const echoDay = ref('')
+
+    /**
      * 今天到点该回响的收藏（早到期的排前面），开屏页取第一条。
      *
      * 每次都重算一遍：条目上限 99，算得起，不值得为此做缓存。
@@ -236,6 +242,32 @@ export const useProverbStore = defineStore(
       it.lastReviewAt = Date.now()
     }
 
+    /**
+     * 开屏「今日一签」见到一条回响 = **这次见面已经发生**，记为已见（展示即推进）。
+     *
+     * 为什么不由按钮推进：开屏整页 `@click="go"`（点哪都跳过），「还在记着」基本按不到 ——
+     * 于是阶梯永远停在第 1 阶、最早到期的那条天天钉在扉页上（2026-09-22 自查修掉）。
+     * 口径与 `reviewCountForAge()`（迁移旧收藏时按时间推进阶梯、不看用户点没点）一致。
+     *
+     * 为什么一天只推一条（`echoDay`）：一天里多次冷启动会把整个队列一次冲完，
+     * 而 1/3/7 天是**间隔**回响，不是"一次见面"。
+     *
+     * 副作用要说清（2026-09-22 自测时按模拟结果校正过）：结算后这条就离开了到期队列，
+     * 于是**同一天的第二次冷启动看到的是"队列里下一个到期的"**（它一直停在头条、当天不再推进，
+     * 所以第二次之后的每次冷启动都是它）。即"一天最多换一次句子"，不是"整天钉在同一句"。
+     *
+     * @param dayKey 调用方已冻结的日期键（与开屏排班同一天，避免跨零点时两处取到不同的天）
+     * @returns 是否推了一阶
+     */
+    function settleEcho(dayKey: string, id: number): boolean {
+      if (!dayKey || echoDay.value === dayKey) return false
+      const it = byId(id)
+      if (!it || !isDue(it)) return false
+      echoDay.value = dayKey
+      markReviewed(id)
+      return true
+    }
+
     /** 标记为「已转成知识卡」；已转过返回 false（调用方据此提示，不重复入库） */
     function markCarded(id: number): boolean {
       const it = byId(id)
@@ -290,6 +322,7 @@ export const useProverbStore = defineStore(
       count,
       countBySource,
       dueReviews,
+      echoDay,
       tagPreference,
       has,
       add,
@@ -297,6 +330,7 @@ export const useProverbStore = defineStore(
       toggle,
       byId,
       markReviewed,
+      settleEcho,
       markCarded,
       setNote,
       togglePin,
@@ -304,6 +338,6 @@ export const useProverbStore = defineStore(
     }
   },
   {
-    persist: { key: 'proverb', paths: ['items'] },
+    persist: { key: 'proverb', paths: ['items', 'echoDay'] },
   },
 )
