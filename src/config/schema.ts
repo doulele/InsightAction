@@ -7,7 +7,12 @@
  *  - 恢复时若 `备份.schema > SCHEMA_VERSION` → **拒绝恢复**并明确提示
  *    （这是「换机后脊椎变脏数据」的最后一道防线，宁可不让恢复，也不能让界面错乱）。
  *
- * 当前 = 14：readLater 的条目增 form（一句话 / 文章 / 视频）与 title / link ——
+ * 当前 = 16：新增 stores/feedback.ts（回音壁的本机留痕）—— 待发的队列（写好了没送出去的，
+ * 进页自动重发）、成功送出的条数（徽章「回音」的判定依据）、更新版本号。
+ * 老数据没有这个 store，按空队列兼容，无需迁移脚本。
+ * 上一版（15）：settings 增 soundLevel（静修音效的「声音大小」档：小 / 中 / 大）——
+ * 老数据没有这一格，读时按默认「大」兜底，无需迁移脚本。
+ * 上一版（14）：readLater 的条目增 form（一句话 / 文章 / 视频）与 title / link ——
  * 「稍后读」从"只能存一句话"扩成三种碎片形态，保留时长随形态分（一句话 24 小时、
  * 文章与视频 7 天）。老条目没有这一格，按 'quote' 兜底并在 prune() 里顺手补上。
  * 上一版（13）：proverb 增 echoDay（开屏回响"今天已结算过"的日期键）—— 1/3/7 天阶梯由
@@ -18,7 +23,7 @@
  * contentHtml / imported / handleNote），knowledge 增 domain / qa / ref，
  * 并删掉 stores/quality.ts（信息源质量榜 → 派生的来源账本）。
  */
-export const SCHEMA_VERSION = 14
+export const SCHEMA_VERSION = 16
 
 /** 结构升级记录：给未来的自己看「哪一版改了什么」 */
 export const SCHEMA_HISTORY: ReadonlyArray<{ version: number; note: string }> = [
@@ -56,5 +61,13 @@ export const SCHEMA_HISTORY: ReadonlyArray<{ version: number; note: string }> = 
   {
     version: 14,
     note: 'stores/readLater.ts 的条目增 form（quote / article / video，与「记一笔」的 form 同口径）与 title / link：稍后读从"只能存一句话"扩成三种碎片形态，保留时长随形态分（一句话 24 小时、文章与视频 7 天 —— 长文一天读不完，而这两个形态的价值全在链接上）。老条目没有 form，读时按 quote 兜底、并在 prune() 里顺手补上（无需迁移脚本）',
+  },
+  {
+    version: 15,
+    note: 'settings 增 soundLevel（静修音效的「声音大小」档：小 / 中 / 大，见 config/audio.ts 的 SOUND_LEVELS）：配合素材响度归一，把"系统音量键"从静修流程里去掉。老数据没有这一格，按默认「大」兼容，无需迁移脚本',
+  },
+  {
+    version: 16,
+    note: '新增 stores/feedback.ts：回音壁（「我」→ 回音壁）的本机留痕 —— pending（写好了没送出去的队列，进页自动重发）、sent（累计成功送出的条数，徽章「回音」的唯一依据）、latestBoard / seenBoard（更新日志看到哪一版，「我」页入口那枚「有更新」徽标读它）。回音壁的**内容本身在服务器上**（与分享同口径：读免登录、写要登录、先审后发），不在本地数据里。老数据没有这个 store，按空队列兼容，无需迁移脚本',
   },
 ]

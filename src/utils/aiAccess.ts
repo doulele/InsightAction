@@ -15,7 +15,7 @@
  * ⚠️ 同意文案只有这里一份 —— 两处各写一版会让用户以为这是两件不同的事。
  */
 import { useAccountStore } from '@/stores/account'
-import { aiAccess, type AiAccessInfo } from '@/api/modules/ai'
+import { aiAccess, aiApply, type AiAccessInfo } from '@/api/modules/ai'
 import { showModal } from '@/utils/dialog'
 
 /** 知情同意的三块文案（设置页与功能页共用） */
@@ -30,25 +30,50 @@ export const AI_CONSENT = {
 } as const
 
 /**
- * 弹一次知情同意；同意就记进 `account.aiConsent`（一次同意长期有效，设置页可撤回）。
+ * 弹一次知情同意框 —— **每次都弹、不写 store**。
  *
+ * 为什么要有这个"总是弹"的版本：设置页那个开关是**用户主动按下**的动作，
+ * 按下时他就该看到"自己答应的是什么"。若因为"以前同意过"而静默跳过，
+ * 用户看到的就成了"点了没反应"（2026-09-23 用户报「点击后没弹框」正是这一条 ——
+ * 他之前点过开关，`aiConsent` 早已是 true，于是点开关走的是"撤回"那一支）。
+ *
+ * 功能页相反：那里是"用着用着顺带调一次 AI"，不能每次都问，所以另走 `ensureAiConsent`。
+ */
+export async function askAiConsent(): Promise<boolean> {
+  try {
+    return await new Promise<boolean>((resolve) => {
+      showModal({
+        title: AI_CONSENT.title,
+        content: AI_CONSENT.body,
+        confirmText: AI_CONSENT.confirm,
+        cancelText: AI_CONSENT.cancel,
+        success: (r) => resolve(!!r.confirm),
+        fail: () => resolve(false),
+      })
+    })
+  } catch (err) {
+    /*
+     * 兜住"弹框本身失败"这种极端情况（`showModal` 会先读当前皮肤色。
+     * 若这里不兜，`new Promise` 会直接 reject → 调用方那串 await 静默中断，
+     * 用户看到的就是**"点了什么都没有"** —— 2026-09-23 报障最难受的正是这种沉默。
+     * 返回 false，调用方据此把开关推回去，至少界面上有反馈。
+     */
+    console.error('[ai] 同意框没能弹出：', err)
+    return false
+  }
+}
+
+/**
+ * 需要时弹一次（已同意过就不再弹），并把结果记进 `account.aiConsent`。
+ *
+ * 这是**功能页**的用法（`composables/useAi`）：点一下 AI 按钮不该被反复问。
+ * 设置页要用 `askAiConsent()` —— 用户主动开开关时必须看到确认框。
  * 拒绝不是错误：调用方照常走基础兜底，功能完全不受影响。
- * **不判断"该不该弹"** —— `aiOn()` 为 false（开发关闭 / 服务端没开）时调用方要短路，
- * 别为基础兜底去打扰用户。
  */
 export async function ensureAiConsent(): Promise<boolean> {
   const account = useAccountStore()
   if (account.aiConsent) return true
-  const ok = await new Promise<boolean>((resolve) => {
-    showModal({
-      title: AI_CONSENT.title,
-      content: AI_CONSENT.body,
-      confirmText: AI_CONSENT.confirm,
-      cancelText: AI_CONSENT.cancel,
-      success: (r) => resolve(!!r.confirm),
-      fail: () => resolve(false),
-    })
-  })
+  const ok = await askAiConsent()
   if (ok) account.aiConsent = true
   return ok
 }
@@ -71,7 +96,28 @@ export async function fetchAiAccess(): Promise<AiAccessInfo | null> {
 
 /** 「不在名单」时那句统一的说明（设置页弹框与功能页提示共用，避免两处说法不一致） */
 export function aiDeniedText(): string {
-  return 'AI 目前只对部分人开放 —— 每调用一次都会真实产生费用，所以先小范围开。想用的话找我加进名单。'
+  return 'AI 目前只对部分人开放 —— 每调用一次都会真实产生费用，所以先小范围开。'
+    + '想用的话，下面点「申请开通」，我收到就能加你（你不用做别的）。'
+}
+
+/**
+ * 提交一条开通申请（2026-09-23 加）。
+ *
+ * 为什么需要它：普通用户**拿不到自己的 openid**（那要装开发者工具看网络面板），
+ * 所以由小程序把 openid 报给开发者 —— 他全程不需要知道 openid 是什么。
+ *
+ * `name` 让用户自己填，**不自动带昵称**：昵称是另一类数据，
+ * 不该在他没意识到的时候跟着申请一起上传（这是 PRIVACY 的边界，别图省事）。
+ * 返回是否发出去了（失败由调用方如实提示，不静默）。
+ */
+export async function applyAiAccess(name = ''): Promise<boolean> {
+  const account = useAccountStore()
+  try {
+    await account.withAuth((t) => aiApply(t, name))
+    return true
+  } catch {
+    return false
+  }
 }
 
 /**

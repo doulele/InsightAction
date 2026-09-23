@@ -11,6 +11,7 @@
  */
 import { defineStore } from 'pinia'
 import { ref } from 'vue'
+import { DEFAULT_SOUND_LEVEL, type SoundLevel } from '@/config/audio'
 
 export const useSettingsStore = defineStore(
   'settings',
@@ -30,9 +31,20 @@ export const useSettingsStore = defineStore(
      * 静修声音总开关（2026-09-17）。
      * 关掉后沙漏 / 茶室 / 呼吸干预一律静音 —— 声音是**加分项不是必需项**，
      * 开会、通勤、深夜在床边静修时需要一键静下来，而不是先去按手机音量键。
-     * 开着时也只保证「亮屏前台有声音」：切后台微信会挂起普通音频（平台限制，见 utils/audio.ts）。
+     * 开着时**切后台尽量续、息屏不保证**（`requiredBackgroundModes` 见 manifest.json，
+     * 为什么不走 BackgroundAudioManager 见 utils/audio.ts 的文件头）。
      */
     const soundOn = ref(true)
+
+    /**
+     * 声音大小（2026-09-23，小 / 中 / 大，见 config/audio.ts 的 `SOUND_LEVELS`）。
+     *
+     * 存在的理由就是"**别再让用户去按系统音量键**"：系统音量是全局的、会连累别的 App。
+     * 它**只作用于静修音效**（一记 + 环境音），不碰正文收听 —— 朗读是用户当场按下的
+     * "听这段内容"，不该被音效档位连累。
+     * 默认「大」：素材做过响度归一之后，1.0 就是素材本来的响度，不再有任何软件衰减。
+     */
+    const soundLevel = ref<SoundLevel>(DEFAULT_SOUND_LEVEL)
 
     /**
      * 沙漏走时声偏好（none / tick / sand / pink / leaves，见 config/audio.ts）。
@@ -49,12 +61,20 @@ export const useSettingsStore = defineStore(
      */
     const sabbathWeekday = ref<number | null>(null)
 
-    return { eveningRemind, streakRemind, lowNoise, soundOn, sandglassAmbient, sabbathWeekday }
+    return { eveningRemind, streakRemind, lowNoise, soundOn, soundLevel, sandglassAmbient, sabbathWeekday }
   },
   {
     persist: {
       key: 'settings',
-      paths: ['eveningRemind', 'streakRemind', 'lowNoise', 'soundOn', 'sandglassAmbient', 'sabbathWeekday'],
+      paths: [
+        'eveningRemind',
+        'streakRemind',
+        'lowNoise',
+        'soundOn',
+        'soundLevel',
+        'sandglassAmbient',
+        'sabbathWeekday',
+      ],
     },
   },
 )

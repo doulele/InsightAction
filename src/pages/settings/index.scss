@@ -188,6 +188,33 @@
   transform-origin: right center;
 }
 
+/*
+ * 静修声音：声音大小（小 / 中 / 大）。
+ * 与安息日那排 chips 是同一套视觉，区别是这里**只有三格、要占满整行**（flex:1），
+ * 所以不复用 .days（它的 min-width 会让三格挤在左边）。
+ */
+.levels {
+  display: flex;
+  gap: 12rpx;
+}
+
+.level {
+  flex: 1;
+  padding: 16rpx 0;
+  font-size: $gz-fs-small;
+  text-align: center;
+  color: $gz-ink-2;
+  background: $gz-surface;
+  border: 1rpx solid $gz-line;
+  border-radius: $gz-radius-md;
+}
+
+.level.is-on {
+  color: $gz-on-cta;
+  background: $gz-cta-bg;
+  border-color: transparent;
+}
+
 /* 安息日：星期选择（与新建计划的 chips 同一形态，放在卡片之间） */
 .days {
   display: flex;
@@ -240,6 +267,38 @@
   font-size: $gz-fs-caption;
   color: $gz-ink-2;
   text-align: center;
+}
+
+/* 「申请开通」：普通用户拿不到自己的 openid，点这里由小程序替他上报 */
+.ai-qr__apply {
+  margin-top: 4rpx;
+  padding: 16rpx 44rpx;
+  border: 1rpx solid $gz-line;
+  border-radius: 999rpx;
+  font-size: $gz-fs-small;
+  color: $gz-accent;
+}
+
+.ai-qr__apply.is-done {
+  border-color: transparent;
+  background: $gz-input-bg;
+  color: $gz-ink-3;
+}
+
+/* 「申请开通」弹框里的那一格称呼输入 */
+.apply__input {
+  width: 100%;
+  box-sizing: border-box;
+  padding: 20rpx 24rpx;
+  border: 1rpx solid $gz-line;
+  border-radius: $gz-radius-md;
+  background: $gz-input-bg;
+  font-size: $gz-fs-body;
+  color: $gz-ink;
+}
+
+.apply__ph {
+  color: $gz-ink-3;
 }
 
 /* 关于 */

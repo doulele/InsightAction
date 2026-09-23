@@ -19,6 +19,7 @@ import { useProverbStore, reviewFinished } from '@/stores/proverb'
 import { useQuestionStore } from '@/stores/question'
 import { useSeedStore } from '@/stores/seed'
 import { useTraceStore, type Trace } from '@/stores/trace'
+import { useFeedbackStore } from '@/stores/feedback'
 import { useVowStore } from '@/stores/vow'
 import { useXpStore } from '@/stores/xp'
 
@@ -36,6 +37,7 @@ export function buildBadgeContext(): BadgeContext {
   const plan = usePlanStore()
   const proverb = useProverbStore()
   const vow = useVowStore()
+  const feedback = useFeedbackStore()
 
   return {
     assessed: Object.values(assessment.results).some((r) => r !== null),
@@ -87,6 +89,9 @@ export function buildBadgeContext(): BadgeContext {
     /* 身体两枚（2026-09-21）：步数只在本机，取计数即可，不涉及网络 */
     bodyReadDays: body.readDays,
     bodyGoalHit: body.goalHitCount > 0,
+
+    /* 回音壁一枚（2026-09-23）：同样只在本机，取成功送出过的条数 */
+    feedbackCount: feedback.sent,
   }
 }
 

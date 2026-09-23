@@ -138,7 +138,7 @@
     <view class="section">
       <view class="section__head">
         <text class="section__title">静修声音</text>
-        <text class="section__hint">亮屏时才有声 · 跟随系统静音</text>
+        <text class="section__hint">切后台尽量续 · 跟随系统静音</text>
       </view>
       <view class="cards">
         <view class="row">
@@ -153,6 +153,29 @@
             @change="onSoundToggle"
           />
         </view>
+        <!--
+          声音大小（2026-09-23）：挡在"为了听清要去按系统音量键"这件事前面。
+          素材已做响度归一，所以这里 1.0（大）就是素材本来的响度，不再有软件衰减。
+          只在开着声音时出现 —— 静音时拨它没有任何可听的结果。
+        -->
+        <template v-if="settings.soundOn">
+          <view class="row">
+            <view class="row__body">
+              <text class="row__title">声音大小</text>
+              <text class="row__sub">只改我们自己的音效 · 沙漏与茶室当场跟着变</text>
+            </view>
+          </view>
+          <view class="levels">
+            <view
+              v-for="l in SOUND_LEVELS"
+              :key="l.id"
+              class="level"
+              :class="{ 'is-on': settings.soundLevel === l.id }"
+              hover-class="gz-hover"
+              @click="onLevelPick(l.id)"
+            >{{ l.label }}</view>
+          </view>
+        </template>
       </view>
     </view>
 
@@ -222,7 +245,7 @@
           </view>
           <switch
             class="row__switch"
-            :checked="account.cloudEnabled"
+            :checked="cloudSwitchOn"
             :color="modeMeta.accent"
             @change="onCloudToggle"
           />
@@ -275,7 +298,7 @@
           </view>
           <switch
             class="row__switch"
-            :checked="account.aiConsent"
+            :checked="aiSwitchOn"
             :color="modeMeta.accent"
             @change="onAiConsentToggle"
           />
@@ -347,7 +370,7 @@
       note="随时可在这里关闭，关闭会同时删除云端数据。"
       cancel-text="暂不开启"
       confirm-text="同意并开启"
-      @cancel="cloudIntroOpen = false"
+      @cancel="cancelCloudToggle"
       @confirm="enableCloud"
     />
 
@@ -359,9 +382,47 @@
       note="将删除服务器上的全部备份数据，本机进度不受影响。删除后换手机或清缓存，进度就再也找不回来了。"
       cancel-text="保留"
       confirm-text="删除云端"
-      @cancel="cloudDeleteOpen = false"
+      @cancel="cancelCloudToggle"
       @confirm="confirmDeleteCloud"
     />
+
+    <!--
+      AI 知情同意：用页面自己的 GzDialog（`askConsentHere`）。
+      原生 `uni.showModal` 在本页弹不出来 —— 用户看到的现象就是"点开关后立刻回弹、没有框"。
+    -->
+    <GzDialog
+      :show="aiConsentOpen"
+      :title="AI_CONSENT.title"
+      :content="AI_CONSENT.body"
+      :banner="false"
+      :cancel-text="AI_CONSENT.cancel"
+      :confirm-text="AI_CONSENT.confirm"
+      @cancel="resolveConsent(false)"
+      @confirm="resolveConsent(true)"
+    />
+
+    <!--
+      申请开通：同样走 GzDialog，用插槽放一个输入框收称呼（原生 editable 弹框还会把 content 当初始值）。
+      `z-index` 必须高于二维码框（默认 300）—— 两者是同层遮罩，层级相同就会互相盖住。
+    -->
+    <GzDialog
+      :show="applyOpen"
+      :z-index="360"
+      title="申请开通 AI"
+      :banner="false"
+      cancel-text="算了"
+      confirm-text="发送申请"
+      @cancel="applyOpen = false"
+      @confirm="sendApply"
+    >
+      <input
+        v-model="applyName"
+        class="apply__input"
+        placeholder="写一句我怎么称呼你（可留空）"
+        placeholder-class="apply__ph"
+        :maxlength="20"
+      />
+    </GzDialog>
 
     <!--
       AI 不在白名单：本机同意过了、服务端没放行 —— 如实说明 + 一张二维码。
@@ -386,6 +447,14 @@
           @error="aiQrcode = ''"
         />
         <text v-else class="ai-qr__none">二维码没取到 —— 可以在「关于」里找我。</text>
+        <view
+          class="ai-qr__apply"
+          :class="{ 'is-done': aiApplied }"
+          hover-class="gz-hover"
+          @click="applyAccess"
+        >
+          {{ aiApplied ? '已申请 · 等我开通' : '申请开通' }}
+        </view>
       </view>
     </GzDialog>
 
@@ -441,7 +510,8 @@ import { useDailyStore, freshTodos, todayKey } from '@/stores/daily'
 import { useXpStore } from '@/stores/xp'
 import { useSkinClass } from '@/composables/useSkin'
 import { applySkin } from '@/utils/skin'
-import { playCue, setSoundEnabled } from '@/utils/audio'
+import { playCue, setSoundEnabled, setSoundLevel } from '@/utils/audio'
+import { SOUND_LEVELS, type SoundLevel } from '@/config/audio'
 import { dayStats } from '@/utils/growth'
 import { WEEKDAY_LABEL } from '@/utils/sabbath'
 import { resetPracticeData } from '@/utils/localReset'
@@ -468,7 +538,7 @@ import type { BackupPayload, BackupSummary } from '@/utils/localBackup'
 import { buildArchive, writeArchiveFile } from '@/utils/archive'
 import { backupNow, disableCloudBackup, fetchCloudSnapshot } from '@/utils/cloudBackup'
 import { showModal } from '@/utils/dialog'
-import { aiDeniedText, ensureAiConsent, fetchAiAccess } from '@/utils/aiAccess'
+import { AI_CONSENT, aiDeniedText, applyAiAccess, fetchAiAccess } from '@/utils/aiAccess'
 
 const modeStore = useModeStore()
 const appStore = useAppStore()
@@ -784,6 +854,54 @@ const aiDeniedOpen = ref(false)
 /** 二维码地址由后端下发（运营物料，换码不用发版）；取不到就只显示文字兜底 */
 const aiQrcode = ref('')
 const aiDeniedContent = computed(() => aiDeniedText())
+/** 本页会话内是否已发过申请（不持久化 —— 后端对重复申请幂等，重开小程序再点一次也无害） */
+const aiApplied = ref(false)
+
+/**
+ * AI 开关的**显示值**。
+ *
+ * 为什么不直接写 `:checked="account.aiConsent"`：小程序 `switch` 是**受控组件**，
+ * 用户一点它自己先变成"开"；此后若因为"用户取消 / 账号未开通"而 store 没变，
+ * 视图**不会回弹**（值没变 → 不触发重渲染）—— 表现就是"开关绿着、下面却写着未授权"
+ * （2026-09-23 用户截图报的正是这个）。所以用本地 ref 跟手：操作没成时把它推回真实值。
+ */
+const aiSwitchOn = ref(account.aiConsent)
+watch(
+  () => account.aiConsent,
+  (v) => {
+    aiSwitchOn.value = v
+  },
+)
+
+/* ---------------- AI 的两个交互：都用**页面自己的 GzDialog** ----------------
+ *
+ * 为什么不用 `utils/dialog.ts` 的 `showModal`（它最终走 `uni.showModal`）：
+ * 本页实测**弹不出来** —— 2026-09-23 用户报「点开关后立刻回弹、没有任何框」，
+ * 那就意味着 `askAiConsent()` 拿到的 Promise 直接 resolve(false)（modal 的 success 从未回来）。
+ * 设置页本来就挂着好几个 GzDialog，用它最稳（页面内 `v-if` 控制，不依赖任何原生 API），
+ * 而且它**跟随皮肤** —— 原生弹框底永远是白的，这本来就是它被写进 `未做事项 #20.3` 的原因。
+ */
+const aiConsentOpen = ref(false)
+/** 本次询问的 resolver；用户按下按钮后回收（null = 当前没有待答的询问） */
+let aiConsentResolve: ((ok: boolean) => void) | null = null
+/** 「申请开通」面板（用 GzDialog + 一个输入框收称呼） */
+const applyOpen = ref(false)
+const applyName = ref('')
+
+/** 弹一次知情同意（等同 `askAiConsent()`，但走页面内的 GzDialog） */
+function askConsentHere(): Promise<boolean> {
+  return new Promise<boolean>((resolve) => {
+    aiConsentResolve = resolve
+    aiConsentOpen.value = true
+  })
+}
+
+function resolveConsent(ok: boolean): void {
+  aiConsentOpen.value = false
+  const r = aiConsentResolve
+  aiConsentResolve = null
+  r?.(ok)
+}
 
 /**
  * 开关：开 → 先同意、再核名单；关 → 直接撤回。
@@ -791,34 +909,116 @@ const aiDeniedContent = computed(() => aiDeniedText())
  * 为什么"核名单"要放在同意之后：同意是必须由用户按下的一次（内容离开设备），
  * 而名单是客观状态 —— 顺序反了会出现"先告诉你没资格，再问你要不要同意"的怪话。
  * 名单里没有 → **不打开开关**（store 保持 false，开关自己弹回），并弹二维码。
+ *
+ * ⚠️ 这里用 `askAiConsent()`（**每次都弹**）而不是 `ensureAiConsent()`（同意过就跳过）。
+ * 原因见 2026-09-23 的报障：老用户点这个开关时 `aiConsent` 早已是 true，
+ * 于是走的是"撤回"那一支 —— 他期待看到确认框，实际什么都没发生（只有一句 toast）。
+ * 用户**主动开**这个开关，就该每次都看到自己答应的是什么。
  */
 async function onAiConsentToggle(e: Event & { detail?: { value?: boolean } }): Promise<void> {
-  if (!e.detail?.value) {
-    account.aiConsent = false
-    uni.showToast({ title: '已撤回 · 只用基础规则', icon: 'none' })
-    return
-  }
-  const agreed = await ensureAiConsent()
-  if (!agreed) return
+  const on = !!e.detail?.value
+  aiSwitchOn.value = on // 先跟手（用户已经点下去了，视觉上先按他的意思走）
+  try {
+    if (!on) {
+      account.aiConsent = false
+      uni.showToast({ title: '已撤回 · 只用基础规则', icon: 'none' })
+      return
+    }
+    const agreed = await askConsentHere()
+    if (!agreed) {
+      aiSwitchOn.value = false // 取消 → 把开关推回去（否则它会一直绿着，与实际状态不符）
+      return
+    }
+    /* 同意本身要落库（否则下一次又得问一遍）；未开通时下面会回滚 */
+    account.aiConsent = true
 
-  uni.showLoading({ title: '正在核验…', mask: true })
-  const info = await fetchAiAccess()
-  uni.hideLoading()
+    uni.showLoading({ title: '正在核验…', mask: true })
+    const info = await fetchAiAccess()
+    uni.hideLoading()
 
-  /* 没查成（没网 / 服务端异常）不挡人：同意过了就先用着，真调不通时 useAi 会静默兜底 */
-  if (info?.mode === 'denied') {
-    account.aiConsent = false
-    aiQrcode.value = info.qrcode
-    aiDeniedOpen.value = true
-    return
+    /* 没查成（没网 / 服务端异常）不挡人：同意过了就先用着，真调不通时 useAi 会静默兜底 */
+    if (info?.mode === 'denied') {
+      account.aiConsent = false
+      aiSwitchOn.value = false // 没开通 → 开关退回去（"授权不等于放行"的可视化）
+      aiQrcode.value = info.qrcode
+      aiDeniedOpen.value = true
+      return
+    }
+    uni.showToast({ title: '已授权 · 可以用 AI 了', icon: 'none' })
+  } catch (err) {
+    /*
+     * 兜底：任何没料到的异常都要**给一句提示 + 把开关推回真实值**。
+     * 绝不允许这个开关变成"点了什么都不发生" —— 2026-09-23 的报障就是这种沉默。
+     */
+    uni.hideLoading()
+    console.error('[settings] AI 授权开关出错：', err)
+    aiSwitchOn.value = account.aiConsent
+    uni.showToast({ title: '没完成 · 稍后再试', icon: 'none' })
   }
-  uni.showToast({ title: '已授权 · 可以用 AI 了', icon: 'none' })
 }
+
+/**
+ * 申请开通（2026-09-23 加）：先收一句称呼，再发。
+ *
+ * 为什么让用户自己填、而不是自动带上他的昵称：昵称是**另一类数据**，
+ * 不该在他没意识到的时候跟着申请一起上传（PRIVACY 的边界，别图省事）。
+ * 后端只记 openid + 这句称呼 + 时间，开发者照着就能加人。
+ */
+function applyAccess(): void {
+  if (aiApplied.value) return
+  applyName.value = ''
+  /*
+   * ⚠️ 必须先收起二维码框（2026-09-23 报障「点申请开通没反应」）：
+   * 两个 GzDialog 的遮罩层级都是默认的 300，而二维码框在模板里位于输入框**之后** ——
+   * 它俩同时展示时，后渲染的二维码框会**整个盖住**输入框，
+   * 用户看到的就是"点了一下，什么都没发生"（其实输入框已经弹出来了，只是看不见）。
+   * 这里按顺序切换，另外给输入框传了更高的 zIndex 兜底（双保险）。
+   */
+  aiDeniedOpen.value = false
+  applyOpen.value = true
+}
+
+/** 真正提交申请（由 GzDialog 的「发送申请」触发） */
+async function sendApply(): Promise<void> {
+  applyOpen.value = false
+  const name = applyName.value.trim().slice(0, 20)
+  uni.showLoading({ title: '正在发送…', mask: true })
+  const ok = await applyAiAccess(name)
+  uni.hideLoading()
+  if (!ok) {
+    uni.showToast({ title: '没发出去 · 检查网络再试一次', icon: 'none' })
+    return
+  }
+  aiApplied.value = true
+  uni.showToast({ title: '已申请 · 开通后再回来打开这个开关', icon: 'none' })
+}
+
+/**
+ * 云备份开关的**显示值** —— 与 AI 授权同一个原因（小程序 `switch` 不会自己回弹）：
+ * 它点下去并不直接改 store，而是先弹说明 / 确认框；用户一取消，store 没变，
+ * 视图就会停在"已开"的绿色上，与实际状态不符。
+ */
+const cloudSwitchOn = ref(account.cloudEnabled)
+watch(
+  () => account.cloudEnabled,
+  (v) => {
+    cloudSwitchOn.value = v
+  },
+)
 
 /** 开关：开 → 先看说明；关 → 先确认删除云端数据 */
 function onCloudToggle(e: Event & { detail?: { value?: boolean } }): void {
-  if (e.detail?.value) cloudIntroOpen.value = true
+  const on = !!e.detail?.value
+  cloudSwitchOn.value = on
+  if (on) cloudIntroOpen.value = true
   else cloudDeleteOpen.value = true
+}
+
+/** 取消这一轮开关操作：把开关显示推回真实值（受控组件不会自己回弹） */
+function cancelCloudToggle(): void {
+  cloudIntroOpen.value = false
+  cloudDeleteOpen.value = false
+  cloudSwitchOn.value = account.cloudEnabled
 }
 
 async function enableCloud(): Promise<void> {
@@ -851,6 +1051,8 @@ async function confirmDeleteCloud(): Promise<void> {
     uni.showToast({ title: `已删除云端 ${removed} 项数据`, icon: 'none' })
   } catch (e) {
     cloudDeleteOpen.value = false
+    /* 失败了开关要退回原状（store 没变 → watch 不会触发，得手动推一次） */
+    cloudSwitchOn.value = account.cloudEnabled
     showModal({ title: '删除失败', content: e instanceof Error ? e.message : '未知错误', showCancel: false })
   }
 }
@@ -895,7 +1097,7 @@ const sabbathSub = computed(() =>
 /** 静修声音的状态说明（开着/静音两种口径写清楚"计时照常"） */
 const soundSub = computed(() =>
   settings.soundOn
-    ? '开始与结束的一记提示音 · 沙漏与茶室的环境音（只在亮屏时响）'
+    ? '一记提示音 · 沙漏与茶室的环境音（切后台尽量续上，息屏不保证）'
     : '已静音 · 静修不放任何声音，计时与入账照常',
 )
 
@@ -910,6 +1112,18 @@ function onSoundToggle(e: Event & { detail?: { value?: boolean } }): void {
   setSoundEnabled(on)
   if (on) playCue('open')
   uni.showToast({ title: on ? '已开启' : '已静音', icon: 'none' })
+}
+
+/**
+ * 声音大小（小 / 中 / 大）：**当场播一记让用户听到效果**（同总开关那一套口径）。
+ *
+ * 必须"先手动 setSoundLevel、后 playCue"：App.vue 那个 watch 与这里是同一批更新，
+ * 不保证先后 —— 反过来的话试听那一声还是旧音量，用户会以为档位没生效。
+ */
+function onLevelPick(id: SoundLevel): void {
+  settings.soundLevel = id
+  setSoundLevel(id)
+  playCue('open')
 }
 
 /** 导出今日概览：读真实 store 汇总今日观止知行，拼纯文本到剪贴板 */

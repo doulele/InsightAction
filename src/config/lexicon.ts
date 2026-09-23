@@ -629,6 +629,12 @@ export interface MeEntryWords {
   companion: string
   companionBadge: string
 
+  /* ---- 回音壁（2026-09-23）---- */
+  /** 入口说明句（三模式各一句，见 config/feedback.ts 的用词口径） */
+  feedback: string
+  /** 服务端有比我看过的新版本时，入口上的那枚徽标 */
+  feedbackBadge: string
+
   /* ---- 设置 ---- */
   settings: string
   settingsBadge: string
@@ -667,6 +673,8 @@ const LOCAL_ME_ENTRY_WORDS: Record<ModeId, MeEntryWords> = {
     bondNew: '初遇',
     companion: '互加伙伴、互看今日完成度、低频事件提醒 —— 已排入后续，当前不做',
     companionBadge: '后续做',
+    feedback: '更新的功能 · 接下来要做的 · 报个缺陷、提个想法',
+    feedbackBadge: '有更新',
     settings: '修行语言 · 提醒 · 数据 · 关于',
     settingsBadge: '可用',
   },
@@ -702,6 +710,8 @@ const LOCAL_ME_ENTRY_WORDS: Record<ModeId, MeEntryWords> = {
     bondNew: '未交互',
     companion: '配对绑定、共享今日完成度、低频事件提醒 —— 已排入后续，暂不实现',
     companionBadge: '待实现',
+    feedback: '版本记录 · 待办与优先级 · 提缺陷或需求',
+    feedbackBadge: '有新版本',
     settings: '运行模式 · 提醒 · 数据 · 关于',
     settingsBadge: '就绪',
   },
@@ -737,6 +747,8 @@ const LOCAL_ME_ENTRY_WORDS: Record<ModeId, MeEntryWords> = {
     bondNew: '初会',
     companion: '结缘码绑定、互看今日功德、低频提醒 —— 已排入后续，当下不做',
     companionBadge: '后续',
+    feedback: '已行之处 · 将往之处 · 报缺陷、留一言',
+    feedbackBadge: '有新迹',
     settings: '修行语言 · 提醒 · 数据 · 关于',
     settingsBadge: '可用',
   },

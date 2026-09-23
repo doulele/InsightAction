@@ -1,0 +1,352 @@
+/**
+ * 回音壁 · 一条回音 的样式（超过 100 行，按项目约定外置）。
+ * 由 ./index.vue 通过 @import 引入。
+ */
+.page {
+  min-height: 100vh;
+  /* 底部的「回一句」是常驻条，留出与它等高的空位（顶距由 SubNav 让） */
+  padding: 0 $gz-page-pad 200rpx;
+}
+
+.empty {
+  padding: 60rpx 36rpx;
+  text-align: center;
+  background: var(--gz-surface);
+  border: 1rpx dashed var(--gz-line);
+  border-radius: $gz-radius-lg;
+}
+
+.empty--mini {
+  padding: 30rpx 24rpx;
+}
+
+.empty__title {
+  display: block;
+  font-size: $gz-fs-title;
+  font-weight: 700;
+  color: $gz-ink-2;
+}
+
+.empty__text {
+  display: block;
+  margin-top: 12rpx;
+  font-size: $gz-fs-small;
+  line-height: 1.8;
+  color: $gz-ink-2;
+}
+
+/* ---- 原帖 ---- */
+.post {
+  margin-top: 22rpx;
+  padding: 26rpx 26rpx 20rpx;
+  background: $gz-surface;
+  border: 1rpx solid $gz-line;
+  border-left: 6rpx solid $gz-line-soft;
+  border-radius: $gz-radius-lg;
+}
+
+.post.is-accent {
+  border-left-color: $gz-accent;
+}
+
+.post.is-doing {
+  border-left-color: $gz-accent;
+  background: $gz-accent-soft;
+}
+
+.post.is-done {
+  border-left-color: $gz-accent;
+}
+
+.post.is-warn {
+  border-left-color: $gz-warn;
+}
+
+.post__top {
+  display: flex;
+  align-items: center;
+  gap: 12rpx;
+}
+
+.post__type {
+  padding: 2rpx 14rpx;
+  border-radius: 999rpx;
+  border: 1rpx solid $gz-line;
+  font-size: 20rpx;
+  color: $gz-ink-2;
+}
+
+.post__status {
+  font-size: $gz-fs-caption;
+  color: $gz-accent;
+  font-weight: 700;
+}
+
+.post.is-muted .post__status {
+  color: $gz-ink-3;
+  font-weight: 400;
+}
+
+.post.is-warn .post__status {
+  color: $gz-warn;
+}
+
+.post__title {
+  display: block;
+  margin-top: 14rpx;
+  font-size: 36rpx;
+  font-weight: 700;
+  line-height: 1.5;
+  color: $gz-ink;
+}
+
+.post__body {
+  display: block;
+  margin-top: 14rpx;
+  font-size: $gz-fs-body;
+  line-height: 1.85;
+  color: $gz-ink;
+  white-space: pre-wrap;
+}
+
+.post__foot {
+  display: flex;
+  align-items: center;
+  gap: 16rpx;
+  margin-top: 16rpx;
+}
+
+.post__who,
+.post__time {
+  font-size: $gz-fs-caption;
+  color: $gz-ink-3;
+}
+
+.post__acts {
+  display: flex;
+  gap: 12rpx;
+  margin-top: 16rpx;
+  padding-top: 16rpx;
+  border-top: 1rpx dashed $gz-line-soft;
+}
+
+.act {
+  display: flex;
+  align-items: center;
+  gap: 8rpx;
+  padding: 8rpx 22rpx;
+  border: 1rpx solid $gz-line;
+  border-radius: 999rpx;
+  font-size: $gz-fs-caption;
+  color: $gz-ink-2;
+}
+
+.act.is-on {
+  border-color: $gz-accent;
+  background: $gz-accent-soft;
+  color: $gz-accent;
+  font-weight: 700;
+}
+
+.act__num {
+  font-size: $gz-fs-caption;
+  color: $gz-ink-3;
+}
+
+.act.is-on .act__num {
+  color: $gz-accent;
+}
+
+/* ---- 「这次不做」的理由 ---- */
+.note {
+  margin-top: 18rpx;
+  padding: 20rpx 24rpx;
+  background: $gz-accent-soft;
+  border-radius: $gz-radius-md;
+}
+
+.note__label {
+  display: block;
+  font-size: 20rpx;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  color: $gz-accent;
+}
+
+.note__text {
+  display: block;
+  margin-top: 8rpx;
+  font-size: $gz-fs-small;
+  line-height: 1.8;
+  color: $gz-ink-2;
+}
+
+/* ---- 处理（只对管理员渲染） ---- */
+.admin {
+  margin-top: 18rpx;
+  padding: 22rpx 24rpx;
+  background: $gz-surface;
+  border: 1rpx dashed $gz-line;
+  border-radius: $gz-radius-md;
+}
+
+.admin__title {
+  display: block;
+  font-size: $gz-fs-caption;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  color: $gz-ink-2;
+}
+
+.admin__chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12rpx;
+  margin-top: 14rpx;
+}
+
+.chip {
+  padding: 10rpx 22rpx;
+  border-radius: 999rpx;
+  background: $gz-surface;
+  border: 1rpx solid $gz-line;
+  font-size: $gz-fs-caption;
+  color: $gz-ink-2;
+}
+
+.chip.is-on {
+  background: $gz-accent;
+  border-color: $gz-accent;
+  color: $gz-on-cta;
+  font-weight: 700;
+}
+
+.admin__hint {
+  display: block;
+  margin-top: 14rpx;
+  font-size: $gz-fs-caption;
+  line-height: 1.7;
+  color: $gz-ink-2;
+}
+
+/* ---- 回应 ---- */
+.sec {
+  margin-top: 28rpx;
+}
+
+.sec__head {
+  display: flex;
+  align-items: baseline;
+  gap: 10rpx;
+  margin-bottom: 14rpx;
+}
+
+.sec__title {
+  font-size: $gz-fs-small;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  color: $gz-ink-2;
+}
+
+.sec__num {
+  font-size: $gz-fs-caption;
+  color: $gz-ink-3;
+}
+
+.cmt {
+  padding: 20rpx 24rpx;
+  margin-bottom: 12rpx;
+  background: $gz-surface;
+  border: 1rpx solid $gz-line;
+  border-radius: $gz-radius-md;
+}
+
+/* 开发者那一句：左侧一条主题色线，与普通回音区分开（不靠头像，也不靠颜色堆） */
+.cmt.is-official {
+  border-left: 6rpx solid $gz-accent;
+  background: $gz-accent-soft;
+}
+
+.cmt__head {
+  display: flex;
+  align-items: center;
+  gap: 14rpx;
+}
+
+.cmt__who {
+  font-size: $gz-fs-caption;
+  font-weight: 700;
+  color: $gz-ink-2;
+}
+
+.cmt.is-official .cmt__who {
+  color: $gz-accent;
+}
+
+.cmt__time {
+  font-size: $gz-fs-caption;
+  color: $gz-ink-3;
+}
+
+.cmt__body {
+  display: block;
+  margin-top: 10rpx;
+  font-size: $gz-fs-small;
+  line-height: 1.8;
+  color: $gz-ink;
+  white-space: pre-wrap;
+}
+
+/* ---- 撤回（破坏性操作：描边 + 警示色，不抢主视线） ---- */
+.danger {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 84rpx;
+  margin-top: 30rpx;
+  border: 1rpx solid $gz-warn;
+  border-radius: 999rpx;
+}
+
+.danger__text {
+  font-size: $gz-fs-small;
+  color: $gz-warn;
+}
+
+/* ---- 底部：回一句 ---- */
+.bar {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 20;
+  padding: 16rpx $gz-page-pad;
+  padding-bottom: calc(16rpx + env(safe-area-inset-bottom));
+  background: var(--gz-paper);
+  border-top: 1rpx solid $gz-line;
+}
+
+.bar__btn {
+  height: 88rpx;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: $gz-accent;
+  border-radius: 999rpx;
+}
+
+.bar__btn.is-off {
+  background: $gz-line-soft;
+}
+
+.bar__text {
+  font-size: $gz-fs-body;
+  font-weight: 700;
+  color: $gz-on-cta;
+  letter-spacing: 0.08em;
+}
+
+.bar__btn.is-off .bar__text {
+  color: $gz-ink-3;
+  font-weight: 400;
+}

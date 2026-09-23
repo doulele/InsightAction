@@ -6,7 +6,7 @@
  * 由 StaticTool 后端流式返回：
  *   https://wellwin.top/staticTool/api/family/whitenoise/file/<encodeURIComponent(文件名)>
  *
- * 四条必须知道的约束：
+ * 五条必须知道的约束：
  *  1. **文件名是契约**。后端是按目录扫描出文件的，那边改名 / 删除会让这里 404。
  *     2026-09-19 逐个探测过：`颂钵 / 风铃 / 钟声 / 雨打屋顶 / 粉红噪音 / 树叶沙沙_实地 /
  *     壁炉_实地 / 海浪拍岸 / 微风_实地 / 森林篝火 / 水石声` 都在（200）。
@@ -21,6 +21,16 @@
  *     一记与环境音不同：一记只在开头响几秒，如果那段录音开头恰好是安静的，
  *     用户就会以为「点了没声」（播放器只判断"有没有在走"，判断不了"这一秒响不响"）。
  *     这也是为什么 `风铃 / 钟声` 这类循环录音**暂时只留作素材，不做一记**。
+ *  5. **素材要做响度归一，且做完整套一起换**（2026-09-23）。
+ *     这一批文件来自不同批次，录进大小本来就不一样；而小程序播放器的 `volume` 只有 0–1、
+ *     **只能衰减不能放大**，所以"大小不一 / 整体偏小"在前端无解，只能在素材层解决 ——
+ *     每个文件按「一记 -16 LUFS / 环境音 -16 LUFS、真峰值 ≤ -1 dBTP」做**固定增益**
+ *     （禁止动态 loudnorm、禁止限幅、禁止加淡入淡出、**禁止改文件名**，理由见
+ *     `docs/观止知行-素材响度归一-交接说明.md`，换素材前先读它）。
+ *     因为这批文件的**内容**变了而**文件名**没变，本机缓存必须一次性作废 —— 那就是
+ *     下面的 `AUDIO_ASSET_REV`：它参与本机缓存文件名的哈希，**每次换素材都要 +1**。
+ *     下面的音量数字（`CUE_VOLUME` / `AmbientTrack.volume` / `SOUND_LEVELS`）只有在
+ *     素材归一之后才有意义：归一之前它们是"在已经很小的素材上再砍一刀"。
  */
 
 /** 素材站根地址（后端接口，带 Range 与 MIME 处理；不是 nginx 静态目录） */
@@ -30,6 +40,26 @@ const AUDIO_BASE = 'https://wellwin.top/staticTool/api/family/whitenoise/file'
 export function audioUrl(file: string): string {
   return `${AUDIO_BASE}/${encodeURIComponent(file)}`
 }
+
+/**
+ * 素材版本号 —— **只影响本机缓存的文件名**（见 `utils/audio.ts` 的 `localPathOf`）。
+ *
+ * 服务器上的文件是**同名覆盖**的（`docs/观止知行-素材响度归一-交接说明.md` 明确要求不许改名），
+ * 而本机缓存按"文件名哈希"命名 —— 不动这个版本号，老用户会**永远听旧的那一份**
+ * （改了响度也听不出来，问题看起来像没修）。
+ *
+ * 规格：**每次替换服务器素材内容就 +1**（不是每次改代码）。
+ * 代价只是老缓存成为孤儿文件（每个几百 KB，且 `userDir` 是私有永久目录不会自己清），
+ * 换来的是"下一次播放必然重新下载最新素材"。
+ *
+ * 版本历史：
+ *  1 —— 初版（2026-09-22 上传的那批素材）
+ *  2 —— 音量重定档那次（2026-09-23 上午：前端改了音量，**素材其实还没换**）
+ *  3 —— 响度归一素材上线（2026-09-23：统一 -16 LUFS，见交接说明）
+ *       ⚠️ 这一版仍有 5 个文件未达标（茶室的「焚香」「煮雪」最明显），
+ *          它们返工重传后**必须再 +1**（见交接说明的「返工清单」）。
+ */
+export const AUDIO_ASSET_REV = 3
 
 /**
  * 静修声音的**素材账**（**只作文档用，代码里不读它**）。
@@ -57,6 +87,61 @@ export const AUDIO_ASSETS = [
   '沙粒细流.mp3',
   '落定_一记.mp3',
 ] as const
+
+/* ------------------------------------------------------------------ *
+ * 播放音量：三层关系 + 用户档位
+ * ------------------------------------------------------------------ */
+
+/**
+ * 三层音量（0–1，**乘在素材自己的响度上**）。
+ *
+ * 这三个数字表达的是**层级关系**，不是"为了变小"：
+ *   · 朗读 = 内容，给足 1.0；
+ *   · 一记 = 当下要听清的一击，略低于内容；
+ *   · 环境音 = 垫底的氛围，压约 3.7 dB。
+ *
+ * **前提是素材已做响度归一**（见文件头第 5 条与交接说明）：归一之后同一个数字在不同素材上
+ * 才是同一个响度。归一之前这些数字只是"在已经很小的素材上再砍一刀"——
+ * 2026-09-23 之前环境音是 0.3（-10.5 dB），那正是"要用很大系统音量才听得见"的主因。
+ */
+export const CUE_VOLUME = 0.9
+export const SPEECH_VOLUME = 1
+/** 环境音的统一倍数（各选项自己的 `AmbientTrack.volume` 已按它取齐，留字段是为了将来单项微调） */
+export const AMBIENT_VOLUME = 0.65
+
+/**
+ * 用户可选的「声音大小」（设置页 · 静修声音）—— 乘在上面三层之上，**只作用于静修音效**
+ * （一记 + 环境音），不碰正文收听：朗读是用户当场按下的"听内容"，不该被音效档位连累。
+ *
+ * 为什么要有这一档：用户抱怨"为了听清要反复按系统音量键"。系统音量是全局的、影响别的 App，
+ * 而这里只该改我们自己的声音。**上限就是 1.0（素材本身的响度）** —— 播放器不能放大，
+ * 所以"默认给足"是唯一诚实的做法：用户想小声再往左拨。
+ */
+export type SoundLevel = 'low' | 'mid' | 'high'
+
+export interface SoundLevelOption {
+  id: SoundLevel
+  label: string
+  /** 倍数（0–1） */
+  scale: number
+}
+
+/** 默认档（单独抽出来，既当兜底又避免 `列表[末位]` 的类型抖动，同 AMBIENT_NONE 的写法） */
+const LEVEL_HIGH: SoundLevelOption = { id: 'high', label: '大', scale: 1 }
+
+export const SOUND_LEVELS: ReadonlyArray<SoundLevelOption> = [
+  { id: 'low', label: '小', scale: 0.5 },
+  { id: 'mid', label: '中', scale: 0.75 },
+  LEVEL_HIGH,
+]
+
+/** 默认「大」：素材归一之后 1.0 就是素材本来的响度，不再有任何软件衰减 */
+export const DEFAULT_SOUND_LEVEL: SoundLevel = 'high'
+
+/** 档位 → 倍数（认不出来的一律按默认档，避免备份里塞进怪值后静音） */
+export function soundLevelScale(level: SoundLevel | string): number {
+  return (SOUND_LEVELS.find((l) => l.id === level) ?? LEVEL_HIGH).scale
+}
 
 /* ------------------------------------------------------------------ *
  * 一记（提示音）：开始 / 结束 / 呼吸引导 / 落定
@@ -97,7 +182,7 @@ export interface CueSource {
  *    **循环型录音**，开头那几秒是否即刻出声未经真机验证 —— 一记只响几秒，
  *    挑错了就等于"点了没声"，所以**暂时不用它们做一记**（要用先真机听一遍起音）。
  *
- * 音量与淡出由 utils/audio.ts 统一处理（一记 0.5，淡出 400ms）。
+ * 音量与淡出由 utils/audio.ts 统一处理（音量取 `CUE_VOLUME`，淡出 400ms）。
  */
 export const CUE_SOURCES: Record<CueKind, CueSource[]> = {
   /** 开始一段静修：引磬_一记（2026-09-22 就位）→ 颂钵一记（清亮，3 秒） */
@@ -170,7 +255,10 @@ export interface AmbientTrack {
    * 缺文件时整条链往下走 —— 所以链首可以改名，**链尾那几个现成的别动**。
    */
   files: string[]
-  /** 目标音量（0–1）。环境音一律压在 0.35 以下：它是背景，不是主角 */
+  /**
+   * 相对音量（0–1）。**各自留一格是为了将来单项微调**，当前一律取 `AMBIENT_VOLUME`
+   * —— 归一之后"谁该比谁响"已经由素材拉平了，这里再逐个拍数字只会把统一重新搅乱。
+   */
   volume: number
 }
 
@@ -194,10 +282,10 @@ const AMBIENT_NONE: AmbientOption = { id: 'none', name: '静', hint: '只留沙�
  */
 export const SANDGLASS_AMBIENTS: AmbientOption[] = [
   AMBIENT_NONE,
-  { id: 'tick', name: '滴答', hint: '时间在走', track: { files: ['时钟滴答.mp3', '雨打屋顶.mp3'], volume: 0.3 } },
-  { id: 'sand', name: '沙粒', hint: '沙在走', track: { files: ['沙粒细流.mp3', '树叶沙沙_实地.mp3'], volume: 0.3 } },
-  { id: 'pink', name: '粉红', hint: '最不抢神', track: { files: ['粉红噪音.mp3'], volume: 0.34 } },
-  { id: 'leaves', name: '叶声', hint: '风过处', track: { files: ['树叶沙沙_实地.mp3'], volume: 0.32 } },
+  { id: 'tick', name: '滴答', hint: '时间在走', track: { files: ['时钟滴答.mp3', '雨打屋顶.mp3'], volume: AMBIENT_VOLUME } },
+  { id: 'sand', name: '沙粒', hint: '沙在走', track: { files: ['沙粒细流.mp3', '树叶沙沙_实地.mp3'], volume: AMBIENT_VOLUME } },
+  { id: 'pink', name: '粉红', hint: '最不抢神', track: { files: ['粉红噪音.mp3'], volume: AMBIENT_VOLUME } },
+  { id: 'leaves', name: '叶声', hint: '风过处', track: { files: ['树叶沙沙_实地.mp3'], volume: AMBIENT_VOLUME } },
 ]
 
 /** 沙漏偏好 id → 选项（拿不到就给默认的「静」） */
@@ -216,11 +304,11 @@ export function sandglassAmbientById(id: string): AmbientOption {
  *  - 煮雪「守着炉火，候雪水开」→ `水将开.mp3`（2026-09-22 已上线）→ 回落森林篝火
  */
 export const TEA_AMBIENTS: Record<string, AmbientTrack> = {
-  xiang: { files: ['壁炉_实地.mp3'], volume: 0.32 },
-  sao: { files: ['树叶沙沙_实地.mp3'], volume: 0.3 },
-  ting: { files: ['海浪拍岸.mp3'], volume: 0.34 },
-  yun: { files: ['微风_实地.mp3'], volume: 0.3 },
-  zhu: { files: ['水将开.mp3', '森林篝火.mp3'], volume: 0.32 },
+  xiang: { files: ['壁炉_实地.mp3'], volume: AMBIENT_VOLUME },
+  sao: { files: ['树叶沙沙_实地.mp3'], volume: AMBIENT_VOLUME },
+  ting: { files: ['海浪拍岸.mp3'], volume: AMBIENT_VOLUME },
+  yun: { files: ['微风_实地.mp3'], volume: AMBIENT_VOLUME },
+  zhu: { files: ['水将开.mp3', '森林篝火.mp3'], volume: AMBIENT_VOLUME },
 }
 
 /* ------------------------------------------------------------------ *
@@ -273,5 +361,5 @@ export const BREATH_GUIDE: BreathGuide = 'cue'
  */
 export const BREATH_TRACK: AmbientTrack = {
   files: ['呼吸_4-7-8循环.mp3', '海浪拍岸.mp3'],
-  volume: 0.3,
+  volume: AMBIENT_VOLUME,
 }

@@ -162,3 +162,20 @@ export function aiAccess(token: string): Promise<AiAccessInfo> {
     showError: false,
   })
 }
+
+/**
+ * 申请开通 AI（2026-09-23 加）。
+ *
+ * 普通用户拿不到自己的 openid（要装开发者工具看网络面板），所以只能由小程序把 openid 报上来：
+ * 后端记进 `data/ai-requests.json`，开发者看到后批准即可。**他全程不需要知道 openid 是什么。**
+ *
+ * @param name 用户自己填的一句称呼（可空，只用于开发者辨认是谁）
+ * 返回里刻意没有 openid —— 前端不需要它，少一处会泄露身份标识的地方。
+ */
+export function aiApply(token: string, name = ''): Promise<{ requested: boolean }> {
+  return http.post<{ requested: boolean }, { name: string }>(
+    '/ai/apply',
+    { name },
+    { header: authHeader(token), timeout: 10000, showError: false },
+  )
+}

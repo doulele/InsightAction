@@ -345,6 +345,27 @@
             "navigationStyle": "custom",
             "navigationBarTitleText": "修行看板"
           }
+        },
+        {
+          "path": "feedback/index",
+          "style": {
+            "navigationStyle": "custom",
+            "navigationBarTitleText": "回音壁"
+          }
+        },
+        {
+          "path": "feedback/post/index",
+          "style": {
+            "navigationStyle": "custom",
+            "navigationBarTitleText": "一条回音"
+          }
+        },
+        {
+          "path": "feedback/compose/index",
+          "style": {
+            "navigationStyle": "custom",
+            "navigationBarTitleText": "写一句"
+          }
         }
       ]
     }

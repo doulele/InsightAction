@@ -89,6 +89,16 @@ export const ROUTES = {
   meReview: '/subpkg-me/review/index',
   /** 我：修行看板 —— 四维雷达 / 认知深度分布 / 知→行转化率 / 成长图谱（分包 subpkg-me） */
   meBoard: '/subpkg-me/board/index',
+  /**
+   * 我：回音壁 —— 更新日志 / 路线图 / 缺陷与想法（分包 subpkg-me）。
+   * 三块共一页：更新（走过哪几步）、路线（接下来要做什么，可投「我也想要」）、
+   * 回音（你说的话，可赞可踩可回应）。后两页是同一条链的两端。
+   */
+  meFeedback: '/subpkg-me/feedback/index',
+  /** 我：回音壁 · 一条（`?id=`）—— 原文 + 回应 + 开发者处理（分包 subpkg-me） */
+  meFeedbackPost: '/subpkg-me/feedback/post/index',
+  /** 我：回音壁 · 写一句（分包 subpkg-me） */
+  meFeedbackCompose: '/subpkg-me/feedback/compose/index',
   /** m7 · 止：触发干预卡片（1-3 分钟呼吸暂停，分包 subpkg-pause） */
   pauseInterrupt: '/subpkg-pause/interrupt/index',
   /** 止 · 立约（当日档：触发条件 + 承诺 + 替代动作，分包 subpkg-pause） */

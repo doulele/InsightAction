@@ -103,33 +103,36 @@ function onTap(): void {
   min-width: 0;
 }
 
+/*
+ * 标题与徽标的分行口径（2026-09-23，样式随组件内联，没有单独的 .scss）。
+ *
+ * 这一处改过两轮，第一轮的方向是错的，写下来免得再来回：
+ *  - 原先没有任何 flex 约束：标题（内容宽度）+ 徽标（`flex: none`）同排超宽时，
+ *    被压的是**标题** —— 它在中间断开（「知识库 · 标签检索」断成「…标签检 / 索」）；
+ *  - 第一轮改法给标题加了 `nowrap + 省略号`，**用户当场否掉**：
+ *    标题是最该被读全的一行，**不能被省略掉**。
+ *
+ * 现在是三条（按用户的优先级）：
+ *  ① 徽标字号收到 20rpx、内边距收窄 —— 尽量让两者共处一行；
+ *  ② 真的并排放不下时，让**徽标自己换到第二行**（`flex-wrap`），标题不让步；
+ *  ③ 标题本身超长（一行装不下）时**照常换行** —— 不截断、不加省略号。
+ * 徽标换行后与标题左对齐（刻意不用 `margin-left: auto` 推到右缘：
+ * "紧跟标题的一枚标签"才是它原本的语意）。
+ */
 .entry__head {
   display: flex;
   align-items: center;
-  gap: 14rpx;
+  flex-wrap: wrap;
+  gap: 8rpx 14rpx;
 }
 
-/*
- * 标题**永不折行**（2026-09-23 修，样式随组件内联，没有单独的 .scss）。
- *
- * 原先这里没有任何 flex 约束：标题（内容宽度）+ 徽标（`flex: none`）同排，
- * 两者相加超过正文宽度时，会被压的是**标题**而不是把徽标挪下去 ——
- * 表现是标题在中间断开（知大厅的「知识库 · 标签检索」断成「…标签检 / 索」，
- * 用户报"这个换行不好看"，五个大厅的入口行里只有它超宽）。
- *
- * 现在：标题可收缩（`flex: 0 1 auto` + `min-width: 0`）但**不折行**，
- * 实在挤不下就截断成省略号，徽标完整保留。配合把超宽那条的标题缩短（见 pages/reflect），
- * 实际不会再出现省略号。
- */
 .entry__title {
+  /* 可收缩但**不截断**：并排放不下由徽标换行，标题自己超长才折行 */
   flex: 0 1 auto;
   min-width: 0;
-  overflow: hidden;
   font-size: $gz-fs-title;
   font-weight: 600;
   color: $gz-ink;
-  white-space: nowrap;
-  text-overflow: ellipsis;
 }
 
 /*
@@ -145,11 +148,18 @@ function onTap(): void {
   color: $gz-ink-2;
 }
 
+/*
+ * 徽标：字号 22 → 20rpx、内边距 4/14 → 2/12
+ * （2026-09-23 用户要求"后面那个标签字数啊字体啊小一点"，为的是让它与标题共处一行）。
+ * 它是**元信息**（数量 / 状态），20rpx 仍在"小字不低于 18rpx"的底线之上；
+ * `max-width: 100%` 是保险：极长的徽标自己折行，不会把整行撑破。
+ */
 .entry__badge {
   flex: none;
-  padding: 4rpx 14rpx;
+  max-width: 100%;
+  padding: 2rpx 12rpx;
   border-radius: 999rpx;
-  font-size: $gz-fs-caption;
+  font-size: 20rpx;
   line-height: 1.6;
 }
 

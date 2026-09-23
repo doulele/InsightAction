@@ -227,6 +227,7 @@ import { useKnowledgeStore } from '@/stores/knowledge'
 import { useTraceStore } from '@/stores/trace'
 import { useProverbStore } from '@/stores/proverb'
 import { useCapsuleStore } from '@/stores/capsule'
+import { useFeedbackStore } from '@/stores/feedback'
 import { useAccountStore } from '@/stores/account'
 import { useIdentityStore } from '@/stores/identity'
 import { backupNow } from '@/utils/cloudBackup'
@@ -263,6 +264,8 @@ const contentStore = useContentStore()
 const proverbs = useProverbStore()
 /** 时间胶囊（2026-09-17）：给未来的自己留的一句话；到期时入口徽标会亮 */
 const capsule = useCapsuleStore()
+/** 回音壁的本机留痕（待发队列 / 送出条数 / 更新版本号）：只用来挂入口那枚「有更新」徽标 */
+const feedback = useFeedbackStore()
 
 /** 主题化取词：远端运营位优先、内置兜底（与页面皮肤同一套词） */
 const p = (key: PhraseKey, mode: ModeId = modeStore.id): string => contentStore.phraseOf(key, mode)
@@ -718,6 +721,18 @@ const moreEntries = computed<MoreEntry[]>(() => [
     title: `道侣 · ${modeMeta.value.companionName}`,
     subtitle: mw.value.companion,
     badge: { text: mw.value.companionBadge, tone: 'muted' },
+  },
+  /*
+   * 回音壁（2026-09-23）：更新日志 / 路线图 / 缺陷与想法，三块收在一页。
+   * 徽标只在"服务端有比我看过的新版本"时亮 —— 版本号由回音壁页每次进页记下，
+   * 所以这里不必为了一枚徽标额外发一次请求（也就不会在弱网下拖慢「我」页）。
+   */
+  {
+    mark: '音',
+    title: '回音壁 · 更新与反馈',
+    subtitle: mw.value.feedback,
+    badge: feedback.hasNewUpdate ? { text: mw.value.feedbackBadge, tone: 'accent' } : undefined,
+    url: ROUTES.meFeedback,
   },
   {
     mark: '设',

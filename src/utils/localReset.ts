@@ -30,6 +30,7 @@ import { useProbeStore } from '@/stores/probe'
 import { useClosingStore } from '@/stores/closing'
 import { useCapsuleStore } from '@/stores/capsule'
 import { useShareStore } from '@/stores/share'
+import { useFeedbackStore } from '@/stores/feedback'
 
 export function resetPracticeData(): void {
   useXpStore().$patch({ total: 0, maxLevel: 0 })
@@ -81,4 +82,12 @@ export function resetPracticeData(): void {
    * 顺序不能反：先撤回、后重置，否则详情页没了、链接却还公开可读。
    */
   useShareStore().$patch({ items: [] })
+  /*
+   * 回音壁（2026-09-23）：只清"我写过的东西"那一半 ——
+   *  · pending 是写好了还没送出去的话（与 composeDraft 同口径：草稿也是内容，一并清）；
+   *  · sent 是徽章「回音」的判定依据，跟着旁的修行数据一起回到 0（留痕留着会挂在空数据上）；
+   *  · latestBoard / seenBoard 是"更新看到哪一版了"，属于本机偏好（和语言、提醒同类），留着。
+   * 服务器上那些已经放出来的条目**不在这里删** —— 想撤某一条，去它自己的页面上撤回。
+   */
+  useFeedbackStore().$patch({ pending: [], sent: 0 })
 }

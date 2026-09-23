@@ -24,6 +24,7 @@ import { useCapsuleStore } from '@/stores/capsule'
 import { useClosingStore } from '@/stores/closing'
 import { useComposeDraftStore } from '@/stores/composeDraft'
 import { useDailyStore } from '@/stores/daily'
+import { useFeedbackStore } from '@/stores/feedback'
 import { useFocusStore } from '@/stores/focus'
 import { useHabitStore } from '@/stores/habit'
 import { useInterruptStore } from '@/stores/interrupt'
@@ -121,6 +122,12 @@ const HYDRATORS: Array<{ key: string; use: () => Patchable }> = [
   { key: 'closing', use: () => useClosingStore() },
   { key: 'composeDraft', use: () => useComposeDraftStore() },
   { key: 'daily', use: () => useDailyStore() },
+  /*
+   * feedback（2026-09-23）：回音壁的本机留痕（待发的队列 / 送出条数 / 更新版本号）。
+   * 它要跟着备份走 —— 待发队列是"我写好了但没送出去的话"，换机之后丢掉就等于那段字没了；
+   * sent 又决定徽章「回音」亮不亮。回音壁的**内容本身在服务器上**，不在这个 store 里。
+   */
+  { key: 'feedback', use: () => useFeedbackStore() },
   { key: 'focus', use: () => useFocusStore() },
   { key: 'habit', use: () => useHabitStore() },
   { key: 'interrupt', use: () => useInterruptStore() },

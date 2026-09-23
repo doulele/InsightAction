@@ -14,7 +14,7 @@ import { applySkin } from '@/utils/skin'
 import { initUpdateManager } from '@/utils/update'
 import { initPrivacyGuard } from '@/utils/privacy'
 import { autoBackupIfDue } from '@/utils/cloudBackup'
-import { initAudioOption, resumeAudio, setSoundEnabled } from '@/utils/audio'
+import { initAudioOption, resumeAudio, setSoundEnabled, setSoundLevel } from '@/utils/audio'
 import { suspendSpeech } from '@/utils/speech'
 import { installRouterGuard, ROUTES } from '@/router/routes'
 
@@ -46,11 +46,12 @@ onLaunch((options) => {
 
   /*
    * 静修声音（2026-09-17）：先定播放口径 —— 跟随系统静音键、不与其他音频混音；
-   * 再把用户的总开关同步进播放器（utils/audio.ts 的模块级开关，
+   * 再把用户的总开关与「声音大小」档同步进播放器（utils/audio.ts 的模块级状态，
    * 关掉后沙漏 / 茶室 / 呼吸干预的一切播放请求直接返回，不下载也不发声）。
    */
   initAudioOption()
   setSoundEnabled(useSettingsStore().soundOn)
+  setSoundLevel(useSettingsStore().soundLevel)
 
   // 应用级初始化：记录启动
   const appStore = useAppStore()
@@ -129,6 +130,12 @@ const settings = useSettingsStore()
 watch(
   () => settings.soundOn,
   (on) => setSoundEnabled(on),
+)
+
+// 声音大小档：设置页改动即时生效（正在响的环境音当场跟着变，见 utils/audio.ts）
+watch(
+  () => settings.soundLevel,
+  (level) => setSoundLevel(level),
 )
 
 /*

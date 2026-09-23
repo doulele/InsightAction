@@ -1,0 +1,167 @@
+/**
+ * 回音壁 · 写一句 的样式（超过 100 行，按项目约定外置）。
+ * 由 ../compose/index.vue 通过 @import 引入。
+ */
+.page {
+  min-height: 100vh;
+  /* 顶距由 SubNav 让，这里只管左右与底部 */
+  padding: 0 $gz-page-pad 80rpx;
+}
+
+.card {
+  padding: 26rpx 26rpx 22rpx;
+  margin-top: 22rpx;
+  background: var(--gz-surface);
+  border: 1rpx solid var(--gz-line);
+  border-radius: $gz-radius-lg;
+}
+
+.label {
+  display: block;
+  margin: 18rpx 0 12rpx;
+  font-size: $gz-fs-caption;
+  font-weight: 700;
+  color: $gz-ink-2;
+  letter-spacing: 0.06em;
+}
+
+.label:first-child {
+  margin-top: 0;
+}
+
+.chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12rpx;
+}
+
+.chip {
+  padding: 12rpx 26rpx;
+  border-radius: 999rpx;
+  background: $gz-surface;
+  border: 1rpx solid $gz-line;
+  font-size: $gz-fs-caption;
+  color: $gz-ink-2;
+}
+
+.chip.is-on {
+  background: $gz-accent-soft;
+  border-color: $gz-accent;
+  color: $gz-accent;
+  font-weight: 700;
+}
+
+.input {
+  width: 100%;
+  height: 84rpx;
+  padding: 0 24rpx;
+  box-sizing: border-box;
+  background: $gz-paper;
+  border: 1rpx solid $gz-line;
+  border-radius: $gz-radius-md;
+  font-size: $gz-fs-body;
+  color: $gz-ink;
+}
+
+.area {
+  width: 100%;
+  min-height: 300rpx;
+  padding: 20rpx 24rpx;
+  box-sizing: border-box;
+  background: $gz-paper;
+  border: 1rpx solid $gz-line;
+  border-radius: $gz-radius-md;
+  font-size: $gz-fs-body;
+  line-height: 1.75;
+  color: $gz-ink;
+}
+
+.ph {
+  color: $gz-ink-3;
+}
+
+.count {
+  display: block;
+  margin-top: 10rpx;
+  text-align: right;
+  font-size: $gz-fs-caption;
+  color: $gz-ink-3;
+}
+
+/* ---- 两个开关 ---- */
+.row {
+  display: flex;
+  align-items: center;
+  gap: 20rpx;
+  padding: 18rpx 0;
+  border-bottom: 1rpx dashed $gz-line-soft;
+}
+
+.row--last {
+  border-bottom: none;
+  padding-bottom: 0;
+}
+
+.row__main {
+  flex: 1;
+  min-width: 0;
+}
+
+.row__label {
+  font-size: $gz-fs-body;
+  color: $gz-ink;
+}
+
+.row__hint {
+  display: block;
+  margin-top: 6rpx;
+  font-size: $gz-fs-caption;
+  line-height: 1.7;
+  color: $gz-ink-2;
+}
+
+/* ---- 口径说明 ---- */
+.note {
+  margin-top: 20rpx;
+  padding: 20rpx 24rpx;
+  background: $gz-accent-soft;
+  border-radius: $gz-radius-md;
+}
+
+.note__text {
+  font-size: $gz-fs-caption;
+  line-height: 1.8;
+  color: $gz-ink-2;
+}
+
+/* ---- 送出 ---- */
+.submit {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 92rpx;
+  margin-top: 34rpx;
+  border-radius: 999rpx;
+  background: $gz-accent;
+}
+
+.submit.is-busy {
+  opacity: 0.6;
+}
+
+.submit__text {
+  font-size: $gz-fs-body;
+  font-weight: 700;
+  color: $gz-on-cta;
+  letter-spacing: 0.08em;
+}
+
+.foot {
+  padding: 34rpx 0 10rpx;
+  text-align: center;
+}
+
+.foot__text {
+  font-size: $gz-fs-caption;
+  color: $gz-ink-3;
+}

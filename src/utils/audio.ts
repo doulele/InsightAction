@@ -40,22 +40,47 @@
  *  · **环境音**会顺手 toast 一次「这段声音还没到位」—— 那时是用户主动选了它，
  *    没声不解释会被当成坏了。同一个文件只提示一次。
  *
- * 切后台：微信会挂起普通音频。**这里不再主动停**（2026-09-22 改，用户要求切后台不停声）——
- * 系统没挂起就继续响，真断了回前台由 App.onShow 调 resumeAudio() 续上
- * （它会先确认不是还在播，免得叠成两轨）。页面自己不管这事，见 App.vue。
- * **息屏后没有声音是平台限制**，与本项目「息屏时间仍在流」的计时规则并不冲突 ——
- * 计时照走，声音交给系统。
+ * ── 切后台 / 息屏（2026-09-23 复核）──
+ * 1. **这里不再主动停**（2026-09-22 改）：早先 App.onHide 会收干净再回前台重起，
+ *    等于"切出去声音就断了"；现在只由 App.onShow 调 resumeAudio() 续上
+ *    （它会先确认不是还在播，免得叠成两轨）。
+ * 2. **官方对"后台继续播放"只认 `requiredBackgroundModes: ["audio"]` 这个声明**
+ *    （`manifest.json` 的 mp-weixin 段已加；开发版/体验版直接生效，**正式版要过审**）。
+ *    配上之后部分机型切后台能接着响（我们的环境音是原生 `loop`，循环不需要 JS 参与，
+ *    所以后台冻结了也还能一直转）—— 但**不保证**：iOS 息屏后小程序会被系统挂起，
+ *    断在哪里就是哪里；真断了回前台由 resumeAudio() 续。
+ * 3. **为什么环境音不迁到 `BackgroundAudioManager`**（它才被官方明确承诺后台可续）：
+ *    它的属性表里**没有 `volume`、也没有 `loop`** —— 迁过去等于① 用户选的「声音大小」
+ *    与环境音的音量层级**全部失效**（只能靠素材本身响度），② 循环要靠 `onEnded` 重起，
+ *    而后台不允许调 API 操作播放状态，35 秒的素材在后台放完就静音。代价远大于收益，
+ *    详见 `docs/观止知行-素材响度归一-交接说明.md` 附录 B。
+ * 4. 所以对外口径是**「切后台尽量续、息屏不保证」**；与本项目「息屏时间仍在流」的计时规则
+ *    并不冲突 —— 计时照走，声音交给系统。
  */
 
-import { audioUrl, CUE_SOURCES, type CueKind, type CueSource } from '@/config/audio'
+import {
+  audioUrl,
+  AUDIO_ASSET_REV,
+  CUE_SOURCES,
+  CUE_VOLUME,
+  DEFAULT_SOUND_LEVEL,
+  SPEECH_VOLUME,
+  soundLevelScale,
+  type CueKind,
+  type CueSource,
+  type SoundLevel,
+} from '@/config/audio'
 import { copyToUserDir, extOf, fileExists, userDir } from '@/utils/localFile'
 
 type AudioCtx = ReturnType<typeof uni.createInnerAudioContext>
 
-/** 提示音音量（环境音的音量由 config 逐项给，一律 ≤0.35） */
-const CUE_VOLUME = 0.5
-/** 朗读音量：正文收听是"内容"，给足（与上面那些氛围音不是一类东西） */
-const SPEECH_VOLUME = 1
+/*
+ * 音量（`CUE_VOLUME` / `SPEECH_VOLUME` / `SoundLevel` 的倍数）**全在 config/audio.ts**：
+ * 页面与工具都不写死数字，这里只负责把它们乘起来。
+ */
+
+/** 用户档位变化的渐变时长（比环境音淡入短：换档要立刻听出来，又不能"啪"地跳） */
+const LEVEL_FADE_MS = 320
 /** 音量渐变步进：环境音淡入淡出都靠它逐级调 volume（无原生渐变 API） */
 const FADE_STEP_MS = 120
 /** 环境音淡入 / 淡出时长：避免「啪」地一声起、一声断 */
@@ -102,6 +127,11 @@ interface AmbientWanted {
 let ctx: AudioCtx | null = null
 /** 用户是否开着声音（关掉后一切静音；由 setSoundEnabled 同步） */
 let soundOn = true
+/**
+ * 用户选的「声音大小」倍数（设置页 · 静修声音；见 config/audio.ts 的 `SOUND_LEVELS`）。
+ * 只作用于**静修音效**（一记 + 环境音），朗读不受影响。
+ */
+let levelScale = soundLevelScale(DEFAULT_SOUND_LEVEL)
 
 /** 用户想要的环境音 */
 let ambientWanted: AmbientWanted | null = null
@@ -189,6 +219,22 @@ export function setSoundEnabled(on: boolean): void {
   prefetchAllCues()
 }
 
+/**
+ * 同步用户选的「声音大小」（App 启动一次、设置页改档时一次）。
+ *
+ * 为什么正在响的环境音要**当场**跟着变：这一档的作用就是"不用去按系统音量键"，
+ * 用户拨完指针如果听不出区别，他会以为没生效，转回头去按系统音量 —— 那就白做了。
+ * 一记（一声就过去了）与朗读（不受这一档约束）只要下一次播放取到新倍数即可；
+ * 而一记正在响时不去动音量，免得和它自己的淡出抢同一个渐变定时器。
+ */
+export function setSoundLevel(level: SoundLevel): void {
+  levelScale = soundLevelScale(level)
+  if (cueBusy || speechBusy) return
+  const wanted = ambientWanted
+  if (!soundOn || !wanted || !ambientAttempt) return
+  fadeTo(ambientTarget(wanted), LEVEL_FADE_MS)
+}
+
 /* ------------------------------------------------------------------ *
  * 缓存：地址 → 私有永久目录里的本地文件
  * ------------------------------------------------------------------ */
@@ -200,10 +246,15 @@ function hashOf(file: string): string {
   return h.toString(36)
 }
 
-/** 该素材在私有永久目录里的路径（环境不支持时返回空串） */
+/**
+ * 该素材在私有永久目录里的路径（环境不支持时返回空串）。
+ *
+ * 哈希里**带上素材版本号**：服务器是同名覆盖，不带版本号的话老用户永远读本机那份旧音频
+ * （换了响度也听不出来，像没修）。换素材后 `AUDIO_ASSET_REV` +1 即整批作废。
+ */
 function localPathOf(file: string): string {
   const dir = userDir()
-  return dir ? `${dir}/gz-audio-${hashOf(file)}.${extOf(file)}` : ''
+  return dir ? `${dir}/gz-audio-${hashOf(`${file}@${AUDIO_ASSET_REV}`)}.${extOf(file)}` : ''
 }
 
 /**
@@ -454,6 +505,20 @@ function fadeTo(target: number, ms: number, done?: () => void): void {
   }, FADE_STEP_MS)
 }
 
+/**
+ * 把 config 里给的音量乘上用户的「声音大小」档，并夹进播放器认的 0–1。
+ *
+ * **两处起播都要走它**（一记、环境音），漏一处就会出现"拨了档位但某个声音没跟着变"。
+ */
+function scaled(volume: number): number {
+  return Math.max(0, Math.min(1, volume * levelScale))
+}
+
+/** 环境音的最终音量 = 该项的相对音量 × 用户档位 */
+function ambientTarget(wanted: AmbientWanted): number {
+  return scaled(wanted.volume)
+}
+
 /* ------------------------------------------------------------------ *
  * 环境音（循环）
  * ------------------------------------------------------------------ */
@@ -519,7 +584,7 @@ function beginAmbient(wanted: AmbientWanted, token: number): void {
           if (token === ambientToken) playChain(wanted, token)
         },
       })
-      fadeTo(wanted.volume, AMBIENT_FADE_IN_MS)
+      fadeTo(ambientTarget(wanted), AMBIENT_FADE_IN_MS)
       return
     }
   }
@@ -551,7 +616,7 @@ function runAmbient(list: Attempt[], i: number, wanted: AmbientWanted, token: nu
     loop: true,
     onDead: () => runAmbient(list, at + 1, wanted, token),
   })
-  fadeTo(wanted.volume, AMBIENT_FADE_IN_MS)
+  fadeTo(ambientTarget(wanted), AMBIENT_FADE_IN_MS)
 }
 
 /** 停掉正在响的环境音（淡出后停；不留记录） */
@@ -809,7 +874,7 @@ function runCue(list: Attempt[], i: number, source: CueSource): void {
     loop: false,
     startTime: source.startTime ?? 0,
     rate: source.rate ?? 1,
-    volume: CUE_VOLUME,
+    volume: scaled(CUE_VOLUME),
     onDead: () => runCue(list, at + 1, source),
   })
   clearCueTimer()
@@ -858,7 +923,7 @@ function endCue(): void {
     startTime: at,
     onDead: () => playChain(wanted, ambientToken),
   })
-  fadeTo(wanted.volume, AMBIENT_FADE_IN_MS)
+  fadeTo(ambientTarget(wanted), AMBIENT_FADE_IN_MS)
 }
 
 /**

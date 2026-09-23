@@ -64,6 +64,12 @@ export interface BadgeContext {
   bodyReadDays: number
   /** 行 · 身体：是否有过走到自己定的目标的一天 */
   bodyGoalHit: boolean
+  /**
+   * 我 · 回音壁：累计**成功送出**的反馈条数（本机留痕，见 stores/feedback.ts）。
+   * 用它而不是"服务端有多少条"是刻意的：徽章是本地实时判定，不能因为一次网络不通就
+   * 让一枚已经到手的徽章熄灭，也不能因此把从没说过话的人点亮。
+   */
+  feedbackCount: number
 }
 
 export interface BadgeRule {
@@ -164,6 +170,13 @@ export const BADGE_RULES: readonly BadgeRule[] = [
   { id: 'proverb-1', name: '记心', desc: '记住第一句箴言', hit: (c) => c.proverbTotal >= 1 },
   { id: 'proverb-10', name: '拾穗', desc: '记住满 10 句箴言', hit: (c) => c.proverbTotal >= 10 },
   { id: 'proverb-echo', name: '回响', desc: '有一句箴言走完 1·3·7 天全部回响', hit: (c) => c.proverbEchoed >= 1 },
+
+  /* ---------------- 我 · 回音壁（2026-09-23） ---------------- */
+  /*
+   * 门槛刻意只有 1：发帖与回应**不入修为**（口径见 config/feedback.ts），
+   * 这一枚也不是"多发多得"的奖励 —— 它只记一件事：你说过话。
+   */
+  { id: 'feedback-1', name: '回音', desc: '往回音壁留下过一条', hit: (c) => c.feedbackCount >= 1 },
 ]
 
 export function evaluateBadges(ctx: BadgeContext): { rule: BadgeRule; unlocked: boolean }[] {

@@ -1,0 +1,565 @@
+/**
+ * 回音壁主页面的样式（超过 100 行，按项目约定外置）。
+ * 由 index.vue 通过 @import 引入；以后改样式改本文件。
+ *
+ * 视觉口径（与 config/feedback.ts 的用词口径是一回事）：
+ * 不做卡片大图、不做热度榜的"名次感"、不做头像墙 —— 整体长得像**一份跟进单**，
+ * 而不是一个社区。所以列表卡里没有头像、没有圆形按钮，只有一条细的状态色线。
+ */
+.page {
+  min-height: 100vh;
+  /* 底部留出固定条（写一句）的高度 + 状态栏那一份由 SubNav 让 */
+  padding: 0 $gz-page-pad 180rpx;
+}
+
+/* ---- 页首：定位说明 ---- */
+.intro {
+  padding: 22rpx 26rpx;
+  background: var(--gz-surface);
+  border: 1rpx solid var(--gz-line);
+  border-left: 6rpx solid var(--gz-accent);
+  border-radius: $gz-radius-md;
+}
+
+.intro__line {
+  font-size: $gz-fs-small;
+  line-height: 1.8;
+  color: $gz-ink-2;
+}
+
+.intro__pending {
+  margin-top: 14rpx;
+  padding-top: 12rpx;
+  border-top: 1rpx dashed $gz-line-soft;
+}
+
+.intro__pending-text {
+  font-size: $gz-fs-caption;
+  color: $gz-accent;
+  font-weight: 700;
+}
+
+/* ---- 三段切换 ---- */
+.segs {
+  display: flex;
+  gap: 10rpx;
+  margin-top: 22rpx;
+}
+
+.seg {
+  flex: 1;
+  padding: 16rpx 10rpx;
+  text-align: center;
+  background: $gz-surface;
+  border: 1rpx solid $gz-line;
+  border-radius: $gz-radius-md;
+}
+
+.seg.is-on {
+  background: $gz-accent-soft;
+  border-color: $gz-accent;
+}
+
+.seg__label {
+  display: block;
+  font-size: $gz-fs-body;
+  font-weight: 700;
+  color: $gz-ink-2;
+}
+
+.seg.is-on .seg__label {
+  color: $gz-accent;
+}
+
+.seg__hint {
+  display: block;
+  margin-top: 4rpx;
+  font-size: 20rpx;
+  color: $gz-ink-3;
+}
+
+/* ---- 通用 ---- */
+.sec {
+  margin-top: 22rpx;
+}
+
+.err {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-top: 20rpx;
+  padding: 20rpx 24rpx;
+  background: $gz-surface;
+  border: 1rpx dashed $gz-line;
+  border-radius: $gz-radius-md;
+}
+
+.err__text {
+  flex: 1;
+  min-width: 0;
+  font-size: $gz-fs-small;
+  color: $gz-ink-2;
+}
+
+.err__btn {
+  flex: none;
+  margin-left: 16rpx;
+  padding: 8rpx 22rpx;
+  border-radius: 999rpx;
+  background: $gz-accent-soft;
+  color: $gz-accent;
+  font-size: $gz-fs-caption;
+}
+
+.empty {
+  padding: 60rpx 36rpx;
+  text-align: center;
+  background: $gz-surface;
+  border: 1rpx dashed $gz-line;
+  border-radius: $gz-radius-lg;
+}
+
+.empty__title {
+  display: block;
+  font-size: $gz-fs-title;
+  font-weight: 700;
+  color: $gz-ink-2;
+}
+
+.empty__text {
+  display: block;
+  margin-top: 12rpx;
+  font-size: $gz-fs-small;
+  line-height: 1.8;
+  color: $gz-ink-2;
+}
+
+/* ---- 更新（走过哪几步） ---- */
+.rel {
+  padding: 22rpx 24rpx;
+  margin-bottom: 14rpx;
+  background: $gz-surface;
+  border: 1rpx solid $gz-line;
+  border-radius: $gz-radius-md;
+}
+
+/* 本次更新：左侧一条主题色竖线，一眼看出"这条是新的" */
+.rel.is-current {
+  border-left: 6rpx solid $gz-accent;
+}
+
+.rel__head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+}
+
+.rel__left {
+  flex: 1;
+  min-width: 0;
+}
+
+.rel__badge {
+  display: inline-block;
+  margin-right: 10rpx;
+  padding: 2rpx 12rpx;
+  border-radius: 999rpx;
+  background: $gz-accent-soft;
+  color: $gz-accent;
+  font-size: 20rpx;
+  font-weight: 700;
+}
+
+.rel__title {
+  font-size: $gz-fs-body;
+  font-weight: 700;
+  color: $gz-ink;
+}
+
+.rel__meta {
+  display: block;
+  margin-top: 6rpx;
+  font-size: $gz-fs-caption;
+  color: $gz-ink-3;
+}
+
+.rel__fold {
+  flex: none;
+  margin-left: 16rpx;
+  font-size: $gz-fs-caption;
+  color: $gz-accent;
+}
+
+.rel__items {
+  margin-top: 14rpx;
+  padding-top: 14rpx;
+  border-top: 1rpx dashed $gz-line-soft;
+}
+
+.rel__item {
+  display: block;
+  margin-top: 10rpx;
+  font-size: $gz-fs-small;
+  line-height: 1.75;
+  color: $gz-ink-2;
+}
+
+/* ---- 路线（接下来要去哪儿） ---- */
+.stage {
+  margin-bottom: 26rpx;
+}
+
+.stage__head {
+  display: flex;
+  align-items: baseline;
+  gap: 10rpx;
+  margin-bottom: 12rpx;
+}
+
+.stage__title {
+  font-size: $gz-fs-small;
+  font-weight: 700;
+  color: $gz-ink-2;
+  letter-spacing: 0.06em;
+}
+
+.stage__num {
+  font-size: $gz-fs-caption;
+  color: $gz-ink-3;
+}
+
+.road {
+  padding: 20rpx 24rpx;
+  margin-bottom: 12rpx;
+  background: $gz-surface;
+  border: 1rpx solid $gz-line;
+  border-radius: $gz-radius-md;
+}
+
+.road__title {
+  display: block;
+  font-size: $gz-fs-body;
+  font-weight: 700;
+  color: $gz-ink;
+}
+
+.road__note {
+  display: block;
+  margin-top: 8rpx;
+  font-size: $gz-fs-small;
+  line-height: 1.75;
+  color: $gz-ink-2;
+}
+
+.road__foot {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: 14rpx;
+}
+
+/* 「我也想要」：描边药丸，投过后变实底 —— 它是这一页唯一改变优先级的方式 */
+.want {
+  display: flex;
+  align-items: center;
+  gap: 8rpx;
+  padding: 8rpx 22rpx;
+  border: 1rpx solid $gz-accent;
+  border-radius: 999rpx;
+  color: $gz-accent;
+  font-size: $gz-fs-caption;
+}
+
+.want.is-on {
+  background: $gz-accent;
+  color: $gz-on-cta;
+  font-weight: 700;
+}
+
+.want__num {
+  font-size: $gz-fs-caption;
+}
+
+/* ---- 回音（你说的话） ---- */
+.banner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16rpx;
+  padding: 18rpx 24rpx;
+  margin-bottom: 18rpx;
+  background: $gz-surface;
+  border: 1rpx dashed $gz-line;
+  border-radius: $gz-radius-md;
+}
+
+.banner--admin {
+  border-style: solid;
+  border-left: 6rpx solid $gz-accent;
+}
+
+.banner__text {
+  flex: 1;
+  min-width: 0;
+  font-size: $gz-fs-small;
+  line-height: 1.7;
+  color: $gz-ink-2;
+}
+
+.banner__btn {
+  flex: none;
+  padding: 10rpx 24rpx;
+  border-radius: 999rpx;
+  background: $gz-accent;
+  color: $gz-on-cta;
+  font-size: $gz-fs-caption;
+  font-weight: 700;
+}
+
+.banner__id {
+  flex: none;
+  font-size: $gz-fs-caption;
+  color: $gz-accent;
+  text-decoration: underline;
+}
+
+.tools {
+  margin-bottom: 20rpx;
+}
+
+.tools__input {
+  width: 100%;
+  height: 76rpx;
+  padding: 0 24rpx;
+  box-sizing: border-box;
+  background: $gz-surface;
+  border: 1rpx solid $gz-line;
+  border-radius: $gz-radius-md;
+  font-size: $gz-fs-small;
+  color: $gz-ink;
+}
+
+.chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12rpx;
+  margin-top: 14rpx;
+}
+
+.chip {
+  padding: 10rpx 24rpx;
+  border-radius: 999rpx;
+  background: $gz-surface;
+  border: 1rpx solid $gz-line;
+  font-size: $gz-fs-caption;
+  color: $gz-ink-2;
+}
+
+.chip.is-on {
+  background: $gz-accent-soft;
+  border-color: $gz-accent;
+  color: $gz-accent;
+  font-weight: 700;
+}
+
+.tools__row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-top: 14rpx;
+}
+
+.sorts {
+  display: flex;
+  gap: 22rpx;
+}
+
+.sort {
+  font-size: $gz-fs-caption;
+  color: $gz-ink-3;
+}
+
+.sort.is-on {
+  color: $gz-accent;
+  font-weight: 700;
+}
+
+.mine {
+  font-size: $gz-fs-caption;
+  color: $gz-ink-3;
+}
+
+.mine.is-on {
+  color: $gz-accent;
+  font-weight: 700;
+}
+
+/* 一条回音：左侧状态色线 + 窄标记，长得像跟进单而不是帖子 */
+.voice {
+  padding: 22rpx 24rpx 18rpx;
+  margin-bottom: 14rpx;
+  background: $gz-surface;
+  border: 1rpx solid $gz-line;
+  border-left: 6rpx solid $gz-line-soft;
+  border-radius: $gz-radius-md;
+}
+
+.voice__top {
+  display: flex;
+  align-items: center;
+  gap: 12rpx;
+}
+
+.voice__type {
+  padding: 2rpx 14rpx;
+  border-radius: 999rpx;
+  border: 1rpx solid $gz-line;
+  font-size: 20rpx;
+  color: $gz-ink-2;
+}
+
+.voice__status {
+  font-size: 20rpx;
+}
+
+.voice__status.is-muted {
+  color: $gz-ink-3;
+}
+
+.voice__status.is-accent {
+  color: $gz-accent;
+}
+
+.voice__status.is-doing {
+  padding: 2rpx 14rpx;
+  border-radius: 999rpx;
+  background: $gz-accent;
+  color: $gz-on-cta;
+}
+
+.voice__status.is-done {
+  padding: 2rpx 14rpx;
+  border-radius: 999rpx;
+  background: $gz-accent-soft;
+  color: $gz-accent;
+  font-weight: 700;
+}
+
+.voice__status.is-warn {
+  color: $gz-warn;
+}
+
+.voice__title {
+  display: block;
+  margin-top: 12rpx;
+  font-size: $gz-fs-body;
+  font-weight: 700;
+  color: $gz-ink;
+}
+
+.voice__preview {
+  display: block;
+  margin-top: 8rpx;
+  font-size: $gz-fs-small;
+  line-height: 1.7;
+  color: $gz-ink-2;
+}
+
+.voice__foot {
+  display: flex;
+  align-items: center;
+  gap: 16rpx;
+  margin-top: 12rpx;
+}
+
+.voice__who,
+.voice__time {
+  font-size: $gz-fs-caption;
+  color: $gz-ink-3;
+}
+
+.voice__acts {
+  display: flex;
+  align-items: center;
+  gap: 12rpx;
+  margin-top: 14rpx;
+  padding-top: 14rpx;
+  border-top: 1rpx dashed $gz-line-soft;
+}
+
+.act {
+  display: flex;
+  align-items: center;
+  gap: 8rpx;
+  padding: 8rpx 20rpx;
+  border: 1rpx solid $gz-line;
+  border-radius: 999rpx;
+  font-size: $gz-fs-caption;
+  color: $gz-ink-2;
+}
+
+.act.is-on {
+  border-color: $gz-accent;
+  background: $gz-accent-soft;
+  color: $gz-accent;
+  font-weight: 700;
+}
+
+.act__num {
+  font-size: $gz-fs-caption;
+  color: $gz-ink-3;
+}
+
+.act.is-on .act__num {
+  color: $gz-accent;
+}
+
+.voice__replies {
+  margin-left: auto;
+  font-size: $gz-fs-caption;
+  color: $gz-ink-3;
+}
+
+.voice__official {
+  color: $gz-accent;
+  font-weight: 700;
+}
+
+/* ---- 页尾 + 固定底条 ---- */
+.foot {
+  padding: 40rpx 0 10rpx;
+  text-align: center;
+}
+
+.foot__text {
+  font-size: $gz-fs-caption;
+  letter-spacing: 0.1em;
+  color: $gz-ink-3;
+}
+
+.bar {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 20;
+  padding: 16rpx $gz-page-pad;
+  padding-bottom: calc(16rpx + env(safe-area-inset-bottom));
+  background: var(--gz-paper);
+  border-top: 1rpx solid $gz-line;
+}
+
+.bar__btn {
+  height: 88rpx;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: $gz-accent;
+  border-radius: 999rpx;
+}
+
+.bar__text {
+  font-size: $gz-fs-body;
+  font-weight: 700;
+  color: $gz-on-cta;
+  letter-spacing: 0.08em;
+}
