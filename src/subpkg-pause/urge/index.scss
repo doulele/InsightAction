@@ -141,14 +141,25 @@
   }
 }
 
+/*
+ * 选项胶囊行（2026-09-23 收紧）。
+ *
+ * 症状（用户报）：① 是什么冲动 的 5 个选项、② 当时什么感觉 的 6 个选项，
+ * 都在最后多掉一个下来（「其他」/「说不上来」独占一行），看着像没排好。
+ * 原因是尺寸本身差一点点：14 个字 × 26rpx + 每片 52rpx 内边距 + 间距，
+ * 整行 716rpx > 可用 654rpx。
+ *
+ * 口径是**只收内边距、不动字号**：26rpx 是正文级，胶囊再小就点不准；
+ * 收到 18rpx 后 ①② 都能排满一行（分别约 584 / 630rpx）。
+ */
 .chips {
   display: flex;
   flex-wrap: wrap;
-  gap: 12rpx;
+  gap: 10rpx;
 }
 
 .chip {
-  padding: 12rpx 26rpx;
+  padding: 12rpx 18rpx;
   border: 1rpx solid $gz-line;
   border-radius: 999rpx;
   font-size: $gz-fs-small;

@@ -96,20 +96,26 @@
 /* ---- 箴言卡 ---- */
 .fav {
   display: flex;
-  align-items: flex-start;
-  gap: 12rpx;
-  padding: 24rpx 26rpx;
+  flex-direction: column;
+  padding: 24rpx 26rpx 20rpx;
   margin-bottom: 16rpx;
   background: $gz-surface;
   border: 1rpx solid $gz-line;
   border-radius: $gz-radius-md;
 }
 
+/* 主行：引号 + 正文（正文 flex:1，操作行搬到卡底后这里不再被挤窄） */
+.fav__main {
+  display: flex;
+  align-items: flex-start;
+  gap: 12rpx;
+}
+
 .fav__mark {
   flex: none;
   color: $gz-accent;
   font-size: 44rpx;
-  line-height: 1;
+  line-height: 1.15;
 }
 
 .fav__body {
@@ -168,15 +174,22 @@
   color: $gz-ink-3;
 }
 
+/*
+ * 操作行：卡底一条横排（右对齐），与正文之间用一条虚线分开。
+ * 为什么不再竖排：最多五个按钮竖着贴在右侧，会把卡片撑坏（见 index.vue 的注）。
+ */
 .fav__acts {
-  flex: none;
   display: flex;
-  flex-direction: column;
+  flex-wrap: wrap;
+  justify-content: flex-end;
   gap: 10rpx;
+  margin-top: 18rpx;
+  padding-top: 16rpx;
+  border-top: 1rpx dashed $gz-line-soft;
 }
 
 .fav__btn {
-  padding: 6rpx 18rpx;
+  padding: 8rpx 20rpx;
   border-radius: 999rpx;
   background: $gz-accent-soft;
   color: $gz-accent;

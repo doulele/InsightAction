@@ -256,6 +256,25 @@
       </view>
     </view>
 
+    <!--
+      主题输入弹框（2026-09-23）：日课「破了写一句为什么」与「在某个节点下面加一步」
+      共用一个框，取代两处原生 `editable` 弹框
+      （白底不跟皮肤，且说明文字会被当成输入框的初始值）。
+    -->
+    <GzDialog
+      v-model:show="askShow"
+      :input="true"
+      :banner="false"
+      :multiline="ask !== 'child'"
+      :title="askMeta.title"
+      :content="askMeta.content"
+      :placeholder="askMeta.placeholder"
+      :confirm-text="askMeta.confirmText"
+      cancel-text="算了"
+      :maxlength="140"
+      @confirm="onAskConfirm"
+    />
+
     <PlanReflect :show="!!reflectOn" :plan="reflectOn" @confirm="onReflectConfirm" @skip="onReflectSkip" />
   </view>
 </template>
@@ -398,23 +417,64 @@ function checkToday(): void {
   uni.showToast({ title: res.done ? w.value.keptAct : '已退回今天这一笔', icon: 'none' })
 }
 
+/* ---------------- 主题输入弹框（2026-09-23） ----------------
+ * 本页两处「问一句就写下来」：日课破了写一句为什么、在某个节点下面加一步。
+ * 原生 `editable` 弹框白底不跟皮肤，且会把说明文字当成输入框初始值 ——
+ * 收进 GzDialog：`ask` 是判别量，`askMeta` 给文案，`onAskConfirm` 落库（与详情页同范式）。
+ */
+const ask = ref<'break' | 'child' | null>(null)
+const askShow = computed({
+  get: () => ask.value !== null,
+  set: (v: boolean) => {
+    if (!v) ask.value = null
+  },
+})
+/** 「加一步」要挂在哪个节点下（父节点那一行） */
+const childOf = ref<TreeRow | null>(null)
+
+const askMeta = computed(() =>
+  ask.value === 'child'
+    ? {
+        title: `在「${childOf.value?.node.title ?? ''}」下面加一步`,
+        content: '这一步要做什么（它下面还能再拆）。',
+        placeholder: '如：先读完第一章',
+        confirmText: '加',
+      }
+    : {
+        title: w.value.brokenAct,
+        content: '写一句为什么 —— 知道原因比没破更有用（可留空）。',
+        placeholder: '如：昨天加班到十一点',
+        confirmText: '记下',
+      },
+)
+
+function onAskConfirm(value: string): void {
+  const kind = ask.value
+  const p = item.value
+  ask.value = null
+  if (!kind || !p) return
+  if (kind === 'break') {
+    /* 那一句会进【知】的省察（store 里就这么写） */
+    plan.markDailyBroken(p.id, value)
+    uni.showToast({ title: '记下了 · 明天照常', icon: 'none' })
+    return
+  }
+  const r = childOf.value
+  childOf.value = null
+  if (!r) return
+  const title = value.trim()
+  if (!title) return
+  if (plan.addNode(p.id, { title }, r.node.id)) {
+    expanded.value = { ...expanded.value, [r.node.id]: true }
+    uni.showToast({ title: '已加一步', icon: 'none' })
+  }
+}
+
 /** 破了：不归零、不扣分，可写一句为什么（那一句会进【知】的省察） */
 function breakToday(): void {
   const p = item.value
   if (!p) return
-  showModal({
-    title: w.value.brokenAct,
-    content: '',
-    editable: true,
-    placeholderText: '写一句为什么（可留空）—— 知道原因比没破更有用',
-    confirmText: '记下',
-    cancelText: '算了',
-    success: (res) => {
-      if (!res.confirm) return
-      plan.markDailyBroken(p.id, res.content ?? '')
-      uni.showToast({ title: '记下了 · 明天照常', icon: 'none' })
-    },
-  })
+  ask.value = 'break'
 }
 
 function setTarget(n: number): void {
@@ -540,22 +600,8 @@ function addChild(r: TreeRow): void {
     uni.showToast({ title: `最多 ${MAX_NODE_DEPTH} 层 —— 再往下拆，不如另立一条路`, icon: 'none' })
     return
   }
-  showModal({
-    title: `在「${r.node.title}」下面加一步`,
-    editable: true,
-    placeholderText: '这一步要做什么（它下面还能再拆）',
-    confirmText: '加',
-    cancelText: '算了',
-    success: (res) => {
-      if (!res.confirm) return
-      const title = (res.content ?? '').trim()
-      if (!title) return
-      if (plan.addNode(p.id, { title }, r.node.id)) {
-        expanded.value = { ...expanded.value, [r.node.id]: true }
-        uni.showToast({ title: '已加一步', icon: 'none' })
-      }
-    },
-  })
+  childOf.value = r
+  ask.value = 'child'
 }
 
 /** 自评进度：五档比滑块准、也比手填快（拉满等于勾上，见 store.updateNodeProgress） */

@@ -132,3 +132,33 @@ export function aiProverb(
     { header: authHeader(token), timeout: AI_TIMEOUT, showError: false },
   )
 }
+
+/* ---------------- 访问自检（2026-09-23 加） ---------------- */
+
+/**
+ * AI 的访问自检结果。
+ *
+ * 为什么必须问服务端：前端拿不到自己的 openid，"我在不在白名单里"只有后端知道。
+ * `mode` 三态与后端一一对应：
+ *   'open'   —— 名单没配 = 不限（能登录就能用）；
+ *   'allow'  —— 在名单里；
+ *   'denied' —— 不在名单里（设置页据此弹"联系开通 + 二维码"）。
+ */
+export interface AiAccessInfo {
+  mode: 'open' | 'allow' | 'denied'
+  allowed: boolean
+  /** 「需要开通」时给用户扫的二维码地址；空串 = 后端没配，前端整块不显示 */
+  qrcode: string
+}
+
+/**
+ * 查一次"我的账号能不能用 AI"。
+ * `showError: false` —— 这一条是**探路**，探不到不该弹错（由调用方按需解释）。
+ */
+export function aiAccess(token: string): Promise<AiAccessInfo> {
+  return http.get<AiAccessInfo>('/ai/access', {
+    header: authHeader(token),
+    timeout: 10000,
+    showError: false,
+  })
+}

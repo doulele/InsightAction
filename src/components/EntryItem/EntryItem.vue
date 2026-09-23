@@ -109,10 +109,27 @@ function onTap(): void {
   gap: 14rpx;
 }
 
+/*
+ * 标题**永不折行**（2026-09-23 修，样式随组件内联，没有单独的 .scss）。
+ *
+ * 原先这里没有任何 flex 约束：标题（内容宽度）+ 徽标（`flex: none`）同排，
+ * 两者相加超过正文宽度时，会被压的是**标题**而不是把徽标挪下去 ——
+ * 表现是标题在中间断开（知大厅的「知识库 · 标签检索」断成「…标签检 / 索」，
+ * 用户报"这个换行不好看"，五个大厅的入口行里只有它超宽）。
+ *
+ * 现在：标题可收缩（`flex: 0 1 auto` + `min-width: 0`）但**不折行**，
+ * 实在挤不下就截断成省略号，徽标完整保留。配合把超宽那条的标题缩短（见 pages/reflect），
+ * 实际不会再出现省略号。
+ */
 .entry__title {
+  flex: 0 1 auto;
+  min-width: 0;
+  overflow: hidden;
   font-size: $gz-fs-title;
   font-weight: 600;
   color: $gz-ink;
+  white-space: nowrap;
+  text-overflow: ellipsis;
 }
 
 /*

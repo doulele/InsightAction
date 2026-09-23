@@ -105,6 +105,8 @@ import { REMINDER_TEMPLATES, useReminderStore, type Reminder } from '@/stores/re
 import { useFocusStore } from '@/stores/focus'
 import { useSkinClass } from '@/composables/useSkin'
 import { navigateTo, ROUTES } from '@/router/routes'
+import { WARN_COLOR } from '@/config/palette'
+import { showModal } from '@/utils/dialog'
 
 const store = useReminderStore()
 const focus = useFocusStore()
@@ -140,8 +142,18 @@ function applyTemplate(t: (typeof REMINDER_TEMPLATES)[number]): void {
   uni.showToast({ title: `已设 ${t.label}`, icon: 'none' })
 }
 
+/** 删时段：不可逆，先确认（已入账的专注时长不受影响） */
 function removeOne(id: number): void {
-  store.remove(id)
+  showModal({
+    title: '删掉这个时段？',
+    content: '它不会再提醒你。已经入账的专注时长不受影响。',
+    confirmText: '删除',
+    confirmColor: WARN_COLOR,
+    cancelText: '留着',
+    success: (res) => {
+      if (res.confirm) store.remove(id)
+    },
+  })
 }
 
 /* —— 下一段入定计算（只算开启中的） —— */

@@ -8,18 +8,26 @@
   box-sizing: border-box;
 }
 
-/* 右侧「＋」是 #right 插槽的内容（算页面的节点），所以留在这里；返回键已归 SubNav */
+/*
+ * 右侧动作是 #right 插槽的内容（算页面的节点），所以样式留在这里。
+ *
+ * 2026-09-23 改版（用户："上面导航头那里的 ＋ 号是干嘛的、太丑了"）：
+ * 原来是一个 76rpx 的空心圆里放一个 46rpx 的 ＋ —— 既看不出是干什么的，
+ * 又比顶栏里任何元素都重。现在换成带字的窄药丸：它做的事（去记一笔）写在按钮上。
+ */
 .nav__add {
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 76rpx;
-  height: 76rpx;
-  border: 1rpx solid $gz-line;
-  border-radius: 50%;
-  background: $gz-surface;
-  color: $gz-ink-2;
-  font-size: 46rpx;
+  height: 56rpx;
+  padding: 0 20rpx;
+  box-sizing: border-box;
+  border: 1rpx solid $gz-accent;
+  border-radius: 999rpx;
+  background: $gz-accent-soft;
+  color: $gz-accent;
+  font-size: $gz-fs-caption;
+  font-weight: 600;
   line-height: 1;
 }
 
@@ -80,15 +88,23 @@
   color: $gz-ink-3;
 }
 
+/*
+ * 领域筛选：七个（全部 + 六领域）**排满一行**（2026-09-23 收紧）。
+ *
+ * 症状（用户报）：最后那个「时间」单独掉到第二行，看着像没排好 ——
+ * 差一点点：14 个字 × 22rpx + 每片 44rpx 内边距 + 间距 = 688rpx > 可用 654rpx。
+ * 收到 18rpx 内边距后约 620rpx，一行排满，且留有余量（换字号/换皮肤都不会再掉）。
+ * `flex-wrap` 保留：将来领域变多时它会自动降级成两行，而不是被裁掉。
+ */
 .filters {
   display: flex;
   flex-wrap: wrap;
-  gap: 12rpx;
+  gap: 10rpx;
   margin-top: 16rpx;
 }
 
 .filter {
-  padding: 10rpx 22rpx;
+  padding: 8rpx 18rpx;
   border: 1rpx solid $gz-line;
   border-radius: 999rpx;
   background: $gz-surface;

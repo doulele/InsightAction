@@ -68,7 +68,7 @@
       <view v-if="daily.allDone" class="today__done">
         <text class="today__done-title">今日三事已成。</text>
         <text class="today__done-sub" hover-class="gz-hover" @click="openBox">
-          已完成已回写【知】 · 去开一只微行动盲盒 →
+          今日三事已成 · 去开一只微行动盲盒 →
         </text>
         <!--
           做完了 → 给今天收个尾（2026-09-22）。
@@ -314,13 +314,31 @@
         </view>
       </view>
     </GzDialog>
+
+    <!--
+      主题输入弹框（2026-09-23）：日课「破了写一句为什么」原先走原生 `editable` 弹框
+      （白底不跟皮肤，且说明文字会被当成输入框的初始值）。
+    -->
+    <GzDialog
+      v-model:show="breakShow"
+      :input="true"
+      :banner="false"
+      :multiline="true"
+      :title="breakTitle"
+      content="写一句为什么 —— 知道原因比没破更有用（可留空）。"
+      placeholder="如：昨天加班到十一点"
+      confirm-text="记下"
+      cancel-text="算了"
+      :maxlength="140"
+      @confirm="onBreakConfirm"
+    />
   </view>
 </template>
 
 <script setup lang="ts">
 /**
  * 行 · 行动大厅：验证→创造→痕迹。
- * 三件事勾选完成即回写【知】知识卡片（Lv.2 行动回写）并留下痕迹；
+ * 三件事勾选完成**只留一条痕迹**（2026-09-23 起不再回写【知】，原因见 writeBack）；
  * 习惯打卡 / 微行动盲盒 / 行动周报均为真实子页。
  */
 import { computed, nextTick, ref } from 'vue'
@@ -331,7 +349,7 @@ import { useModeStore } from '@/stores/mode'
 import { useRemoteStore } from '@/stores/remote'
 import { useSkinClass } from '@/composables/useSkin'
 import { useDailyStore, todayKey, type DailyTodo } from '@/stores/daily'
-import { useKnowledgeStore } from '@/stores/knowledge'
+import { useTraceStore } from '@/stores/trace'
 import { useHabitStore } from '@/stores/habit'
 import { usePlanStore, TODAY_STEP_COMFORT, type DailyItem, type Plan, type StepItem } from '@/stores/plan'
 import { useBodyStore } from '@/stores/body'
@@ -367,7 +385,7 @@ const modeStore = useModeStore()
 const remote = useRemoteStore()
 const skinClass = useSkinClass()
 const daily = useDailyStore()
-const knowledge = useKnowledgeStore()
+const trace = useTraceStore()
 const habit = useHabitStore()
 const wishStore = useWishStore()
 const xpTotal = useXpStore()
@@ -503,21 +521,34 @@ function onCheckDaily(d: DailyItem): void {
   })
 }
 
-/** 破了：不归零、不扣分 —— 可以写一句为什么，那一句会进【知】的省察 */
+/**
+ * 破了：不归零、不扣分 —— 可以写一句为什么，那一句会进【知】的省察。
+ *
+ * 2026-09-23：输入从原生 `editable` 弹框改成 GzDialog（白底不跟皮肤，
+ * 且原生会把说明当成输入框初始值 —— 用户得先删掉那一句）。
+ */
+const breakFor = ref<DailyItem | null>(null)
+const breakShow = computed({
+  get: () => breakFor.value !== null,
+  set: (v: boolean) => {
+    if (!v) breakFor.value = null
+  },
+})
+/** 标题要带上是哪一条日课 + 模式词（"破了"在三模式里叫法不同） */
+const breakTitle = computed(() =>
+  breakFor.value ? `「${breakFor.value.title}」· ${planW.value.brokenAct}` : '',
+)
+
 function onBreakDaily(d: DailyItem): void {
-  showModal({
-    title: `「${d.title}」· ${planW.value.brokenAct}`,
-    content: '',
-    editable: true,
-    placeholderText: '写一句为什么（可留空）—— 知道原因比没破更有用',
-    confirmText: '记下',
-    cancelText: '算了',
-    success: (res) => {
-      if (!res.confirm) return
-      planStore.markDailyBroken(d.planId, res.content ?? '')
-      uni.showToast({ title: '记下了 · 明天照常', icon: 'none' })
-    },
-  })
+  breakFor.value = d
+}
+
+function onBreakConfirm(value: string): void {
+  const d = breakFor.value
+  breakFor.value = null
+  if (!d) return
+  planStore.markDailyBroken(d.planId, value)
+  uni.showToast({ title: '记下了 · 明天照常', icon: 'none' })
 }
 
 onShow(() => {
@@ -642,22 +673,31 @@ function onReflectSkip(): void {
 }
 
 /**
- * 大厅头部的「一句」+ 两个关键数字（2026-09-16 定的形态）。
+ * 大厅头部的「一句」+ 关键数字。
  * 一句走 lexicon.hallLine 的三模式措辞；数字给"今日三件事"与"累计修为" ——
  * 「做了事 → 涨修为」这条因果在行大厅最贴切，也让下面那份待办列表不必再报总数。
+ *
+ * 2026-09-23 把身体这一格也接了上来（步数接在累计修为后面）：
+ * **有读数才出现第三项** —— 没同步过就维持两项，绝不摆一个「0」。
+ * 「今天走了 0 步」与「今天没读到」是两件事，这条底线与身体电量页一致。
+ * 静默续接（onShow 里的 autoSyncWeRun）是异步的，同步回来后这里会自动多出这一项。
  */
 const headLine = computed(() => (sabbath.value ? sabbathText.value : hallLine('action', modeStore.id)))
 
-const headStats = computed(() => [
-  { value: `${daily.doneCount}/${daily.planCount || 3}`, label: '今日三件事' },
-  { value: `${xpTotal.total}`, label: '累计修为 · 点' },
-])
+const headStats = computed(() => {
+  const list = [
+    { value: `${daily.doneCount}/${daily.planCount || 3}`, label: '今日三件事' },
+    { value: `${xpTotal.total}`, label: '累计修为 · 点' },
+  ]
+  if (body.todayStep !== null) list.push({ value: `${body.todayStep}`, label: '今日步数 · 步' })
+  return list
+})
 
 function onEdited(): void {
   // v-model 已实时同步 store，无需额外动作；跨天在 onShow ensureToday 处理
 }
 
-/** 勾选/取消完成：完成时行→知回写 + 痕迹入账（带上出处，周报的「一条路」靠它串） */
+/** 勾选/取消完成：完成时留一条痕迹（带上出处，周报的「一条路」靠它串） */
 function onToggleTodo(todo: DailyTodo): void {
   const text = todo.text.trim()
   const willDone = !todo.done
@@ -668,21 +708,22 @@ function onToggleTodo(todo: DailyTodo): void {
   }
 }
 
+/**
+ * 完成一件事 → 只留一条痕迹，**不再往【知】塞卡片**（2026-09-23 改）。
+ *
+ * 原先这里会 add 一张 `kind='action'` 的知识卡（Lv.2 行动回写），直接后果是：
+ * 三件事的原文出现在「知」大厅的「最近所悟」里 —— 而待办不是"所悟"；
+ * 更要紧的是它把口径带偏了：`dayStats().cards` 与 `stopPenTip()` 都按"今天的卡片数"
+ * 算「知」这一环，于是勾完三件事就算"今天写过东西"，还会天天触发「停笔，去实践」。
+ * 现在只有这一条 `action.todo` 痕迹：修为、周报的「一条路」、时间轴、四维雷达照旧成立。
+ *
+ * 去重仍要自己判：勾了→取消→再勾不该重复给分。`DAY_CAP` 只管"一天最多几次"，
+ * 管不了"同一件事来回勾"，所以这里按**今天有没有同一句话的痕迹**来定。
+ */
 function writeBack(text: string, from?: string): void {
   const k = todayKey()
-  const dup = knowledge.cards.some((c) => {
-    if (c.kind !== 'action') return false
-    const d = new Date(c.createdAt)
-    const day = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
-    return day === k && c.title === text
-  })
-  if (!dup) {
-    knowledge.add({ kind: 'action', title: text, content: text, tags: ['行动'], depth: 2, src: '行 · 行动回写' })
-    // 首次回写入账修为（value 取事件表 10 分）；重复内容只留痕，不给分（防刷）
-    logTrace({ kind: 'action.todo', text, ref: from })
-  } else {
-    logTrace({ kind: 'action.todo', text, value: 0, ref: from })
-  }
+  const already = trace.list.some((t) => t.kind === 'action.todo' && t.day === k && t.text === text)
+  logTrace({ kind: 'action.todo', text, ref: from, value: already ? 0 : undefined })
 }
 
 /* ---------------- 三件事的出处（§4.4 回应式行动） ---------------- */

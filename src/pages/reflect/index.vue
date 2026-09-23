@@ -418,12 +418,17 @@ function questionSlotDate(): string {
  * 「最近所悟」= 拷问即时卡 + **我的知识**书架的前 20 张。
  * 刻意不混专业卡（2026-09-17）：工作 / 面试的东西混进自省流里，两边都会失焦 ——
  * 专业卡在知识库的「专业知识」那一本里看（入口徽标会把两本的数量都报出来）。
+ *
+ * 2026-09-23 起也**不显示 `kind='action'`（行动回写）卡**：
+ * 「行」大厅完成三件事已经改成只留痕迹、不再建卡（见 pages/action 的 writeBack），
+ * 这里过滤一道是为了**旧数据** —— 老版本建过的那些卡还躺在知识库里，
+ * 不把它们从"所悟"里摘出去，用户仍会觉得"待办跑进了我的思考里"。
  */
 const cards = computed<ViewCard[]>(() => {
   const list: ViewCard[] = []
   const q = liveQuestionCard.value
   if (q) list.push(q)
-  knowledge.cardsOf('life').forEach((c) => {
+  knowledge.cardsOf('life').filter((c) => c.kind !== 'action').forEach((c) => {
     list.push({
       key: `card:${c.createdAt}`,
       raw: c,
@@ -556,9 +561,15 @@ const moreEntries = computed<MoreEntry[]>(() => [
     params: { add: '1' },
   },
   {
+    /*
+     * 标题只留「知识库」（2026-09-23）：原先写成「知识库 · 标签检索」，
+     * 与右边那枚「我的 8 · 专业 0」徽标加起来超出正文宽度，标题会被压成两行
+     * （"标签检 / 索"）。入口行的第一行只站得下一个短标题 ——
+     * 「标签检索」这种限定语搬进副标题，语义不丢，行不再断。
+     */
     mark: '存',
-    title: '知识库 · 标签检索',
-    subtitle: '全部卡片按关键词 / 标签 / 深度检索 · 可手动打标，也可让 AI 给建议',
+    title: '知识库',
+    subtitle: '标签检索 · 全部卡片按关键词 / 标签 / 深度检索 · 可手动打标，也可让 AI 给建议',
     badge: {
       text: `我的 ${knowledge.countOf('life')} · 专业 ${knowledge.countOf('work')}`,
       tone: knowledge.cards.length ? 'accent' : 'muted',

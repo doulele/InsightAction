@@ -67,14 +67,15 @@
   }
 }
 
+/* 与止欲·冲动记同一套胶囊口径（两页是姊妹页，尺寸必须一致，见 urge/index.scss 的注） */
 .chips {
   display: flex;
   flex-wrap: wrap;
-  gap: 12rpx;
+  gap: 10rpx;
 }
 
 .chip {
-  padding: 12rpx 26rpx;
+  padding: 12rpx 18rpx;
   border: 1rpx solid $gz-line;
   border-radius: 999rpx;
   font-size: $gz-fs-small;

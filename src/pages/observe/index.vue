@@ -222,6 +222,24 @@
       @confirm="copyPortal"
     />
 
+    <!--
+      主题输入弹框（2026-09-23）：每日一则的「它哪里不成立」「就这一则，写一句」共用一个框，
+      取代原先两处原生 `editable` 弹框（白底不跟皮肤，且说明会被当成输入框初始值）。
+    -->
+    <GzDialog
+      v-model:show="dailyAskShow"
+      :input="true"
+      :banner="false"
+      :multiline="true"
+      :title="dailyAskMeta.title"
+      :content="dailyAskMeta.content"
+      :placeholder="dailyAskMeta.placeholder"
+      confirm-text="记下"
+      cancel-text="算了"
+      :maxlength="140"
+      @confirm="onDailyAskConfirm"
+    />
+
     <!-- 隐私授权拦截弹窗：复制链接前需征得同意 -->
     <PrivacyGate />
 
@@ -274,7 +292,7 @@ const readLater = useReadLaterStore()
 const observe = useObserveStore()
 const settings = useSettingsStore()
 
-/* tabBar 原生样式/图标只能在本类大厅页上同步；顺手清理超过 24h 的临时收藏 */
+/* tabBar 原生样式/图标只能在本类大厅页上同步；顺手清理过期的临时收藏（时效随形态：一句话 24h / 文章与视频 7 天） */
 onShow(() => {
   /* 批次 D · 小枢：评估到点激励 / 入定到点提醒 */
   poke()
@@ -706,6 +724,72 @@ function explainQuota(): void {
   })
 }
 
+/* ---------------- 主题输入弹框（2026-09-23） ----------------
+ * 每日一则的两个"写一句"动作（反驳 / 记一句）共用一个 GzDialog：
+ * 判别量是 `dailyAsk`（null = 不显示），文案随它变 —— 两处原先都是原生 `editable` 弹框
+ * （白底不跟皮肤，且说明文字会被当成输入框初始值）。
+ */
+const dailyAsk = ref<'refute' | 'note' | null>(null)
+const dailyAskShow = computed({
+  get: () => dailyAsk.value !== null,
+  set: (v: boolean) => {
+    if (!v) dailyAsk.value = null
+  },
+})
+/** 两个动作的文案（说明留在 content 里，输入框只带 placeholder） */
+const dailyAskMeta = computed(() =>
+  dailyAsk.value === 'refute'
+    ? {
+        title: '它哪里不成立',
+        content: '不同意也算笔记 —— 写下它哪里不成立，比点头更有用。',
+        placeholder: '举一个反例，或说出不适用的条件',
+      }
+    : {
+        title: '就这一则，写一句',
+        content: '不用长篇 —— 一句你自己的话，就算把这一则变成了你的。',
+        placeholder: '它让你想到什么',
+      },
+)
+
+function onDailyAskConfirm(value: string): void {
+  const kind = dailyAsk.value
+  dailyAsk.value = null
+  if (!kind) return
+  const d = daily.value
+  const key = selectedDate.value
+  const text = value.trim()
+  if (!text) return
+  if (kind === 'refute') {
+    observe.add({
+      kind: 'theory',
+      form: 'quote',
+      title: `反驳：${d.title}`,
+      topics: [],
+      tags: ['反驳', d.kind],
+      summary: '',
+      content: text,
+      golden: [],
+      sourceName: d.source,
+    })
+    observe.markDaily(key, 'refute')
+    uni.showToast({ title: '已记下这一笔反驳', icon: 'none' })
+    return
+  }
+  observe.add({
+    kind: d.kind === '理' ? 'theory' : 'thing',
+    form: 'quote',
+    title: d.title,
+    topics: [],
+    tags: ['每日一则', d.kind],
+    summary: '',
+    content: text,
+    golden: [],
+    sourceName: d.source,
+  })
+  observe.markDaily(key, 'note')
+  uni.showToast({ title: '已记下', icon: 'none' })
+}
+
 /** 四动作：每个都有落点，且当日同一动作只记一次 */
 function doAction(id: (typeof ACTIONS)[number]['id']): void {
   const d = daily.value
@@ -738,58 +822,11 @@ function doAction(id: (typeof ACTIONS)[number]['id']): void {
       break
     }
     case 'refute':
-      showModal({
-        title: '它哪里不成立',
-        editable: true,
-        placeholderText: '举一个反例，或说出不适用的条件',
-        confirmText: '记下',
-        cancelText: '算了',
-        success: (res) => {
-          if (!res.confirm) return
-          const text = ((res as { content?: string }).content ?? '').trim()
-          if (!text) return
-          observe.add({
-            kind: 'theory',
-            form: 'quote',
-            title: `反驳：${d.title}`,
-            topics: [],
-            tags: ['反驳', d.kind],
-            summary: '',
-            content: text,
-            golden: [],
-            sourceName: d.source,
-          })
-          observe.markDaily(key, 'refute')
-          uni.showToast({ title: '已记下这一笔反驳', icon: 'none' })
-        },
-      })
+      /* 反驳 / 记一句：都是从这一则里写下一句自己的话 —— 交给上面的主题输入弹框 */
+      dailyAsk.value = 'refute'
       break
     case 'note':
-      showModal({
-        title: '就这一则，写一句',
-        editable: true,
-        placeholderText: '它让你想到什么',
-        confirmText: '记下',
-        cancelText: '算了',
-        success: (res) => {
-          if (!res.confirm) return
-          const text = ((res as { content?: string }).content ?? '').trim()
-          if (!text) return
-          observe.add({
-            kind: d.kind === '理' ? 'theory' : 'thing',
-            form: 'quote',
-            title: d.title,
-            topics: [],
-            tags: ['每日一则', d.kind],
-            summary: '',
-            content: text,
-            golden: [],
-            sourceName: d.source,
-          })
-          observe.markDaily(key, 'note')
-          uni.showToast({ title: '已记下', icon: 'none' })
-        },
-      })
+      dailyAsk.value = 'note'
       break
   }
 }
@@ -870,8 +907,12 @@ const moreEntries = computed<MoreEntry[]>(() => {
     {
       mark: '存',
       title: '稍后读 · 碎片回收',
-      subtitle: '临时收藏，24 小时未读自动清理，不养"收藏夹僵尸"',
-      badge: pending > 0 ? { text: `${pending} 待读`, tone: 'accent' } : { text: '24h 自清', tone: 'muted' },
+      /* 2026-09-23：支持三种碎片形态，保留时长不再只有一个数（一句话 24h / 文档 7 天） */
+      subtitle: '临时收藏：一句话留 24 小时，文章与视频留 7 天 —— 读不完自会清走',
+      badge:
+        pending > 0
+          ? { text: `${pending} 待读`, tone: 'accent' }
+          : { text: '24h / 7 天', tone: 'muted' },
       url: ROUTES.observeReadLater,
     },
   ]

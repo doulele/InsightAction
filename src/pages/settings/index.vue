@@ -363,6 +363,32 @@
       @confirm="confirmDeleteCloud"
     />
 
+    <!--
+      AI 不在白名单：本机同意过了、服务端没放行 —— 如实说明 + 一张二维码。
+      说明文字走默认插槽（与二维码排在一起），没有二维码时只留文字兜底。
+    -->
+    <GzDialog
+      :show="aiDeniedOpen"
+      title="AI 需要开通"
+      :banner="false"
+      confirm-text="知道了"
+      :show-cancel="false"
+      @confirm="aiDeniedOpen = false"
+    >
+      <view class="ai-qr__box">
+        <text class="ai-qr__tip">{{ aiDeniedContent }}</text>
+        <image
+          v-if="aiQrcode"
+          class="ai-qr"
+          :src="aiQrcode"
+          mode="aspectFit"
+          show-menu-by-longpress
+          @error="aiQrcode = ''"
+        />
+        <text v-else class="ai-qr__none">二维码没取到 —— 可以在「关于」里找我。</text>
+      </view>
+    </GzDialog>
+
     <!-- 覆盖恢复确认：备份文件与云端快照共用（覆盖式操作，必须二次确认） -->
     <GzDialog
       variant="danger"
@@ -438,10 +464,11 @@ import {
   summarize,
   writeBackupFile,
 } from '@/utils/localBackup'
-import type { BackupPayload } from '@/utils/localBackup'
+import type { BackupPayload, BackupSummary } from '@/utils/localBackup'
 import { buildArchive, writeArchiveFile } from '@/utils/archive'
 import { backupNow, disableCloudBackup, fetchCloudSnapshot } from '@/utils/cloudBackup'
 import { showModal } from '@/utils/dialog'
+import { aiDeniedText, ensureAiConsent, fetchAiAccess } from '@/utils/aiAccess'
 
 const modeStore = useModeStore()
 const appStore = useAppStore()
@@ -533,8 +560,18 @@ async function runDanger(): Promise<void> {
    * 撤回失败不拦着重置（可能只是没网），但要把没撤成的条数如实说出来。
    */
   const share = useShareStore()
-  const revoked = await share.revokeAll()
-  resetPracticeData()
+  /*
+   * 这一段是"看不出来在忙"的重活：revokeAll 要逐条打服务器（没网还得等超时），
+   * resetPracticeData 又要同步清掉 30 个 store。给个 loading，免得用户以为点空了。
+   */
+  uni.showLoading({ title: '正在清理…', mask: true })
+  let revoked: { ok: number; failed: number }
+  try {
+    revoked = await share.revokeAll()
+    resetPracticeData()
+  } finally {
+    uni.hideLoading()
+  }
   uni.showToast({ title: p('toast.resetDone'), icon: 'none' })
   if (revoked.failed) {
     showModal({
@@ -562,15 +599,50 @@ const restoreNote = computed(() => {
   return `将用${src}覆盖本机 ${s.storeCount} 项数据（约 ${s.sizeKB}KB，导出于 ${formatBackupTime(s.exportedAt)}）。覆盖后本机现有进度会被替换，且无法撤销。`
 })
 
-/** 导出全部数据：写成备份文件 → 转发到聊天（用户自己保存，全程无上行数据） */
+/**
+ * 导出全部数据：打包 → 报体积 → 写文件 → 转发到聊天（用户自己保存，全程无上行数据）。
+ *
+ * 为什么分两步、且必须先报体积：`collectBackup()` 走的是同步 storage API，
+ * 数据一多会**卡住主线程几秒**（看起来像"点了没反应"）；
+ * 而"这份文件多大、多少项"是用户决定要不要导的依据 —— 先说清楚再打包一次，比闷头写盘更好。
+ */
 async function exportAll(): Promise<void> {
+  let payload: BackupPayload
+  let sum: BackupSummary
+  uni.showLoading({ title: '正在打包…', mask: true })
   try {
-    const payload = collectBackup()
-    const sum = summarize(payload)
+    payload = collectBackup()
+    sum = summarize(payload)
+  } catch (e) {
+    uni.hideLoading()
+    showModal({ title: '打包失败', content: e instanceof Error ? e.message : '未知错误', showCancel: false })
+    return
+  }
+  uni.hideLoading()
+
+  const ok = await new Promise<boolean>((resolve) => {
+    showModal({
+      title: '导出全部数据？',
+      content:
+        `共 ${sum.storeCount} 项、约 ${sum.sizeKB}KB。\n`
+        + '会生成一个 JSON 备份文件并转发到聊天里，请自己留存好 —— 全程不上传服务器。',
+      confirmText: '导出',
+      cancelText: '算了',
+      success: (r) => resolve(!!r.confirm),
+      fail: () => resolve(false),
+    })
+  })
+  if (!ok) return
+
+  uni.showLoading({ title: '正在生成文件…', mask: true })
+  try {
     const { filePath, fileName } = writeBackupFile(payload)
+    /* 转发面板是微信的原生层，拉起前必须先关掉 loading，否则它会一直悬在页面上 */
+    uni.hideLoading()
     await shareFile(filePath, fileName)
     uni.showToast({ title: `已导出 ${sum.storeCount} 项 · 请把文件留存在聊天里`, icon: 'none' })
   } catch (e) {
+    uni.hideLoading()
     showModal({ title: '导出失败', content: e instanceof Error ? e.message : '未知错误', showCancel: false })
   }
 }
@@ -584,11 +656,14 @@ async function exportAll(): Promise<void> {
 async function exportArchive(): Promise<void> {
   let text = ''
   let traceShown = 0
+  /* buildArchive() 要把卡片全量 + 500 条痕迹拼成一大段文本，是同步的大计算 —— 先给个转圈 */
+  uni.showLoading({ title: '正在生成档案…', mask: true })
   try {
     const built = buildArchive()
     text = built.text
     traceShown = built.traceShown
   } catch (e) {
+    uni.hideLoading()
     showModal({
       title: '生成档案失败',
       content: e instanceof Error ? e.message : '未知错误',
@@ -596,9 +671,18 @@ async function exportArchive(): Promise<void> {
     })
     return
   }
+  uni.hideLoading()
 
+  /*
+   * 体积预估：档案是中文为主的 Markdown，一个字约 3 字节，只能按 len*3 粗估
+   * （小程序端拿不到字符串的字节长度）。摆进选项文案里而不是另弹一个框 —— 少一次点击。
+   */
+  const sizeKB = Math.max(1, Math.round((text.length * 3) / 1024))
   uni.showActionSheet({
-    itemList: ['转发到聊天（.md 文件）', '复制全文到剪贴板'],
+    itemList: [
+      `转发到聊天（.md · 约 ${sizeKB}KB）`,
+      `复制全文到剪贴板（约 ${text.length} 字）`,
+    ],
     success: async (r) => {
       if (r.tapIndex === 0) {
         try {
@@ -647,11 +731,15 @@ function applyRestore(): void {
   const payload = restorePayload.value
   restorePayload.value = null
   if (!payload) return
+  /* 恢复要写全部 storage + patch 30 个 store，全是同步操作；给个转圈免得像卡死 */
+  uni.showLoading({ title: '正在恢复…', mask: true })
   try {
     const result = applyBackup(payload)
+    uni.hideLoading()
     uni.showToast({ title: `${p('toast.restored')} · ${result.restoredStores} 项`, icon: 'none' })
     setTimeout(() => uni.reLaunch({ url: ROUTES.entryStartup }), 900)
   } catch (e) {
+    uni.hideLoading()
     showModal({ title: '恢复失败', content: e instanceof Error ? e.message : '未知错误', showCancel: false })
   }
 }
@@ -681,13 +769,50 @@ const cloudSub = computed(() =>
 const aiSub = computed(() =>
   account.aiConsent
     ? '已授权 · 用 AI 功能时，你写的内容会发给服务商（DeepSeek）'
-    : '未授权 · AI 功能改用基础规则，内容不出手机',
+    : '未授权 · AI 功能改用基础规则，内容不出手机（开启时会先核验账号能不能用）',
 )
 
-function onAiConsentToggle(e: Event & { detail?: { value?: boolean } }): void {
-  const on = !!e.detail?.value
-  account.aiConsent = on
-  uni.showToast({ title: on ? '已授权' : '已撤回 · 只用基础规则', icon: 'none' })
+/**
+ * 「需要开通」弹框：不在白名单时给二维码（2026-09-23）。
+ *
+ * 这一步不是"再确认一次"，而是**如实告诉他为什么用不了**：
+ * 本机同意（我答应把文字发出去）与服务端放行（我们这边让你用）是两件事 ——
+ * 混在一起讲，用户只会觉得"这个功能坏了"。二维码走长按（`show-menu-by-longpress`），
+ * 长按即可保存 / 识别，不必再教一遍怎么扫。
+ */
+const aiDeniedOpen = ref(false)
+/** 二维码地址由后端下发（运营物料，换码不用发版）；取不到就只显示文字兜底 */
+const aiQrcode = ref('')
+const aiDeniedContent = computed(() => aiDeniedText())
+
+/**
+ * 开关：开 → 先同意、再核名单；关 → 直接撤回。
+ *
+ * 为什么"核名单"要放在同意之后：同意是必须由用户按下的一次（内容离开设备），
+ * 而名单是客观状态 —— 顺序反了会出现"先告诉你没资格，再问你要不要同意"的怪话。
+ * 名单里没有 → **不打开开关**（store 保持 false，开关自己弹回），并弹二维码。
+ */
+async function onAiConsentToggle(e: Event & { detail?: { value?: boolean } }): Promise<void> {
+  if (!e.detail?.value) {
+    account.aiConsent = false
+    uni.showToast({ title: '已撤回 · 只用基础规则', icon: 'none' })
+    return
+  }
+  const agreed = await ensureAiConsent()
+  if (!agreed) return
+
+  uni.showLoading({ title: '正在核验…', mask: true })
+  const info = await fetchAiAccess()
+  uni.hideLoading()
+
+  /* 没查成（没网 / 服务端异常）不挡人：同意过了就先用着，真调不通时 useAi 会静默兜底 */
+  if (info?.mode === 'denied') {
+    account.aiConsent = false
+    aiQrcode.value = info.qrcode
+    aiDeniedOpen.value = true
+    return
+  }
+  uni.showToast({ title: '已授权 · 可以用 AI 了', icon: 'none' })
 }
 
 /** 开关：开 → 先看说明；关 → 先确认删除云端数据 */
@@ -703,14 +828,18 @@ async function enableCloud(): Promise<void> {
 }
 
 async function backupToCloud(): Promise<void> {
+  /* 全量快照上传：数据量 + 网络，慢起来十几秒 —— 没有转圈的话用户会以为点空了 */
+  uni.showLoading({ title: '正在上传…', mask: true })
   try {
     const outcome = await backupNow()
+    uni.hideLoading()
     if (outcome.saved) {
       uni.showToast({ title: '已备份到云端', icon: 'none' })
     } else {
       showModal({ title: '未能备份', content: outcome.reason || '本次备份被跳过', showCancel: false })
     }
   } catch (e) {
+    uni.hideLoading()
     showModal({ title: '备份失败', content: e instanceof Error ? e.message : '未知错误', showCancel: false })
   }
 }
@@ -728,10 +857,16 @@ async function confirmDeleteCloud(): Promise<void> {
 
 /** 取回云端快照（latest / prev）→ 交给统一的覆盖确认 */
 async function restoreFromCloud(which: 'latest' | 'prev'): Promise<void> {
+  /* 从服务器把整份快照拉下来，数据量大时不算快 */
+  uni.showLoading({ title: '正在取回…', mask: true })
   try {
-    restorePayload.value = await fetchCloudSnapshot(which)
+    const payload = await fetchCloudSnapshot(which)
     restoreFrom.value = which === 'prev' ? 'cloud-prev' : 'cloud-latest'
+    /* 紧接着要弹覆盖确认框（原生 showModal 会顶掉 showLoading）—— 先收起转圈再让它出 */
+    uni.hideLoading()
+    restorePayload.value = payload
   } catch (e) {
+    uni.hideLoading()
     showModal({ title: '取回失败', content: e instanceof Error ? e.message : '未知错误', showCancel: false })
   }
 }

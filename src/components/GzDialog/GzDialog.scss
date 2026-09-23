@@ -127,6 +127,35 @@
   color: $gz-ink-2;
 }
 
+/*
+ * 输入框（2026-09-23）：替代原生 `editable` 弹框里那个永远白底、还把说明当初始值的输入框。
+ * 底走**极轻主题色**而不是纯白 —— 换肤时一眼能看出它跟当前模式是一套；
+ * 边框/圆角与其他控件（`$gz-input-bg` 那一路）保持一致。
+ */
+.gd__input {
+  display: block;
+  box-sizing: border-box;
+  width: 100%;
+  margin-top: 20rpx;
+  padding: 20rpx 24rpx;
+  border: 1rpx solid $gz-line;
+  border-radius: $gz-radius-md;
+  background: $gz-accent-a04;
+  font-size: $gz-fs-body;
+  line-height: 1.7;
+  color: $gz-ink;
+}
+
+/* 多行版：面板体内滚动（.gd__body 已是 overflow-y: auto），不会把弹框顶出屏幕 */
+.gd__input--area {
+  min-height: 140rpx;
+  max-height: 320rpx;
+}
+
+.gd__ph {
+  color: $gz-ink-3;
+}
+
 .gd__acts {
   flex: none;
   display: flex;

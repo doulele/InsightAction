@@ -54,17 +54,26 @@
       </view>
 
       <view v-for="item in view" :key="item.id" class="fav">
-        <text class="fav__mark">「</text>
-        <view class="fav__body">
-          <text class="fav__text">{{ item.text }}</text>
-          <text v-if="item.from" class="fav__from">—— {{ item.from }}</text>
-          <view class="fav__meta">
-            <text v-if="item.pinned" class="fav__pin">置顶</text>
-            <text class="fav__echo" :class="{ 'is-due': isDue(item) }">{{ reviewHint(item) }}</text>
-            <text class="fav__src">{{ SOURCE_LABEL[item.source] }}</text>
-            <text class="fav__time">{{ dayLabel(item.createdAt) }}</text>
+        <!-- 正文与来源走一条主线：左侧只有一个引号，不再被竖排按钮挤成窄条 -->
+        <view class="fav__main">
+          <text class="fav__mark">「</text>
+          <view class="fav__body">
+            <text class="fav__text">{{ item.text }}</text>
+            <text v-if="item.from" class="fav__from">—— {{ item.from }}</text>
+            <view class="fav__meta">
+              <text v-if="item.pinned" class="fav__pin">已置顶</text>
+              <text class="fav__echo" :class="{ 'is-due': isDue(item) }">{{ reviewHint(item) }}</text>
+              <text class="fav__src">{{ SOURCE_LABEL[item.source] }}</text>
+              <text class="fav__time">{{ dayLabel(item.createdAt) }}</text>
+            </view>
           </view>
         </view>
+        <!--
+          操作收在卡底一行（2026-09-23）。
+          此前是最多五个按钮竖排在右侧（还在记着 / 置顶 / 复制 / 转知识卡 / 移除），
+          卡片被撑成「左边一句、右边一列按钮」的怪形状，窄屏上按钮列甚至比正文还宽。
+          横排一行 + 右对齐之后，正文拿回整行宽度，按钮也不再和正文抢视线。
+        -->
         <view class="fav__acts">
           <view
             v-if="isDue(item)"
@@ -90,6 +99,26 @@
     <view class="foot">
       <text class="foot__text">收藏不是终点 · 回看才是</text>
     </view>
+
+    <!--
+      主题输入弹框（2026-09-23）：转知识卡前问「为什么记住它」（可留空 → Lv.1 转述）。
+      原先走原生 `editable` 弹框（白底不跟皮肤，且会把说明当成输入框初始值）；
+      这里默认值取这句**已经写过的批注**（改自己的话，不是要用户删说明）。
+    -->
+    <GzDialog
+      v-model:show="cardShow"
+      :input="true"
+      :banner="false"
+      :multiline="true"
+      title="转到知识库"
+      content="为什么记住它？写了算 Lv.2 重构，只搬原句算 Lv.1 转述。"
+      placeholder="为什么记住它？（可留空）"
+      confirm-text="转存"
+      cancel-text="算了"
+      :default-value="cardDefault"
+      :maxlength="140"
+      @confirm="onCardConfirm"
+    />
 
     <!-- 隐私授权拦截弹窗（复制箴言前需征得同意） -->
     <PrivacyGate />
@@ -176,39 +205,55 @@ function copyLine(item: ProverbItem): void {
  * 写了理由 → Lv.2 重构；只搬原句 → Lv.1 转述。
  * 不替用户编理由 —— 没写就是没写，级别如实。
  */
+/** 正为哪一句写"为什么记住它"（null = 没在写） */
+const cardFor = ref<number | null>(null)
+const cardShow = computed({
+  get: () => cardFor.value !== null,
+  set: (v: boolean) => {
+    if (!v) cardFor.value = null
+  },
+})
+/** 输入框初始值 = 这一句已经写过的批注（有的老条目已带 note） */
+const cardDefault = computed(() =>
+  cardFor.value === null ? '' : store.items.find((it) => it.id === cardFor.value)?.note ?? '',
+)
+
 function toCard(item: ProverbItem): void {
   if (item.cardAt) {
     uni.showToast({ title: '这句已经在知识库里了', icon: 'none' })
     return
   }
-  showModal({
-    title: '转到知识库',
-    content: item.note,
-    editable: true,
-    placeholderText: '为什么记住它？（可留空，写了算 Lv.2 重构）',
-    confirmText: '转存',
-    cancelText: '算了',
-    success: (res) => {
-      if (!res.confirm) return
-      const note = ((res as { content?: string }).content ?? '').trim()
-      if (note) store.setNote(item.id, note)
-      const card = knowledge.importProverb({
-        text: item.text,
-        from: item.from,
-        note,
-        tags: item.tags,
-        src: `我的箴言 · ${SOURCE_LABEL[item.source]}`,
-      })
-      store.markCarded(item.id)
-      logTrace({
-        kind: 'reflect.note',
-        text: `「${item.text}」转入知识库`,
-        ref: refOfCard(card.createdAt),
-        level: card.depth,
-      })
-      uni.showToast({ title: note ? '已入知识库 · Lv.2 重构' : '已入知识库 · Lv.1 转述', icon: 'none' })
-    },
+  cardFor.value = item.id
+}
+
+/**
+ * 转存（弹框确认）。
+ * 口径不变：写了理由 → Lv.2 重构；只搬原句 → Lv.1 转述 ——
+ * 不替用户编理由，没写就是没写。
+ */
+function onCardConfirm(value: string): void {
+  const id = cardFor.value
+  cardFor.value = null
+  if (id === null) return
+  const item = store.items.find((it) => it.id === id)
+  if (!item) return
+  const note = value.trim()
+  if (note) store.setNote(item.id, note)
+  const card = knowledge.importProverb({
+    text: item.text,
+    from: item.from,
+    note,
+    tags: item.tags,
+    src: `我的箴言 · ${SOURCE_LABEL[item.source]}`,
   })
+  store.markCarded(item.id)
+  logTrace({
+    kind: 'reflect.note',
+    text: `「${item.text}」转入知识库`,
+    ref: refOfCard(card.createdAt),
+    level: card.depth,
+  })
+  uni.showToast({ title: note ? '已入知识库 · Lv.2 重构' : '已入知识库 · Lv.1 转述', icon: 'none' })
 }
 
 function remove(id: number): void {

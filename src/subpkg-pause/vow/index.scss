@@ -320,6 +320,277 @@
   color: $gz-ink-3;
 }
 
+/* ---- 在守的长约（2026-09-23） ---- */
+.longs {
+  margin-top: 26rpx;
+}
+
+.longs__head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  margin-bottom: 14rpx;
+}
+
+.longs__label {
+  font-size: 30rpx;
+  font-weight: 700;
+  color: $gz-ink;
+}
+
+.longs__hint {
+  font-size: $gz-fs-caption;
+  color: $gz-ink-2;
+}
+
+.lv {
+  margin-bottom: 18rpx;
+  padding: 26rpx 28rpx;
+  background: $gz-surface;
+  border: 1rpx solid $gz-line;
+  border-radius: $gz-radius-lg;
+}
+
+.lv__top {
+  display: flex;
+  align-items: baseline;
+  gap: 12rpx;
+}
+
+.lv__title {
+  flex: 1;
+  min-width: 0;
+  font-size: $gz-fs-body;
+  font-weight: 700;
+  color: $gz-ink;
+}
+
+.lv__tag {
+  flex: none;
+  padding: 2rpx 12rpx;
+  border-radius: 999rpx;
+  font-size: 20rpx;
+  background: $gz-accent-soft;
+  color: $gz-accent;
+}
+
+.bar {
+  height: 10rpx;
+  margin-top: 18rpx;
+  border-radius: 999rpx;
+  background: $gz-line-soft;
+  overflow: hidden;
+}
+
+.bar__fill {
+  height: 100%;
+  border-radius: 999rpx;
+  background: $gz-accent;
+  transition: width 0.3s ease;
+}
+
+.lv__meta {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  margin-top: 12rpx;
+}
+
+.lv__days {
+  font-size: $gz-fs-caption;
+  color: $gz-ink-2;
+}
+
+.lv__streak {
+  font-size: $gz-fs-caption;
+  color: $gz-accent;
+}
+
+/* 里程碑刻度：达到才点亮，只增不减 */
+.ms {
+  display: flex;
+  gap: 12rpx;
+  margin-top: 18rpx;
+}
+
+.ms__item {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2rpx;
+  padding: 12rpx 0;
+  border: 1rpx solid $gz-line;
+  border-radius: $gz-radius-sm;
+  background: $gz-input-bg;
+}
+
+.ms__item.is-on {
+  border-color: transparent;
+  background: $gz-cta-bg;
+}
+
+.ms__n {
+  font-size: 26rpx;
+  font-weight: 800;
+  color: $gz-ink-3;
+  font-variant-numeric: tabular-nums;
+}
+
+.ms__cap {
+  font-size: 18rpx;
+  color: $gz-ink-3;
+}
+
+.ms__item.is-on .ms__n,
+.ms__item.is-on .ms__cap {
+  color: $gz-on-cta;
+}
+
+.lv__acts {
+  display: flex;
+  gap: 16rpx;
+  margin-top: 20rpx;
+}
+
+.lv__btn {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 84rpx;
+  border: 1rpx solid $gz-line;
+  border-radius: $gz-radius-md;
+  font-size: $gz-fs-small;
+  font-weight: 600;
+  color: $gz-ink-2;
+}
+
+.lv__btn.is-on {
+  border-color: transparent;
+  background: $gz-cta-bg;
+  color: $gz-on-cta;
+}
+
+/* 破了的已记态刻意保持素色：不把"破了"画成红灯（不审判，见页脚那行口径） */
+.lv__btn--break.is-on {
+  border-color: $gz-line;
+  background: $gz-input-bg;
+  color: $gz-ink-2;
+}
+
+.lv__done {
+  display: block;
+  margin-top: 16rpx;
+  font-size: $gz-fs-caption;
+  color: $gz-ink-2;
+}
+
+/* ---- 守多久 ---- */
+.span {
+  margin: 22rpx 0 8rpx;
+}
+
+.span__label {
+  display: block;
+  margin-bottom: 12rpx;
+  font-size: $gz-fs-small;
+  color: $gz-ink-2;
+}
+
+.span__chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12rpx;
+}
+
+.span__chip {
+  padding: 12rpx 22rpx;
+  border: 1rpx solid $gz-line;
+  border-radius: 999rpx;
+  background: $gz-input-bg;
+  font-size: $gz-fs-caption;
+  color: $gz-ink-2;
+}
+
+.span__chip.is-on {
+  border-color: transparent;
+  background: $gz-cta-bg;
+  color: $gz-on-cta;
+}
+
+.span__hint {
+  display: block;
+  margin-top: 12rpx;
+  font-size: $gz-fs-caption;
+  line-height: 1.7;
+  color: $gz-ink-2;
+}
+
+/* ---- 照昨天的立 ---- */
+.again {
+  display: flex;
+  align-items: center;
+  gap: 16rpx;
+  margin-bottom: 22rpx;
+  padding: 20rpx 24rpx;
+  border: 1rpx dashed $gz-line;
+  border-radius: $gz-radius-md;
+  background: $gz-input-bg;
+}
+
+.again__body {
+  flex: 1;
+  min-width: 0;
+}
+
+.again__label {
+  display: block;
+  font-size: $gz-fs-caption;
+  color: $gz-ink-3;
+}
+
+.again__text {
+  display: block;
+  margin-top: 4rpx;
+  font-size: $gz-fs-small;
+  color: $gz-ink;
+}
+
+.again__go {
+  flex: none;
+  font-size: $gz-fs-caption;
+  color: $gz-accent;
+}
+
+/* ---- 落印确认里那份"约" ---- */
+.pact {
+  display: flex;
+  flex-direction: column;
+  gap: 14rpx;
+}
+
+.pact__row {
+  display: flex;
+  align-items: baseline;
+  gap: 18rpx;
+}
+
+.pact__k {
+  flex: none;
+  width: 130rpx;
+  font-size: $gz-fs-caption;
+  color: $gz-ink-3;
+}
+
+.pact__v {
+  flex: 1;
+  min-width: 0;
+  font-size: $gz-fs-small;
+  font-weight: 600;
+  color: $gz-ink;
+}
+
 /* ---- 破约理由 ---- */
 .overlay {
   position: fixed;

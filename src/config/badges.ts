@@ -54,6 +54,8 @@ export interface BadgeContext {
   vowKeepStreak: number
   /** 止：破约后写下原因的次数（诚实反思，比「没破」更值钱） */
   vowBreakReflect: number
+  /** 止：戒断型日课里累计守住天数最多的一条（不要求连续，断了也不清零） */
+  abstainBestKept: number
   /** 单日四环都有痕迹的天数 */
   crossHallDay: number
   /** 断卡 7 天之后又回来了 */
@@ -81,7 +83,8 @@ export interface BadgeRule {
  *     断卡不归零是产品的立场，再发一枚「你没断」的徽章，等于变相惩罚那些断了的人。
  *
  * 关于箴言三枚：规格 §12.4 的表写于箴言体系之前，未包含它们；
- * 这里保留（2026-09-15 已上线）；2026-09-21 又补了身体两枚，所以实际是 25 + 3 + 2 = 30 枚。
+ * 这里保留（2026-09-15 已上线）；2026-09-21 补了身体两枚、2026-09-23 又补了戒断两枚，
+ * 所以实际是 25 + 3 + 2 + 2 = 32 枚。
  */
 export const BADGE_RULES: readonly BadgeRule[] = [
   /* ---------------- 通用 ---------------- */
@@ -115,6 +118,13 @@ export const BADGE_RULES: readonly BadgeRule[] = [
     desc: '违约后写下原因，累计 3 次 —— 知道自己为什么破，比没破更值钱',
     hit: (c) => c.vowBreakReflect >= 3,
   },
+  /*
+   * 戒断两枚（2026-09-23）：禁欲这类长期的事值得有回声 —— 它是「需要毅力」的典型，
+   * 而此前成就墙上与它相关的只有「守七」（连续 7 天立约）。入口在「止 · 立约」的"长约"。
+   * 门槛按**累计守住天数**：断了不清零、不惩罚（与下面「不设连续 N 天未断」同一条原则）。
+   */
+  { id: 'abstain-30', name: '守月', desc: '一条戒断记录累计守住 30 天', hit: (c) => c.abstainBestKept >= 30 },
+  { id: 'abstain-100', name: '百天', desc: '一条戒断记录累计守住 100 天', hit: (c) => c.abstainBestKept >= 100 },
 
   /* ---------------- 知 ---------------- */
   { id: 'reflect-first', name: '反观', desc: '完成第一次省察作答', hit: (c) => c.answerTotal >= 1 },

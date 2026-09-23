@@ -7,15 +7,18 @@
  *  - 恢复时若 `备份.schema > SCHEMA_VERSION` → **拒绝恢复**并明确提示
  *    （这是「换机后脊椎变脏数据」的最后一道防线，宁可不让恢复，也不能让界面错乱）。
  *
- * 当前 = 13：proverb 增 echoDay（开屏回响"今天已结算过"的日期键）—— 1/3/7 天阶梯由
+ * 当前 = 14：readLater 的条目增 form（一句话 / 文章 / 视频）与 title / link ——
+ * 「稍后读」从"只能存一句话"扩成三种碎片形态，保留时长随形态分（一句话 24 小时、
+ * 文章与视频 7 天）。老条目没有这一格，按 'quote' 兜底并在 prune() 里顺手补上。
+ * 上一版（13）：proverb 增 echoDay（开屏回响"今天已结算过"的日期键）—— 1/3/7 天阶梯由
  * 「点按钮才推进」改成「展示即推进、一天一条」，修掉"不点就永远钉在同一条"的缺陷。
- * 上一版（12）：新增 stores/badges.ts（徽章点亮的留痕 id + 点亮时刻）。
+ * 再上一版（12）：新增 stores/badges.ts（徽章点亮的留痕 id + 点亮时刻）。
  * 再上一版（11）：observe 的「道」增 daoLine（凝练句，≤24 字）。
  * 再上一版（9）：步骤嵌套（plan 的 PlanNode 增 parentId / progress）与两份正文（observe 增
  * contentHtml / imported / handleNote），knowledge 增 domain / qa / ref，
  * 并删掉 stores/quality.ts（信息源质量榜 → 派生的来源账本）。
  */
-export const SCHEMA_VERSION = 13
+export const SCHEMA_VERSION = 14
 
 /** 结构升级记录：给未来的自己看「哪一版改了什么」 */
 export const SCHEMA_HISTORY: ReadonlyArray<{ version: number; note: string }> = [
@@ -49,5 +52,9 @@ export const SCHEMA_HISTORY: ReadonlyArray<{ version: number; note: string }> = 
   {
     version: 13,
     note: 'stores/proverb.ts 增 echoDay（开屏回响"今天已经结算过"的日期键，跨天自动解禁，与 knowledge 的 echoDay 同一范式）：回响的 1/3/7 天阶梯从「点了「还在记着」才推进」改成「开屏展示即推进、一天最多一条」，并在「我 · 我的箴言」补上显式推进入口。老数据没有这一格，按"今天还没结算"兼容（最多当天多推一阶），无需迁移脚本',
+  },
+  {
+    version: 14,
+    note: 'stores/readLater.ts 的条目增 form（quote / article / video，与「记一笔」的 form 同口径）与 title / link：稍后读从"只能存一句话"扩成三种碎片形态，保留时长随形态分（一句话 24 小时、文章与视频 7 天 —— 长文一天读不完，而这两个形态的价值全在链接上）。老条目没有 form，读时按 quote 兜底、并在 prune() 里顺手补上（无需迁移脚本）',
   },
 ]

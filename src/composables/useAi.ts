@@ -11,7 +11,9 @@
  *  5. **兜底**：AI 拿不到（开关关 / 服务端没配 Key / 不在白名单 / 登录失败 / 网络或模型出错）
  *     一律落到 utils/localAi，**永远返回可用结果**，页面不需要写任何失败分支；
  *  6. **知情同意**：真要发往 AI 前先弹一次明示同意（内容会离开设备、流向第三方服务商），
- *     结果记在 account.aiConsent，设置页可撤回；拒绝就走基础兜底，功能照常。
+ *     实现已挪到 `utils/aiAccess.ts` —— 设置页那边要复用同一份文案与同一个开关，
+ *     两处各写一版会让用户以为这是两件不同的事。结果记在 account.aiConsent，设置页可撤回；
+ *     拒绝就走基础兜底，功能照常。
  *
  * 一句话：AI 是增强不是主链路，任何情况下按钮都不能变成死按钮。
  * 兜底结果带 source:'local'，页面要如实标注 —— 把规则算出来的东西说成"AI 说的"是误导。
@@ -24,7 +26,7 @@ import { useRemoteStore } from '@/stores/remote'
 import { aiFeynman, aiTags, aiDigest } from '@/api/modules/ai'
 import { localFeynman, localTags, localDigest } from '@/utils/localAi'
 import type { AiSource, DigestResult, FeynmanResult, TagsResult } from '@/api/modules/ai'
-import { showModal } from '@/utils/dialog'
+import { ensureAiConsent, notifyAiBlockedOnce } from '@/utils/aiAccess'
 
 type AiKind = 'feynman' | 'tags' | 'digest'
 
@@ -39,33 +41,7 @@ export function useAi() {
     return ENV.aiEnabled && remote.feature('ai')
   }
 
-  /**
-   * 发往 AI 前的明示同意（一次同意，长期有效，设置页可撤回）。
-   *
-   * 为什么必须有这一道：基础兜底是在手机上算的，而真 AI 会把你写的正文发给我们接入的
-   * AI 服务商（深度求索 DeepSeek）—— **内容离开设备是性质上的变化**，不能替用户默认答应。
-   *
-   * 拒绝不是错误：照常返回基础兜底结果，功能完全不受影响。
-   * 只有确定要联网发内容时才弹（aiOn() 为 false 时短路，基础兜底不打扰用户）。
-   */
-  async function ensureAiConsent(): Promise<boolean> {
-    if (account.aiConsent) return true
-    const ok = await new Promise<boolean>((resolve) => {
-      showModal({
-        title: '这段内容会发给 AI',
-        content:
-          '你写的这段文字将离开手机，发给我们接入的 AI 服务商（深度求索 DeepSeek）用于生成结果，'
-          + '不用于其他用途，也不与你的身份关联。\n\n'
-          + '你也可以选「只用基础」—— 不联网，改用基础规则计算，功能照常可用。',
-        confirmText: '同意并发给 AI',
-        cancelText: '只用基础',
-        success: (r) => resolve(!!r.confirm),
-        fail: () => resolve(false),
-      })
-    })
-    if (ok) account.aiConsent = true
-    return ok
-  }
+  /* 知情同意与"白名单自检"都在 utils/aiAccess.ts（与设置页共用一份文案与同一个开关） */
 
   /**
    * @param fallback 基础兜底（AI 不可用时用它，必须永不抛错）
@@ -89,13 +65,18 @@ export function useAi() {
       const r = await account.withAuth(call)
       return { ...r, source: 'ai' } as T
     } catch (e) {
-      // 这三类属于"本来就没打算给你 AI"，静默兜底即可 ——
-      // 页面上的"基础"标注已经说明了一切，再弹提示纯属打扰。
+      /*
+       * 「不在白名单」要单独说一声（2026-09-23）：
+       * 用户明明点了同意、开关也开着，结果永远是基础结果 —— 不解释就等于让功能看起来坏了。
+       * 只提醒一次（notifyAiBlockedOnce 内部有标记），之后照旧静默兜底。
+       */
+      if (e instanceof BizError && e.code === ApiCode.Forbidden) {
+        notifyAiBlockedOnce()
+        return fallback()
+      }
+      // 另两类属于"本来就没打算给你 AI"，静默兜底即可 —— 页面上的"基础"标注已经说明了一切。
       const silent =
-        e instanceof BizError &&
-        (e.code === ApiCode.NotConfigured ||
-          e.code === ApiCode.Forbidden ||
-          e.code === ApiCode.Unauthorized)
+        e instanceof BizError && (e.code === ApiCode.NotConfigured || e.code === ApiCode.Unauthorized)
       if (!silent) {
         uni.showToast({ title: 'AI 暂时不可用，已用基础结果', icon: 'none' })
       }

@@ -132,6 +132,8 @@ import { logTrace } from '@/utils/traceLog'
 import { useSkinClass } from '@/composables/useSkin'
 import { todayKey } from '@/stores/daily'
 import { ROUTES } from '@/router/routes'
+import { WARN_COLOR } from '@/config/palette'
+import { showModal } from '@/utils/dialog'
 import type { CueKind } from '@/config/audio'
 import {
   BREATH_CUE_CYCLE,
@@ -178,9 +180,21 @@ const selected = computed(
 const todayHeld = computed(() => store.heldOn(todayKey()))
 const totalHeld = computed(() => store.totalHeld())
 
+/** 删自建场景：× 很小、点错就没了，先确认 */
 function dropCustom(id: string): void {
-  store.removeCustom(id)
-  if (selectedId.value === id) selectedId.value = allScenarios.value[0].id
+  const name = allScenarios.value.find((s) => s.id === id)?.name ?? '这个场景'
+  showModal({
+    title: `删掉「${name}」？`,
+    content: '自建的场景删了就找不回来了，预设场景不受影响。',
+    confirmText: '删除',
+    confirmColor: WARN_COLOR,
+    cancelText: '留着',
+    success: (res) => {
+      if (!res.confirm) return
+      store.removeCustom(id)
+      if (selectedId.value === id) selectedId.value = allScenarios.value[0].id
+    },
+  })
 }
 
 function saveCustom(): void {

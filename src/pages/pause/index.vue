@@ -130,6 +130,7 @@
           :mark="item.mark"
           :badge="item.badge"
           :url="item.url"
+          :params="item.params"
         />
       </view>
     </view>
@@ -420,7 +421,18 @@ const coolBadge = computed<EntryBadge>(() => {
     : { text: '10 分钟 / 48 小时', tone: 'muted' }
 })
 
-/** 止欲 · 冲动来袭时的三件：摁住（即时）→ 看清（长期）→ 先不决策（分钟~两天） */
+/**
+ * 止欲 · 冲动来袭时的三件：摁住（即时）→ 先不决策（分钟~两天）→ 看清（长期）
+ *
+ * ⚠️ **两张卡都进冲动记录页，但必须落在不同 tab 上**（2026-09-23 修）。
+ * 原来「冷静脉冲」与「冲动记录」都是 `url: ROUTES.pauseUrge`、且都没带 params ——
+ * 该页两个 tab（记一笔 / 触发点地图）默认停在『记一笔』，
+ * 于是两张卡点进去看到的是同一屏内容（用户报："两个模块似乎是一样的内容"）。
+ * 止念层三张卡本来就是这个范式（`params: { tab: … }` 直达），止欲层这里漏了：
+ *   冷静脉冲 → `?tab=log`（页首就是那段冷却，往下才是记一笔的表单）
+ *   冲动记录 → `?tab=map`（攒下来的形状）
+ * 两行副标题也据此重写，各自说清"点进去看到的是哪一面"。
+ */
 const wantEntries = computed<MoreEntry[]>(() => [
   {
     mark: '停',
@@ -435,14 +447,15 @@ const wantEntries = computed<MoreEntry[]>(() => [
   {
     mark: '冷',
     title: '冷静脉冲 · 先不决策',
-    subtitle: '10 分钟当下一口气 / 48 小时给大决定 —— 过一会儿还想做吗',
+    subtitle: '想买 / 想做的大决定，先挑一档放着：10 分钟，或 48 小时',
     badge: coolBadge.value,
     url: ROUTES.pauseUrge,
+    params: { tab: 'log' },
   },
   {
     mark: '录',
     title: '冲动记录 · 触发点地图',
-    subtitle: '想刷 / 嘴馋 / 想下单时记一笔，攒够十几次就看出形状了',
+    subtitle: '每次冲动记一笔（想刷 / 嘴馋 / 想下单），攒够十几次在这儿看形状',
     badge:
       urgeToday.value > 0
         ? { text: `今日 ${urgeToday.value} 次`, tone: 'accent' }
@@ -450,6 +463,7 @@ const wantEntries = computed<MoreEntry[]>(() => [
           ? { text: `累计 ${urge.records.length} 次`, tone: 'muted' }
           : { text: '记第一笔', tone: 'muted' },
     url: ROUTES.pauseUrge,
+    params: { tab: 'map' },
   },
 ])
 </script>

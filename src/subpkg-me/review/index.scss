@@ -183,23 +183,33 @@
   color: $gz-accent;
 }
 
-/* 今年记住的话 */
+/*
+ * 今年记住的话：一句一块引文。
+ *
+ * 2026-09-23 改版（用户报"内容与出处那样排很难看"）：原先是
+ * 「左 4rpx 主题色竖线 + 正文 + 紧跟一行出处」——竖线把两句不同性质的话
+ * （你说的话 / 它出自哪里）框成一体，看着像一张没对齐的两行表格。
+ * 现在是一块淡主题底的引文块：正文在块里，出处**右对齐**单独一行，
+ * 读起来才是"一句被引的话 + 它的落款"。
+ */
 .line {
   margin-top: 18rpx;
-  padding-left: 18rpx;
-  border-left: 4rpx solid $gz-accent;
+  padding: 22rpx 24rpx;
+  background: $gz-accent-a04;
+  border-radius: $gz-radius-md;
 }
 .line__text {
   display: block;
   font-size: $gz-fs-body;
-  line-height: 1.9;
-  color: $gz-ink-2;
+  line-height: 1.8;
+  color: $gz-ink;
 }
 .line__from {
   display: block;
-  margin-top: 4rpx;
+  margin-top: 10rpx;
+  text-align: right;
   font-size: $gz-fs-caption;
-  color: $gz-ink-3;
+  color: $gz-ink-2;
 }
 .tags {
   display: flex;

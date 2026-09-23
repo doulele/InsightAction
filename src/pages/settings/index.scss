@@ -212,6 +212,36 @@
   border-color: transparent;
 }
 
+/*
+ * AI「需要开通」弹框：说明 + 一张二维码。
+ * 二维码带 `show-menu-by-longpress`（长按保存 / 识别），所以这里不再写"怎么扫"的提示。
+ */
+.ai-qr__box {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 18rpx;
+}
+
+.ai-qr__tip {
+  font-size: $gz-fs-small;
+  line-height: 1.7;
+  color: $gz-ink-2;
+}
+
+.ai-qr {
+  display: block;
+  width: 400rpx;
+  height: 400rpx;
+  border-radius: $gz-radius-md;
+}
+
+.ai-qr__none {
+  font-size: $gz-fs-caption;
+  color: $gz-ink-2;
+  text-align: center;
+}
+
 /* 关于 */
 .about {
   padding: 30rpx;

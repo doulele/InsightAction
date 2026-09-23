@@ -1,9 +1,12 @@
 <template>
   <view class="page" :class="skinClass">
-    <!-- 顶栏（顶距与样式统一在 components/SubNav；右侧「＋」走 #right 插槽） -->
+    <!--
+      顶栏（顶距与样式统一在 components/SubNav；右侧动作走 #right 插槽）。
+      与理库同款：2026-09-23 把「空心圆里的 ＋」换成带字的窄药丸（见 theorylib 的注）。
+    -->
     <SubNav :fallback="ROUTES.tabObserve" @right="goCompose">
       收件匣
-      <template #right><text class="nav__add">＋</text></template>
+      <template #right><text class="nav__add">＋ 记一笔</text></template>
     </SubNav>
 
     <!-- 搜索 -->
@@ -125,6 +128,25 @@
       <text class="foot__text">存是为了处理，不是为了攒</text>
     </view>
 
+    <!--
+      主题输入弹框（2026-09-23）：取代原先那处原生 `editable` 弹框
+      —— 原生弹框白底不跟皮肤，且会把说明文字当成输入框的初始值（用户得先删）。
+      与详情页同一套口径（说明留在 content 里，输入框只带 placeholder）。
+    -->
+    <GzDialog
+      v-model:show="noteOpen"
+      :input="true"
+      :banner="false"
+      :multiline="true"
+      title="写下你的一句话"
+      content="读完了，把它变成你自己的 —— 它让你想到什么？哪里不成立？"
+      placeholder="它让你想到什么 / 哪里不成立"
+      confirm-text="处理"
+      cancel-text="再想想"
+      :maxlength="140"
+      @confirm="onNoteConfirm"
+    />
+
     <!-- 隐私授权拦截弹窗（复制链接前需征得同意） -->
     <PrivacyGate />
   </view>
@@ -215,6 +237,25 @@ function stateText(it: ObsItem): string {
  * 用户只会以为坏了。说的是「今天读不动了」，不是「你不能做」——
  * 前几天存下的补处理照样可以，删也照样可以，所以不会卡在这里出不去。
  */
+/** 主题输入弹框：正在为哪一条写"那句话"（空串 = 没在写） */
+const noteFor = ref('')
+const noteOpen = computed({
+  get: () => noteFor.value !== '',
+  set: (v: boolean) => {
+    if (!v) noteFor.value = ''
+  },
+})
+
+function onNoteConfirm(value: string): void {
+  /* 先取走 id 再落库：弹框回调里 noteFor 可能已被关闭动作清空 */
+  const id = noteFor.value
+  noteFor.value = ''
+  if (!id) return
+  // 用返回值兜底：store 是唯一判据（页面可能算漏，比如刚跨过午夜）
+  const ok = store.markHandled(id, value)
+  uni.showToast({ title: ok ? '已处理 · 修为入账' : '今天的配额用完了', icon: 'none' })
+}
+
 function handle(id: string): void {
   if (!store.canDeepRead(id)) {
     showModal({
@@ -225,20 +266,7 @@ function handle(id: string): void {
     })
     return
   }
-  showModal({
-    title: '写下你的一句话',
-    editable: true,
-    placeholderText: '它让你想到什么 / 哪里不成立',
-    confirmText: '处理',
-    cancelText: '再想想',
-    success: (res) => {
-      if (!res.confirm) return
-      const note = (res as { content?: string }).content ?? ''
-      // 用返回值兜底：store 是唯一判据（页面可能算漏，比如刚跨过午夜）
-      const ok = store.markHandled(id, note)
-      uni.showToast({ title: ok ? '已处理 · 修为入账' : '今天的配额用完了', icon: 'none' })
-    },
-  })
+  noteFor.value = id
 }
 
 function drop(id: string): void {

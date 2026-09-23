@@ -86,6 +86,25 @@
       @cancel="dropId = null"
       @confirm="dropConfirm"
     />
+
+    <!--
+      主题输入弹框（2026-09-23）：立日课时的「自定义守住多少天」。
+      原先走原生 `editable` 弹框（白底不跟皮肤，说明会被当成输入框初始值）；
+      这里是数字，所以单行 + 数字键盘 + 3 位上限。
+    -->
+    <GzDialog
+      v-model:show="customShow"
+      :input="true"
+      :banner="false"
+      :input-type="'number'"
+      title="总共守住多少天"
+      :content="`${DAILY_MIN_DAYS} ~ ${DAILY_MAX_DAYS} 天之间 —— 守住这么多天，它就收束。`"
+      :placeholder="`${DAILY_MIN_DAYS} ~ ${DAILY_MAX_DAYS} 天`"
+      confirm-text="立它"
+      cancel-text="算了"
+      :maxlength="3"
+      @confirm="onCustomConfirm"
+    />
   </view>
 </template>
 
@@ -208,25 +227,32 @@ function toDaily(h: Row): void {
   })
 }
 
-/** 自定义天数：showModal 的 editable 输入（小程序 2.17.1+），填了合法值才建 */
+/**
+ * 自定义天数（2026-09-23：输入从原生 `editable` 弹框改成 GzDialog 的数字输入）。
+ * 口径不变：填了合法值才建，区间外的值夹到边界（store 里还会再兜一道）。
+ */
+const customFor = ref<Row | null>(null)
+const customShow = computed({
+  get: () => customFor.value !== null,
+  set: (v: boolean) => {
+    if (!v) customFor.value = null
+  },
+})
+
 function toDailyCustom(h: Row): void {
-  showModal({
-    title: '总共守住多少天',
-    content: '',
-    editable: true,
-    placeholderText: `${DAILY_MIN_DAYS} ~ ${DAILY_MAX_DAYS} 天`,
-    confirmText: '立它',
-    cancelText: '算了',
-    success: (res) => {
-      if (!res.confirm) return
-      const raw = Math.round(Number(res.content))
-      if (!Number.isFinite(raw) || raw <= 0) {
-        uni.showToast({ title: `填一个 ${DAILY_MIN_DAYS} ~ ${DAILY_MAX_DAYS} 之间的天数`, icon: 'none' })
-        return
-      }
-      createDaily(h, Math.min(DAILY_MAX_DAYS, Math.max(DAILY_MIN_DAYS, raw)))
-    },
-  })
+  customFor.value = h
+}
+
+function onCustomConfirm(value: string): void {
+  const h = customFor.value
+  customFor.value = null
+  if (!h) return
+  const raw = Math.round(Number(value))
+  if (!Number.isFinite(raw) || raw <= 0) {
+    uni.showToast({ title: `填一个 ${DAILY_MIN_DAYS} ~ ${DAILY_MAX_DAYS} 之间的天数`, icon: 'none' })
+    return
+  }
+  createDaily(h, Math.min(DAILY_MAX_DAYS, Math.max(DAILY_MIN_DAYS, raw)))
 }
 
 /** 真正落地：把习惯连同打卡记录转成一条日课 */

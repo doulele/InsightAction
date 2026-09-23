@@ -294,6 +294,29 @@
       </view>
     </view>
 
+    <!--
+      主题输入弹框（2026-09-23）。
+      这一页原有 4 处原生 `uni.showModal({ editable: true })`（处理时写一句 / 凝练成一句 ×2 / 给道起名）：
+      原生弹框是白底不跟皮肤的，而且那句"把它压成一句你能带走的话（24 字以内）"会被当成
+      输入框的**初始值** —— 用户想写字得先把它删掉。
+      现在用一个 GzDialog 承载全部四处（形状一样，只有文案与提交动作不同），
+      由 `ask` 判别量分发；这样页面上不会出现"两个弹框同时开着"这类状态。
+    -->
+    <GzDialog
+      v-model:show="askShow"
+      :input="true"
+      :banner="false"
+      :multiline="ask?.multiline ?? false"
+      :title="ask?.title"
+      :content="ask?.content"
+      :placeholder="ask?.placeholder"
+      :default-value="ask?.defaultValue"
+      :maxlength="ask?.maxlength ?? 140"
+      :confirm-text="ask?.confirmText"
+      cancel-text="再想想"
+      @confirm="onAskConfirm"
+    />
+
     <PrivacyGate />
   </view>
 </template>
@@ -554,6 +577,92 @@ function edit(): void {
   navigateTo(ROUTES.observeCompose, { id: item.value.id })
 }
 
+/* ---------------- 主题输入弹框（2026-09-23） ----------------
+ * 这一页有 4 处「问一句就写下来」的动作：处理时写一句、凝练成一句（两处入口）、给道起名。
+ * 它们形状相同（标题 + 说明 + 一个输入框 + 两个键），所以共用一个 GzDialog：
+ * `ask` 是当前的问句形态（null = 不显示），`onAskConfirm` 按 kind 分发。
+ *
+ * 为什么换掉原生弹框：① 原生 `editable` 弹框是白底、不跟皮肤；
+ * ② 原生把 `content` 当成输入框的**初始值** —— 那句「把它压成一句你能带走的话（24 字以内）」
+ *    会变成用户要手动删掉的字（用户截图报的就是这个）。
+ * 现在说明留在 content 里当正文，输入框只带 placeholder（写示例）。
+ */
+type AskKind = 'handle' | 'daoLine' | 'condense' | 'daoName'
+
+interface AskState {
+  kind: AskKind
+  title: string
+  /** 说明，留在正文里 */
+  content: string
+  /** 输入框占位（写"示例"） */
+  placeholder: string
+  confirmText: string
+  /** 写一句话还是写一段 */
+  multiline: boolean
+  maxlength: number
+  /** 编辑已有内容时预填（改凝练句用；新建留空） */
+  defaultValue?: string
+}
+
+const ask = ref<AskState | null>(null)
+/** ask 的布尔视图（给 v-model:show 用）：置 false 即关掉 */
+const askShow = computed({
+  get: () => ask.value !== null,
+  set: (v: boolean) => {
+    if (!v) ask.value = null
+  },
+})
+/** 凝练流程里"那一句"要带着走到第二问（选道）与第三问（起名），所以存在页面上而不是参数里 */
+const pendingLine = ref('')
+/** 「凝练成一句」要写给哪条道（点「另凝一句」时记下来） */
+const pendingMotherId = ref('')
+
+/**
+ * 弹框提交分发。
+ *
+ * **先关框再执行**：下面的分支里 `pickDaoFor` 会弹一个系统操作表、之后可能再开一问
+ * （给道起名）—— 框先置空，下一次 askShow 才是 false→true，
+ * GzDialog 也才会把输入框重置成新一问的初始值（否则上一问的字会留在框里）。
+ */
+function onAskConfirm(value: string): void {
+  const cur = ask.value
+  ask.value = null
+  if (!cur) return
+  const text = value.trim()
+  switch (cur.kind) {
+    case 'handle': {
+      const it = item.value
+      if (!it) return
+      /* 与原先一致：那一句**不裁剪**（用户写了什么就是什么，store 自己会 trim 落库） */
+      const ok = store.markHandled(it.id, value)
+      uni.showToast({ title: ok ? '已处理 · 修为入账' : '今天的配额用完了', icon: 'none' })
+      return
+    }
+    case 'daoLine': {
+      if (!text) {
+        uni.showToast({ title: '总得写一句', icon: 'none' })
+        return
+      }
+      store.update(pendingMotherId.value, { daoLine: text.slice(0, DAO_LINE_MAX) })
+      uni.showToast({ title: '已写进你的道', icon: 'none' })
+      return
+    }
+    case 'condense': {
+      if (!text) {
+        uni.showToast({ title: '总得写一句', icon: 'none' })
+        return
+      }
+      pendingLine.value = text.slice(0, DAO_LINE_MAX)
+      pickDaoFor(pendingLine.value)
+      return
+    }
+    case 'daoName': {
+      promoteToNewDao(text)
+      return
+    }
+  }
+}
+
 /**
  * 处理：读过并写下自己的话。
  * 配额用尽时先解释再拦（与收件匣一致，不静默失败）。
@@ -570,19 +679,15 @@ function handle(): void {
     })
     return
   }
-  showModal({
+  ask.value = {
+    kind: 'handle',
     title: '写下你的一句话',
-    editable: true,
-    placeholderText: '它让你想到什么 / 哪里不成立',
+    content: '读完了，把它变成你自己的 —— 它让你想到什么？哪里不成立？',
+    placeholder: '它让你想到什么 / 哪里不成立',
     confirmText: '处理',
-    cancelText: '再想想',
-    success: (res) => {
-      if (!res.confirm) return
-      const note = (res as { content?: string }).content ?? ''
-      const ok = store.markHandled(it.id, note)
-      uni.showToast({ title: ok ? '已处理 · 修为入账' : '今天的配额用完了', icon: 'none' })
-    },
-  })
+    multiline: true,
+    maxlength: 140,
+  }
 }
 
 /** 删除：破坏性操作，照项目惯例走红色确认弹框，删完退回列表 */
@@ -623,24 +728,20 @@ const daoMother = computed(() => {
 
 /** 写 / 改某条道的凝练句（详情页这一条自己就是道时也走它） */
 function editDaoLine(motherId: string, current?: string): void {
-  showModal({
-    title: '凝练成一句',
-    content: current ? `现在是：「${current}」` : `把它压成一句你能带走的话（${DAO_LINE_MAX} 字以内）。`,
-    editable: true,
-    placeholderText: '如：拖延不是懒，是那件事太大',
+  pendingMotherId.value = motherId
+  ask.value = {
+    kind: 'daoLine',
+    title: current ? '另凝一句' : '凝练成一句',
+    /* 已有那一句时把它**预填进输入框**（这是"改自己的句子"，不是"要用户先删说明"） */
+    content: current
+      ? `现在是：「${current}」—— 换成更贴的那一句（${DAO_LINE_MAX} 字以内）。`
+      : `把它压成一句你能带走的话（${DAO_LINE_MAX} 字以内）。`,
+    placeholder: '如：拖延不是懒，是那件事太大',
     confirmText: '收下',
-    cancelText: '再想想',
-    success: (res) => {
-      if (!res.confirm) return
-      const line = ((res as { content?: string }).content ?? '').trim().slice(0, DAO_LINE_MAX)
-      if (!line) {
-        uni.showToast({ title: '总得写一句', icon: 'none' })
-        return
-      }
-      store.update(motherId, { daoLine: line })
-      uni.showToast({ title: '已写进你的道', icon: 'none' })
-    },
-  })
+    multiline: false,
+    maxlength: DAO_LINE_MAX,
+    defaultValue: current ?? '',
+  }
 }
 
 /** 事 / 理 的凝练：先要那一句，再决定它落在哪条道上 */
@@ -652,23 +753,15 @@ function condenseToDao(): void {
     editDaoLine(daoMother.value.id, daoMother.value.daoLine)
     return
   }
-  showModal({
+  ask.value = {
+    kind: 'condense',
     title: '凝练成一句',
-    content: `把这一条压成一句你能带走的话（${DAO_LINE_MAX} 字以内）。`,
-    editable: true,
-    placeholderText: '如：慢下来才看得见自己在选什么',
+    content: `把这一条压成一句你能带走的话（${DAO_LINE_MAX} 字以内）。下一问再挑它挂在哪条道上。`,
+    placeholder: '如：慢下来才看得见自己在选什么',
     confirmText: '下一步',
-    cancelText: '再想想',
-    success: (res) => {
-      if (!res.confirm) return
-      const line = ((res as { content?: string }).content ?? '').trim().slice(0, DAO_LINE_MAX)
-      if (!line) {
-        uni.showToast({ title: '总得写一句', icon: 'none' })
-        return
-      }
-      pickDaoFor(line)
-    },
-  })
+    multiline: false,
+    maxlength: DAO_LINE_MAX,
+  }
 }
 
 /**
@@ -689,39 +782,41 @@ function pickDaoFor(line: string): void {
         uni.showToast({ title: `已挂到「${m.title}」`, icon: 'none' })
         return
       }
-      createDao(line)
+      askDaoName()
     },
   })
 }
 
-/** 第三问：立一条新道（名字要是个问句 —— 会反复冒出来的，才叫道） */
-function createDao(line: string): void {
-  const it = item.value
-  if (!it) return
-  showModal({
+/** 第三问 · 开框：立一条新道（名字要是个问句 —— 会反复冒出来的，才叫道） */
+function askDaoName(): void {
+  ask.value = {
+    kind: 'daoName',
     title: '给这条道起个名字',
     content: '问句最好 —— 它得是你反复会遇见的那个问题。',
-    editable: true,
-    placeholderText: '如：我到底在回避什么',
+    placeholder: '如：我到底在回避什么',
     confirmText: '立起来',
-    cancelText: '再想想',
-    success: (res) => {
-      if (!res.confirm) return
-      const name = ((res as { content?: string }).content ?? '').trim() || line
-      /* 走 promoteToMother：它会挂上来源、把原条目标记已处理、并按 observe.mother 入账 +20 */
-      const created = store.promoteToMother(
-        it.id,
-        name,
-        `由「${it.title || it.content.slice(0, 12)}」凝练`,
-        line,
-      )
-      if (!created) {
-        uni.showToast({ title: '收件满了，先去处理几条', icon: 'none' })
-        return
-      }
-      uni.showToast({ title: '已立起一条道', icon: 'none' })
-    },
-  })
+    multiline: false,
+    maxlength: 140,
+  }
+}
+
+/** 第三问 · 落库：名字留空就用刚凝的那一句顶上 */
+function promoteToNewDao(name: string): void {
+  const it = item.value
+  if (!it) return
+  const finalName = name.trim() || pendingLine.value
+  /* 走 promoteToMother：它会挂上来源、把原条目标记已处理、并按 observe.mother 入账 +20 */
+  const created = store.promoteToMother(
+    it.id,
+    finalName,
+    `由「${it.title || it.content.slice(0, 12)}」凝练`,
+    pendingLine.value,
+  )
+  if (!created) {
+    uni.showToast({ title: '收件满了，先去处理几条', icon: 'none' })
+    return
+  }
+  uni.showToast({ title: '已立起一条道', icon: 'none' })
 }
 
 /**

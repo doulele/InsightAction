@@ -73,6 +73,14 @@ export function buildBadgeContext(): BadgeContext {
     vowKeepStreak: vow.keepStreak,
     /* 破约必须写下原因（stores/vow.ts 的 breakIt 强制），所以「破了」的次数 = 诚实反思的次数 */
     vowBreakReflect: vow.tally.broken,
+    /*
+     * 戒断长约（2026-09-23）：「守月 / 百天」两枚徽章 + 立约页的里程碑刻度共用这一个数。
+     * 取**累计守住天数**（progressOf().done）而非当前连续 —— 连续断了会归零，
+     * 拿它当门槛就成了"一次破戒全盘皆输"，与项目"断卡不归零"的立场相反。
+     */
+    abstainBestKept: plan.dailyPlans
+      .filter((p) => p.challenge === 'abstain')
+      .reduce((max, p) => Math.max(max, plan.progressOf(p).done), 0),
     crossHallDay: crossHallDays(trace.list),
     comebackAfterBreak: hasComeback(trace.list),
 

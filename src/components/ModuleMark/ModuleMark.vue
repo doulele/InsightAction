@@ -1,13 +1,8 @@
 <template>
   <!-- 图缺失 / 加载失败 → 整块不渲染，页面保持原有的纯 CSS 视觉（绝不出现破图或空位） -->
-  <image
-    v-if="url && !broken"
-    class="mm"
-    :class="`mm--${size}`"
-    :src="url"
-    mode="aspectFit"
-    @error="onError"
-  />
+  <view v-if="url && !broken" class="mm-plate" :class="`mm-plate--${size}`">
+    <image class="mm" :class="`mm--${size}`" :src="url" mode="aspectFit" @error="onError" />
+  </view>
 </template>
 
 <script setup lang="ts">
@@ -74,6 +69,37 @@ function onError(): void {
 </script>
 
 <style lang="scss" scoped>
+.mm-plate {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* lg = 页面主标志物（沙漏页那种整页主角）：保持裸图，不套边框 */
+.mm-plate--lg {
+  width: 100%;
+}
+
+/*
+ * md = 卡片内嵌（成就墙 / 微行动盲盒）。
+ *
+ * 2026-09-23 改版（用户报"头部那张图这样展示太不好看"）：
+ * 原来是 200rpx 的裸图居中放在页面顶部 —— 图自己的底色与纸纹背景差一点点，
+ * 既不属于上面的标题、也不属于下面的卡片，看着像"一张没放好的图"浮在那里。
+ * 现在给它一个「标志盘」（淡主题底 + 描边 + 大圆角），图读起来是"这一模块的印章"，
+ * 与页面背景之间有了明确边界。
+ */
+.mm-plate--md {
+  width: 240rpx;
+  height: 240rpx;
+  margin: 0 auto;
+  padding: 22rpx;
+  box-sizing: border-box;
+  background: $gz-accent-a04;
+  border: 1rpx solid $gz-line;
+  border-radius: $gz-radius-lg;
+}
+
 .mm {
   display: block;
   margin: 0 auto;
@@ -85,7 +111,7 @@ function onError(): void {
 }
 
 .mm--md {
-  width: 200rpx;
-  height: 200rpx;
+  width: 196rpx;
+  height: 196rpx;
 }
 </style>

@@ -26,6 +26,32 @@
             <text v-if="content" class="gd__content">{{ content }}</text>
             <view v-if="note" class="gd__note">{{ note }}</view>
           </template>
+          <!--
+            输入模式（2026-09-23）：替代原生 `uni.showModal({ editable: true })`。
+            原生那条路有两个固定毛病：① 面板永远是白的，不跟皮肤；
+            ② `content` 会被当成输入框的**初始值** —— 调用方为了说明写的那句话，
+            用户得先手动删掉才能写字（用户截图报的就是这个）。
+            这里把说明留在 content / note 里当正文，输入框自己只带 placeholder。
+          -->
+          <textarea
+            v-if="input && multiline"
+            v-model="val"
+            class="gd__input gd__input--area"
+            :placeholder="placeholder"
+            placeholder-class="gd__ph"
+            :maxlength="maxlength"
+            auto-height
+          />
+          <input
+            v-else-if="input"
+            v-model="val"
+            class="gd__input"
+            :type="inputType"
+            :placeholder="placeholder"
+            placeholder-class="gd__ph"
+            :maxlength="maxlength"
+            confirm-type="done"
+          />
         </view>
         <view class="gd__acts">
           <view
@@ -70,8 +96,25 @@
  *
  * 横幅图（art）**不用每个调用方都传**：缺省自动取当前模式的主题图；
  * 只有换肤确认这类「要预览另一个模式」的场景才显式传目标模式的图。
+ *
+ * 输入模式（2026-09-23 新增，替代原生 editable 弹框）：
+ *   <GzDialog
+ *     v-model:show="askOpen"
+ *     :input="true"
+ *     title="凝练成一句"
+ *     content="把它压成一句你能带走的话（24 字以内）。"   // 说明留在正文里
+ *     placeholder="如：拖延不是懒，是那件事太大"          // 占位是**示例**，不是要用户删掉的话
+ *     :maxlength="24"
+ *     confirm-text="收下"
+ *     @confirm="onLine"        // onLine(value: string)
+ *     @cancel="askOpen = false"
+ *   />
+ *   要点：① 说明（content）与输入（placeholder / 输入框）**分开**，
+ *   原生弹框把说明塞进输入框初始值、用户得删一遍，就是这次要修的病；
+ *   ② 写一段话用 `:multiline="true"`（textarea，自动长高）；
+ *   ③ 输入类弹框建议 `:banner="false"`：键盘弹起时面板越矮越好用。
  */
-import { computed } from 'vue'
+import { computed, ref, watch } from 'vue'
 import { useModeStore } from '@/stores/mode'
 import { useImageStore } from '@/stores/images'
 import type { ModeId } from '@/config/modes'
@@ -107,6 +150,24 @@ interface Props {
    */
   banner?: boolean
   zIndex?: number
+  /**
+   * 输入模式：正文区渲染一个输入框（替代原生 editable 弹框）。
+   * 输入文本随 `@confirm` 第一个参数回传；缺省 false 时行为与以前完全一致。
+   */
+  input?: boolean
+  /**
+   * 输入框占位文案（input=true 时生效）。
+   * 原生弹框时代写在 `content` 里的"那句话"要搬到这里 —— 写进 content 会被当成初始值。
+   */
+  placeholder?: string
+  /** 输入框初始值（编辑已有内容时用，如「现在是：「…」」那种） */
+  defaultValue?: string
+  /** 输入字数上限（缺省 140） */
+  maxlength?: number
+  /** 多行输入（textarea）：写一段话时用；短标题 / 一句话用默认的单行输入 */
+  multiline?: boolean
+  /** 单行输入的键盘类型：填数字（如"守住多少天"）用 `number` */
+  inputType?: 'text' | 'number'
 }
 
 const props = withDefaults(defineProps<Props>(), {
@@ -117,11 +178,18 @@ const props = withDefaults(defineProps<Props>(), {
   maskClosable: true,
   banner: true,
   zIndex: 300,
+  input: false,
+  placeholder: '',
+  defaultValue: '',
+  maxlength: 140,
+  multiline: false,
+  inputType: 'text',
 })
 
 const emit = defineEmits<{
   (e: 'update:show', v: boolean): void
-  (e: 'confirm'): void
+  /** 输入模式下带上输入框里的文本（没写字 = 空串）；非输入模式恒为空串 */
+  (e: 'confirm', value: string): void
   (e: 'cancel'): void
 }>()
 
@@ -159,8 +227,26 @@ function onMaskTap(): void {
   close(true)
 }
 
+/**
+ * 输入框的值：每次**弹出 / 换一问**时重置为 defaultValue。
+ *
+ * 组件实例在隐藏时并不会销毁（`v-if` 只包了遮罩那一层），不重置就会把上一次的输入带出来。
+ * 指纹里带上 title 与 defaultValue 是有意的：问答链上（先问一句、确认后再问一句）
+ * 两个框可能在同一个 tick 里一关一开 —— 只看 `show` 的话它是 false→true 被合并掉、
+ * 重置不触发，新一问的框里会留着上一问的字。title / defaultValue 变了也重置，链条就干净了。
+ */
+const val = ref('')
+const askFingerprint = computed(() => `${props.show}|${props.title ?? ''}|${props.defaultValue ?? ''}`)
+watch(
+  askFingerprint,
+  () => {
+    if (props.show) val.value = props.defaultValue ?? ''
+  },
+  { immediate: true },
+)
+
 function onConfirm(): void {
-  emit('confirm')
+  emit('confirm', props.input ? val.value : '')
 }
 </script>
 

@@ -1,9 +1,13 @@
 <template>
   <view class="page" :class="skinClass">
-    <!-- 顶栏（顶距与样式统一在 components/SubNav；右侧「＋」走 #right 插槽） -->
+    <!--
+      顶栏（顶距与样式统一在 components/SubNav；右侧动作走 #right 插槽）。
+      右侧那个按钮 2026-09-23 从「空心圆里的 ＋」改成带字的窄药丸：
+      光一个 ＋ 既不说清是干什么的、又比顶栏任何元素都抢眼（用户原话："太丑了"）。
+    -->
     <SubNav :fallback="ROUTES.tabObserve" @right="goCompose">
       理库
-      <template #right><text class="nav__add">＋</text></template>
+      <template #right><text class="nav__add">＋ 记一笔</text></template>
     </SubNav>
 
     <!-- 分区：理 / 播种 -->
@@ -267,6 +271,23 @@
       @cancel="dropTarget = null"
       @confirm="dropConfirm"
     />
+
+    <!--
+      主题输入弹框（2026-09-23）：取代「提炼母题」那处原生 `editable` 弹框
+      （白底不跟皮肤，且会把说明当输入框初始值）。
+    -->
+    <GzDialog
+      v-model:show="promoteShow"
+      :input="true"
+      :banner="false"
+      title="这个反复出现的问题，叫什么"
+      :content="promoteHint"
+      placeholder="如：我到底在回避什么"
+      confirm-text="立为母题"
+      cancel-text="再想想"
+      :maxlength="140"
+      @confirm="onPromoteConfirm"
+    />
   </view>
 </template>
 
@@ -407,32 +428,47 @@ function attach(id: string): void {
   })
 }
 
-/** 提炼母题：给它一个名字（问句最好），原条目自动挂上去并标记已处理 */
+/**
+ * 提炼母题：给它一个名字（问句最好），原条目自动挂上去并标记已处理。
+ *
+ * 2026-09-23：输入从原生 `editable` 弹框改成 GzDialog（白底不跟皮肤、
+ * 且原生会把 content 说明当成输入框初始值 —— 用户得先删掉那一句才能写字）。
+ */
+const promoteFor = ref('')
+const promoteShow = computed({
+  get: () => promoteFor.value !== '',
+  set: (v: boolean) => {
+    if (!v) promoteFor.value = ''
+  },
+})
+/** 说明句：从哪一条升上去（留在弹框正文里，不进输入框） */
+const promoteHint = computed(() => {
+  const src = promoteFor.value ? observe.find(promoteFor.value) : undefined
+  return src ? `从「${src.title || src.content.slice(0, 12)}」升上去` : ''
+})
+
 function promote(id: string): void {
+  if (!observe.find(id)) return
+  promoteFor.value = id
+}
+
+function onPromoteConfirm(value: string): void {
+  const id = promoteFor.value
+  promoteFor.value = ''
+  if (!id) return
   const src = observe.find(id)
   if (!src) return
-  showModal({
-    title: '这个反复出现的问题，叫什么',
-    content: `从「${src.title || src.content.slice(0, 12)}」升上去`,
-    editable: true,
-    placeholderText: '如：我到底在回避什么',
-    confirmText: '立为母题',
-    cancelText: '再想想',
-    success: (res) => {
-      if (!res.confirm) return
-      const name = ((res as { content?: string }).content ?? '').trim()
-      if (!name) {
-        uni.showToast({ title: '总得给它一个名字', icon: 'none' })
-        return
-      }
-      const created = observe.promoteToMother(id, name, src.why ?? src.content)
-      if (!created) {
-        uni.showToast({ title: '收件满了，先去处理几条', icon: 'none' })
-        return
-      }
-      uni.showToast({ title: '母题已立 · 修为 +20', icon: 'none' })
-    },
-  })
+  const name = value.trim()
+  if (!name) {
+    uni.showToast({ title: '总得给它一个名字', icon: 'none' })
+    return
+  }
+  const created = observe.promoteToMother(id, name, src.why ?? src.content)
+  if (!created) {
+    uni.showToast({ title: '收件满了，先去处理几条', icon: 'none' })
+    return
+  }
+  uni.showToast({ title: '母题已立 · 修为 +20', icon: 'none' })
 }
 
 function goMother(): void {

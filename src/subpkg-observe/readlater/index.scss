@@ -10,22 +10,76 @@
 
 /* 顶栏（与设置页同款） */
 
-/* 收纳条 */
-.add {
+/* 形态选择（2026-09-23）：一句话 / 文章 / 视频 —— 默认停在"一句话" */
+.pick {
   display: flex;
-  gap: 16rpx;
+  gap: 12rpx;
   margin-top: 20rpx;
 }
 
+.pick__item {
+  display: flex;
+  align-items: center;
+  gap: 10rpx;
+  padding: 10rpx 24rpx;
+  border: 1rpx solid $gz-line;
+  border-radius: 999rpx;
+  background: $gz-surface;
+}
+
+.pick__item.is-on {
+  border-color: $gz-accent;
+  background: $gz-accent-soft;
+}
+
+.pick__mark {
+  font-size: $gz-fs-caption;
+  color: $gz-ink-3;
+}
+
+.pick__name {
+  font-size: $gz-fs-caption;
+  color: $gz-ink-2;
+}
+
+.pick__item.is-on .pick__mark,
+.pick__item.is-on .pick__name {
+  color: $gz-accent;
+  font-weight: 700;
+}
+
+/*
+ * 收纳条：竖排（形态行 → 文章/视频的标题与链接 → 一句 + 存下）。
+ * 为什么从"一行"改成竖排：文档形态多两格，横排会把输入框压成十几个字。
+ * 一句话形态时它仍然只有一行（输入 + 存下），与从前一样。
+ */
+.add {
+  display: flex;
+  flex-direction: column;
+  gap: 16rpx;
+  margin-top: 18rpx;
+}
+
+.add__row {
+  display: flex;
+  gap: 16rpx;
+}
+
 .add__input {
-  flex: 1;
-  min-width: 0;
+  width: 100%;
+  box-sizing: border-box;
   padding: 24rpx 26rpx;
   background: $gz-input-bg;
   border: 1rpx solid $gz-line;
   border-radius: $gz-radius-md;
   font-size: $gz-fs-body;
   color: $gz-ink;
+}
+
+/* 只有同一行里的那个输入框要吃掉剩余宽度（竖排时不能设 flex:1，否则会被拉高） */
+.add__row .add__input {
+  flex: 1;
+  min-width: 0;
 }
 
 .add__ph {
@@ -81,18 +135,71 @@
   border-radius: $gz-radius-md;
 }
 
+/*
+ * 三种形态在版式上分开（2026-09-23）。
+ * 文档型（文章 / 视频）是"外面的东西的容器"，给左侧一条主题色带；
+ * 一句话就是一句引文，保持素卡 —— 用户一眼能看出卡里装的是哪一种。
+ */
+.card--article,
+.card--video {
+  border-left: 6rpx solid $gz-accent;
+}
+
+.card__head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16rpx;
+}
+
+/* 形态徽标 */
+.card__form {
+  flex: none;
+  padding: 2rpx 16rpx;
+  border-radius: 999rpx;
+  background: $gz-accent-soft;
+  color: $gz-accent;
+  font-size: $gz-fs-caption;
+}
+
+/* 文章 / 视频的标题：卡里最重的一行 */
+.card__title {
+  display: block;
+  margin-top: 16rpx;
+  font-size: $gz-fs-body;
+  font-weight: 700;
+  line-height: 1.6;
+  color: $gz-ink;
+}
+
 .card__text {
   display: block;
-  font-size: $gz-fs-body;
+  margin-top: 10rpx;
+  font-size: $gz-fs-small;
   line-height: 1.7;
-  color: $gz-ink;
+  color: $gz-ink-2;
   word-break: break-all;
+}
+
+/* 一句话形态：那句话就是全部内容，字号回到正文级、颜色用主文字 */
+.card__text.is-quote {
+  margin-top: 14rpx;
+  font-size: $gz-fs-body;
+  color: $gz-ink;
+}
+
+/* 文章 / 视频的链接：走主题色，点一下是"复制 + 提示"（没有 web-view 白名单） */
+.card__link {
+  display: block;
+  margin-top: 16rpx;
+  font-size: $gz-fs-caption;
+  color: $gz-accent;
 }
 
 .card__meta {
   display: flex;
   align-items: center;
-  justify-content: space-between;
+  justify-content: flex-end;
   margin-top: 16rpx;
 }
 

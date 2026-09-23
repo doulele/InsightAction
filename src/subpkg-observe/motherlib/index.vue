@@ -140,6 +140,28 @@
       @cancel="dropTarget = null"
       @confirm="dropConfirm"
     />
+
+    <!--
+      主题输入弹框（2026-09-23）：取代三处原生 `editable` 弹框
+      （提炼母题的名字 / 认领预置母题的第一笔 / 凝练句）。
+      原生弹框白底不跟皮肤，且会把 `content`（说明）当成输入框初始值、要用户先删掉。
+      现在说明留在 content 里，输入框只带 placeholder —— 与详情页同一套口径。
+    -->
+    <GzDialog
+      v-model:show="askShow"
+      :input="true"
+      :banner="false"
+      :multiline="ask?.multiline ?? false"
+      :title="ask?.title"
+      :content="ask?.content"
+      :placeholder="ask?.placeholder"
+      :default-value="ask?.defaultValue"
+      :maxlength="ask?.maxlength ?? 140"
+      :confirm-text="ask?.confirmText"
+      :cancel-text="ask?.cancelText ?? '再想想'"
+      @confirm="onAskConfirm"
+      @cancel="onAskCancel"
+    />
   </view>
 </template>
 
@@ -239,45 +261,128 @@ const tagHints = computed<TagHint[]>(() => {
     .slice(0, 2)
 })
 
+/* ---------------- 主题输入弹框（2026-09-23） ----------------
+ * 这一页有三处「问一句」：提炼母题的名字、认领预置母题的第一笔、凝练句
+ * （认领后的第二问 + 卡片上就地补写）。
+ * 原生 `editable` 弹框白底不跟皮肤、且会把 `content`（说明）当成输入框初始值 ——
+ * 全部收进 GzDialog：`ask` 是当前那一问（null = 不显示），`onAskConfirm` 按 kind 分发。
+ * 与 subpkg-observe/detail 同一范式。
+ */
+type AskKind = 'tagName' | 'firstNote' | 'daoLine'
+
+interface AskState {
+  kind: AskKind
+  title: string
+  /** 说明，留在正文里（不塞进输入框） */
+  content: string
+  placeholder: string
+  confirmText: string
+  cancelText: string
+  multiline: boolean
+  maxlength: number
+  /** 编辑已有内容时预填（改凝练句用） */
+  defaultValue?: string
+}
+
+const ask = ref<AskState | null>(null)
+const askShow = computed({
+  get: () => ask.value !== null,
+  set: (v: boolean) => {
+    if (!v) ask.value = null
+  },
+})
+
+/** 「提炼母题」那一问的上下文（标签 + 条数） */
+const pendingTag = ref<TagHint | null>(null)
+/** 「认领」那一问要收下的预置母题 */
+const pendingPreset = ref<PresetMother | null>(null)
+/**
+ * 凝练句那一问的回调（认领的第二问 / 卡片上补写都用它）。
+ *
+ * 它**刻意独立于 `ask`**：取消时 `ask` 已被清空（v-model:show 的 setter 先跑），
+ * 而"认领"这条路仍需要收到一个空串继续往下走 —— 先收下、以后补写，
+ * 认领的门槛不能变成"先写好一句"（见 adopt 的注释）。
+ */
+const afterDaoLine = ref<((line: string) => void) | null>(null)
+
+function onAskConfirm(value: string): void {
+  const cur = ask.value
+  ask.value = null
+  if (!cur) return
+  const text = value.trim()
+  switch (cur.kind) {
+    case 'tagName': {
+      const h = pendingTag.value
+      pendingTag.value = null
+      /* 名字留空就用标签名顶上（原行为） */
+      if (h) finishPromoteFromTag(h, text || h.tag)
+      return
+    }
+    case 'firstNote': {
+      const p = pendingPreset.value
+      pendingPreset.value = null
+      if (p) finishAdopt(p, text)
+      return
+    }
+    case 'daoLine': {
+      const done = afterDaoLine.value
+      afterDaoLine.value = null
+      done?.(text.slice(0, DAO_LINE_MAX))
+      return
+    }
+  }
+}
+
+/** 取消：凝练句那一问要回一个空串（"先不写"也是一种回答，认领照常收下） */
+function onAskCancel(): void {
+  ask.value = null
+  const done = afterDaoLine.value
+  afterDaoLine.value = null
+  done?.('')
+}
+
 /**
  * 就着提示提炼一个母题：名字可预填标签名（省一步），
  * 之后问一句要不要把同标签的理一起挂上 —— 规格 §15.3 原本是「勾选要挂的理」，
  * 这里换成一次确认：多选那一步在手机上太重，而多数情况用户就是想全挂。
  */
 function promoteFromTag(h: TagHint): void {
-  showModal({
+  pendingTag.value = h
+  ask.value = {
+    kind: 'tagName',
     title: '提炼成一个母题',
     content: `你有 ${h.count} 条理都打了「${h.tag}」这个标签。给它一个名字 —— 问句最好。`,
-    editable: true,
-    placeholderText: '如：什么才算够了',
+    placeholder: '如：什么才算够了',
     confirmText: '提炼',
     cancelText: '再等等',
-    success: (res) => {
-      if (!res.confirm) return
-      const name = ((res as { content?: string }).content ?? '').trim() || h.tag
-      const seed = observe.theories.find((i) => i.tags.includes(h.tag))
-      if (!seed) return
-      const item = observe.promoteToMother(seed.id, name, `${h.tag}：${h.count} 条理都指向它`)
-      if (!item) {
-        uni.showToast({ title: '没提炼成 · 先在理库处理一条', icon: 'none' })
-        return
-      }
-      const others = observe.theories.filter((i) => i.id !== seed.id && i.tags.includes(h.tag) && !i.motherId)
-      if (!others.length) {
-        uni.showToast({ title: '已提炼 · 收下这 20 点修为', icon: 'none' })
-        return
-      }
-      showModal({
-        title: '顺手挂上？',
-        content: `还有 ${others.length} 条理也打了「${h.tag}」，要一起挂到「${name}」下吗？`,
-        confirmText: '一起挂',
-        cancelText: '不用',
-        success: (r) => {
-          if (!r.confirm) return
-          for (const i of others) observe.attachMother(i.id, item.id)
-          uni.showToast({ title: `已挂上 ${others.length} 条`, icon: 'none' })
-        },
-      })
+    multiline: false,
+    maxlength: 140,
+  }
+}
+
+/** 提炼的落库那一半（名字留空 = 用标签名） */
+function finishPromoteFromTag(h: TagHint, name: string): void {
+  const seed = observe.theories.find((i) => i.tags.includes(h.tag))
+  if (!seed) return
+  const item = observe.promoteToMother(seed.id, name, `${h.tag}：${h.count} 条理都指向它`)
+  if (!item) {
+    uni.showToast({ title: '没提炼成 · 先在理库处理一条', icon: 'none' })
+    return
+  }
+  const others = observe.theories.filter((i) => i.id !== seed.id && i.tags.includes(h.tag) && !i.motherId)
+  if (!others.length) {
+    uni.showToast({ title: '已提炼 · 收下这 20 点修为', icon: 'none' })
+    return
+  }
+  showModal({
+    title: '顺手挂上？',
+    content: `还有 ${others.length} 条理也打了「${h.tag}」，要一起挂到「${name}」下吗？`,
+    confirmText: '一起挂',
+    cancelText: '不用',
+    success: (r) => {
+      if (!r.confirm) return
+      for (const i of others) observe.attachMother(i.id, item.id)
+      uni.showToast({ title: `已挂上 ${others.length} 条`, icon: 'none' })
     },
   })
 }
@@ -290,34 +395,38 @@ function promoteFromTag(h: TagHint): void {
  * 认领的门槛若变成"先写好一句"，用户会直接不认领了。
  */
 function adopt(p: PresetMother): void {
-  showModal({
+  pendingPreset.value = p
+  ask.value = {
+    kind: 'firstNote',
     title: p.name,
     content: p.probe,
-    editable: true,
-    placeholderText: '写下你自己的第一笔（可留空）',
+    /* 可留空（原占位就写着"可留空"）——留空时只收下预置的那一行 */
+    placeholder: '写下你自己的第一笔（可留空）',
     confirmText: '下一步',
     cancelText: '再想想',
-    success: (res) => {
-      if (!res.confirm) return
-      const mine = ((res as { content?: string }).content ?? '').trim()
-      askDaoLine((line) => {
-        const item = observe.adoptPreset({
-          name: p.name,
-          topics: [p.topic],
-          content: mine ? `${p.line}\n${mine}` : p.line,
-          daoLine: line,
-        })
-        if (!item) {
-          uni.showToast({ title: '收件满了，先去处理几条', icon: 'none' })
-          return
-        }
-        uni.showToast({
-          title: line ? '已收下 · 那句就是你的道' : '已收下 · 之后可补凝练',
-          icon: 'none',
-        })
-      })
-    },
-  })
+    multiline: true,
+    maxlength: 140,
+  }
+}
+
+/** 认领的第二问：问那句凝练句（可跳过），然后落库 */
+function finishAdopt(p: PresetMother, mine: string): void {
+  askDaoLine((line) => {
+    const item = observe.adoptPreset({
+      name: p.name,
+      topics: [p.topic],
+      content: mine ? `${p.line}\n${mine}` : p.line,
+      daoLine: line,
+    })
+    if (!item) {
+      uni.showToast({ title: '收件满了，先去处理几条', icon: 'none' })
+      return
+    }
+    uni.showToast({
+      title: line ? '已收下 · 那句就是你的道' : '已收下 · 之后可补凝练',
+      icon: 'none',
+    })
+  }, '')
 }
 
 /**
@@ -327,23 +436,21 @@ function adopt(p: PresetMother): void {
  *   认领时跳过 = 先收下以后补；卡片上补写时取消 = 不改，调用方各自判断即可。
  */
 function askDaoLine(done: (line: string) => void, current = ''): void {
-  showModal({
-    title: '凝练成一句',
+  afterDaoLine.value = done
+  ask.value = {
+    kind: 'daoLine',
+    title: current ? '另凝一句' : '凝练成一句',
     content: current
-      ? `现在是：「${current}」`
+      ? `现在是：「${current}」—— 换成更贴的那一句（${DAO_LINE_MAX} 字以内）。`
       : `一句你自己的道（${DAO_LINE_MAX} 字以内）—— 它会被端到「观」的头部与开屏。`,
-    editable: true,
-    placeholderText: '如：拖延不是懒，是那件事太大',
+    placeholder: '如：拖延不是懒，是那件事太大',
     confirmText: '收下',
+    /* 「先不写」= 取消；取消也要回一个空串（见 onAskCancel） */
     cancelText: '先不写',
-    success: (r) => {
-      if (!r.confirm) {
-        done('')
-        return
-      }
-      done(((r as { content?: string }).content ?? '').trim().slice(0, DAO_LINE_MAX))
-    },
-  })
+    multiline: false,
+    maxlength: DAO_LINE_MAX,
+    defaultValue: current,
+  }
 }
 
 /** 就地补 / 改某条道的凝练句（入口是卡片上那一行） */
