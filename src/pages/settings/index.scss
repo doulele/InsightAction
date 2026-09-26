@@ -2,6 +2,7 @@
  * index.vue 的样式（超过 100 行，按项目约定外置到同目录 index.scss）。
  * 由 index.vue 通过 @import 引入；以后改样式改本文件。
  */
+@import '../../styles/chevron';
 .page {
   min-height: 100vh;
   padding: 0 $gz-page-pad 60rpx;
@@ -152,10 +153,17 @@
   color: $gz-ink-2;
 }
 
+/* 箭头：统一走 styles/chevron.scss 画出来的「>」（2026-09-26，原先是字形「→」） */
 .row__arrow {
+  @include gz-chevron();
+}
+
+/* 「检查更新」进行中的省略号：与箭头同一个位置、同一个色，避免跳动 */
+.row__arrow-dots {
   flex: none;
-  color: $gz-ink-3;
+  line-height: 1;
   font-size: 32rpx;
+  color: $gz-ink-3;
 }
 
 /*

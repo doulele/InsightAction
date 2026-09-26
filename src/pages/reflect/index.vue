@@ -537,7 +537,12 @@ interface MoreEntry {
   mark: string
   title: string
   subtitle: string
-  badge: EntryBadge
+  /**
+   * 徽标：**只在"有数据 / 有状态可说"时给**。
+   * 纯固定、纯自我描述的标签（如「语音」「近 8 周」「周报」）一律不给 —— 2026-09-26 清理，
+   * 那类标签只是把标题或副标题再说一遍，占位置却不带信息。
+   */
+  badge?: EntryBadge
   url?: RoutePath
   /** 跳转参数（如费曼速记要带 ?add=1 直接展开转述面板） */
   params?: RouteParams
@@ -556,7 +561,6 @@ const moreEntries = computed<MoreEntry[]>(() => [
     mark: '说',
     title: '费曼速记',
     subtitle: '按住说 60 秒 → 转成文字 → 检验讲没讲明白，再选存进哪一本（识别在微信侧完成，音频不出微信）',
-    badge: { text: '语音', tone: 'accent' },
     url: ROUTES.reflectLibrary,
     params: { add: '1' },
   },
@@ -580,7 +584,6 @@ const moreEntries = computed<MoreEntry[]>(() => [
     mark: '长',
     title: '认知成长曲线',
     subtitle: '每周卡片数量与加工深度的变化趋势',
-    badge: { text: '近 8 周', tone: 'muted' },
     url: ROUTES.reflectGrowth,
   },
   /*

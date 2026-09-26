@@ -31,7 +31,7 @@
     <view v-if="portal" class="portal" hover-class="gz-hover" @click="openPortal">
       <text class="portal__title">今日要闻</text>
       <text class="portal__sub">{{ PORTAL_HINT }}</text>
-      <text class="portal__arrow">›</text>
+      <view class="portal__arrow" />
     </view>
 
     <!-- 每日一则：首开即可见的常驻卡（不进浮层），一日一条、不补不累计 -->
@@ -846,7 +846,12 @@ interface MoreEntry {
   mark: string
   title: string
   subtitle: string
-  badge: EntryBadge
+  /**
+   * 徽标：只在"有数据 / 有状态可说"时给。
+   * 空数据时**不再编一句固定的话**（原先写过「12 个待认领」「24h / 7 天」——
+   * 前者是把预置数量写死，后者与副标题重复），2026-09-26 清理。
+   */
+  badge?: EntryBadge
   /** 已落地的子页跳转目标；缺省不跳 */
   url?: RoutePath
   /** 筹备中入口置灰；缺省即可点 */
@@ -889,7 +894,7 @@ const moreEntries = computed<MoreEntry[]>(() => {
       badge:
         observe.mothers.length > 0
           ? { text: `${observe.mothers.length} 个母题`, tone: 'accent' }
-          : { text: '12 个待认领', tone: 'muted' },
+          : undefined,
       url: ROUTES.observeMotherLib,
     },
     {
@@ -912,7 +917,7 @@ const moreEntries = computed<MoreEntry[]>(() => {
       badge:
         pending > 0
           ? { text: `${pending} 待读`, tone: 'accent' }
-          : { text: '24h / 7 天', tone: 'muted' },
+          : undefined,
       url: ROUTES.observeReadLater,
     },
   ]

@@ -17,10 +17,22 @@
   position: relative;
   overflow: hidden;
   padding: 34rpx 30rpx 30rpx;
-  background: var(--gz-rank-bg);
+  /*
+   * 底色 + 一层斜向主题色渐变（2026-09-26 用户要求「背景也要有渐变」）。
+   * 基础档很淡，阶位越高越浓（见下方 .tier-N 覆盖）—— 渐变本身也是等级的一部分。
+   */
+  background-color: var(--gz-rank-bg);
+  background-image: linear-gradient(
+    135deg,
+    var(--gz-accent-a04) 0%,
+    transparent 46%,
+    var(--gz-accent-a06) 100%
+  );
   border: 1rpx solid var(--gz-rank-border);
   border-radius: $gz-radius-lg;
+  /* 外发光的呼吸由动画负责（这里是基础档；tier-2 / tier-3 换 keyframes 与周期） */
   box-shadow: var(--gz-rank-shadow);
+  animation: rank-glow-base 6.4s ease-in-out infinite;
   color: var(--gz-rank-ink);
 
   /* 顶缘一条模式色渐变带：一瞥即知当前皮肤 */
@@ -41,6 +53,7 @@
   justify-content: space-between;
 }
 
+/* 卡面第一行小字：模式 · 成长体系名（如「普通模式 · 阶位」） */
 .rank__mode {
   display: block;
   font-size: $gz-fs-caption;
@@ -63,6 +76,7 @@
 }
 
 .rank__seal {
+  position: relative;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -75,6 +89,18 @@
   font-size: 40rpx;
   font-weight: 800;
   color: var(--gz-accent);
+  /* 印章里那枚字自己也在呼吸（周期随阶位，见 tier 覆盖；满级不参与，见 .rank.is-max） */
+  animation: rank-seal-breathe 6.4s ease-in-out infinite;
+}
+
+/* 印章外圈的阶位光环：tier-1 起出现，越高呼吸越快（见下方 .tier-N） */
+.rank__seal-ring {
+  position: absolute;
+  inset: -10rpx;
+  border: 2rpx solid var(--gz-accent-a55);
+  border-radius: 26rpx;
+  opacity: 0;
+  pointer-events: none;
 }
 
 .rank .bar {
@@ -86,11 +112,403 @@
   background: linear-gradient(90deg, var(--gz-accent), var(--gz-grad-to));
 }
 
-.rank__next {
-  display: block;
+/* 卡片底部：一句进度 + 阶位点阵（点阵靠右，与左侧说明同一行） */
+.rank__foot {
+  display: flex;
+  align-items: center;
+  gap: 16rpx;
   margin-top: 16rpx;
+}
+
+.rank__next {
+  flex: 1;
+  min-width: 0;
   font-size: $gz-fs-caption;
   color: var(--gz-rank-sub);
+}
+
+/* 阶位点阵：亮点数 = 当前阶位。它和印章光环、卡面装饰是同一档，三处一起长 */
+.rank__tier {
+  flex: none;
+  display: flex;
+  align-items: center;
+  gap: 8rpx;
+}
+
+.rank__tier-dot {
+  width: 10rpx;
+  height: 10rpx;
+  border-radius: 50%;
+  background: var(--gz-rank-track);
+  transition: background 0.3s ease;
+}
+
+.rank__tier-dot.is-on {
+  background: var(--gz-accent);
+}
+
+/* ---------------- 等级卡 · 阶位特效 ----------------
+ * 四阶递进（素 / 纹 / 光 / 器），阶位与小枢形阶**同源** —— 都由修为等级折出，
+ * 区间见 config/buddyForms.ts 的 FORM_STAGES（等级卡不写第二份阈值）：
+ *   tier-0 素：只留顶缘色带，干净
+ *   tier-1 纹：印章起一圈呼吸光环
+ *   tier-2 光：+ 卡面右上柔光晕 + 进度条上流动的高光
+ *   tier-3 器：+ 一道缓慢扫过卡面的斜光 + 卡外同色辉光
+ * 颜色一律取 --gz-accent* 皮肤变量（三模式自动换色），只动 transform / opacity / box-shadow，
+ * 不触发重排；刻意不用 canvas —— 它是原生组件、层级最高，会盖住小枢悬浮球。
+ */
+/* ---------------- 等级卡 · 呼吸灯（2026-09-26） ----------------
+ * 用户要「背景做成呼吸灯的感觉」。这里有反复，过程值得记下来：
+ *   · 第一版是「整卡铺一层主题色光」（上下两团径向渐变）—— 呼吸有了，但**把卡面压得发脏**，
+ *     浅底的普通 / 修仙尤其明显，用户要求去掉；
+ *   · 去掉后呼吸感反而没了：只剩一档很淡的外发光（峰值 a12 透明度），浅底上根本看不出来。
+ *   · 根因：**明暗变化落在卡面中间会脏，落在卡外又太弱。**
+ * 最终做法是三处一起呼吸，且**都不碰中间的文字区**：
+ *   ① `.rank__breath` —— 只有边缘一圈亮、内圈完全透明（像灯箱边缘在放光，不压卡面）；
+ *   ② 卡片边框色 —— 从常态描边亮到主题色，轮廓像灯管一样明暗；
+ *   ③ 卡外发光（box-shadow）—— 峰值提到 `--gz-accent-a55`，让「灯」在页面上真有光。
+ * 只动 opacity / border-color / box-shadow，不触发重排；周期与幅度按阶位分三档（见 .rank.tier-N）。
+ */
+.rank__breath {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  /*
+   * 关键在中间那个 transparent 46%：文字都落在卡的中间带，
+   * 只要内圈完全透明，光就只出现在四边 —— 呼吸再强也不会把字压脏。
+   */
+  background: radial-gradient(
+    116% 132% at 50% 50%,
+    transparent 46%,
+    var(--gz-accent-a10) 76%,
+    var(--gz-accent-a12) 96%
+  );
+  animation: rank-breath 6.4s ease-in-out infinite;
+}
+
+@keyframes rank-breath {
+  0%,
+  100% {
+    opacity: 0.12;
+  }
+
+  50% {
+    opacity: 1;
+  }
+}
+
+/* 印章里那枚字：明暗 + 光晕一起呼吸（周期随阶位，见下方 tier 覆盖） */
+@keyframes rank-seal-breathe {
+  0%,
+  100% {
+    color: var(--gz-accent);
+    text-shadow: 0 0 0 var(--gz-accent-a12);
+  }
+
+  50% {
+    color: var(--gz-grad-to);
+    text-shadow: 0 0 18rpx var(--gz-accent-a55);
+  }
+}
+
+/*
+ * 边框 + 外发光的呼吸：tier-2 / tier-3 换 keyframes 与周期（见下方 tier 块）。
+ * ⚠️ 动画会盖掉 `.rank` 上的静态 border-color 与 box-shadow，
+ * 所以三档的 0% / 100% 帧都必须把常态值写回去，否则常态描边与投影会消失。
+ */
+@keyframes rank-glow-base {
+  0%,
+  100% {
+    border-color: var(--gz-rank-border);
+    box-shadow: var(--gz-rank-shadow), 0 0 12rpx var(--gz-accent-a06);
+  }
+
+  50% {
+    border-color: var(--gz-accent-a55);
+    box-shadow: var(--gz-rank-shadow), 0 0 54rpx var(--gz-accent-a55);
+  }
+}
+
+@keyframes rank-glow-mid {
+  0%,
+  100% {
+    border-color: var(--gz-rank-border);
+    box-shadow: var(--gz-rank-shadow), 0 0 16rpx var(--gz-accent-a10);
+  }
+
+  50% {
+    border-color: var(--gz-accent-a55);
+    box-shadow: var(--gz-rank-shadow), 0 0 68rpx var(--gz-accent-a55);
+  }
+}
+
+@keyframes rank-glow-high {
+  0%,
+  100% {
+    border-color: var(--gz-rank-border);
+    box-shadow: var(--gz-rank-shadow), 0 0 22rpx var(--gz-accent-a10);
+  }
+
+  50% {
+    border-color: var(--gz-accent-a55);
+    box-shadow: var(--gz-rank-shadow), 0 0 88rpx var(--gz-accent-a55);
+  }
+}
+
+.rank__aura {
+  position: absolute;
+  top: -90rpx;
+  right: -70rpx;
+  width: 340rpx;
+  height: 340rpx;
+  border-radius: 50%;
+  background: radial-gradient(circle, var(--gz-accent-a12) 0%, transparent 72%);
+  opacity: 0;
+  pointer-events: none;
+}
+
+.rank__sheen {
+  position: absolute;
+  top: -90rpx;
+  left: -180rpx;
+  width: 120rpx;
+  height: 340rpx;
+  background: linear-gradient(90deg, transparent, var(--gz-accent-a10), transparent);
+  transform: rotate(18deg);
+  opacity: 0;
+  pointer-events: none;
+}
+
+/* 装饰层是绝对定位（按绘制顺序排在普通流文字之上），把内容抬进定位层压住它 */
+.rank__row,
+.rank .bar,
+.rank__foot,
+.rank__base {
+  position: relative;
+}
+
+/* tier-1 纹：印章光环（呼吸） */
+.rank.tier-1 .rank__seal-ring,
+.rank.tier-2 .rank__seal-ring,
+.rank.tier-3 .rank__seal-ring {
+  opacity: 1;
+  animation: rank-ring 3.4s ease-in-out infinite;
+}
+
+.rank.tier-2 .rank__seal-ring {
+  inset: -15rpx;
+  animation-duration: 2.6s;
+}
+
+.rank.tier-3 .rank__seal-ring {
+  inset: -15rpx;
+  animation-duration: 2.2s;
+}
+
+@keyframes rank-ring {
+  0%,
+  100% {
+    transform: scale(0.94);
+    opacity: 0.4;
+  }
+
+  50% {
+    transform: scale(1.06);
+    opacity: 0.95;
+  }
+}
+
+/* tier-2 光：卡面柔光晕 */
+.rank.tier-2 .rank__aura,
+.rank.tier-3 .rank__aura {
+  opacity: 0.85;
+  animation: rank-aura 5.2s ease-in-out infinite;
+}
+
+.rank.tier-3 .rank__aura {
+  opacity: 1;
+  animation-duration: 3.6s;
+}
+
+@keyframes rank-aura {
+  0%,
+  100% {
+    transform: scale(0.9);
+    opacity: 0.5;
+  }
+
+  50% {
+    transform: scale(1.08);
+    opacity: 1;
+  }
+}
+
+/* tier-2 光：进度条流光（高光条在填充段内扫过，窄进度时看不到，不会误导） */
+.rank.tier-2 .bar__fill,
+.rank.tier-3 .bar__fill {
+  position: relative;
+  overflow: hidden;
+
+  &::after {
+    content: '';
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    left: 0;
+    width: 60rpx;
+    background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.7), transparent);
+    animation: rank-flow 2.8s ease-in-out infinite;
+  }
+}
+
+@keyframes rank-flow {
+  0% {
+    transform: translateX(-70rpx);
+    opacity: 0;
+  }
+
+  25%,
+  75% {
+    opacity: 1;
+  }
+
+  100% {
+    transform: translateX(720rpx);
+    opacity: 0;
+  }
+}
+
+/*
+ * tier-3 器：卡外辉光 + 斜光扫过卡面。
+ * ⚠️ 这条 box-shadow 现在只在**动画不生效**时兜底 —— 呼吸灯会盖掉它
+ * （见 .rank 上的 rank-glow-high），改它的数值请连那三组 keyframes 一起看。
+ */
+.rank.tier-3 {
+  box-shadow: var(--gz-rank-shadow), 0 0 44rpx var(--gz-accent-a12);
+}
+
+.rank.tier-3 .rank__sheen {
+  animation: rank-sheen 6.4s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+}
+
+@keyframes rank-sheen {
+  0% {
+    transform: translateX(0) rotate(18deg);
+    opacity: 0;
+  }
+
+  14% {
+    opacity: 0.9;
+  }
+
+  48%,
+  100% {
+    transform: translateX(780rpx) rotate(18deg);
+    opacity: 0;
+  }
+}
+
+/*
+ * 阶位控制：只留「背景渐变随阶位加深」—— 2026-09-26 用户要求过「背景也要有渐变」。
+ * 基础档定义在 .rank 上，这里按阶位覆盖 background-image（只改图，不动底色）。
+ *
+ * 📌 这里原先还有一整套「雷电层」（电弧条数分级 / 整层抖动 / 四周电晕 / 斜向电流纹），
+ * 2026-09-26 已按用户要求**整体废弃并移除**，别再重新加回来：
+ *   · 纯 CSS 拼不出真实闪电的「线宽沿路径衰减 + 递归分叉 + 多层体积辉光」——
+ *     期间试过细斜条（像裂纹）、clip-path 锯齿带（太粗）、三段折线（像划痕），三种都不成立；
+ *   · 后来改用 Node 脚本生成 SVG（scripts/build-bolt-art.mjs，已删）也没达到参考图的质感；
+ *   · 真要重做，**先确认「透明 PNG 素材 + 真机 image 渲染」这条路跑得通**，再动样式。
+ */
+.rank.tier-2 {
+  background-image: linear-gradient(
+    132deg,
+    var(--gz-accent-a12) 0%,
+    transparent 44%,
+    var(--gz-accent-a06) 76%,
+    var(--gz-accent-a10) 100%
+  );
+  /* 呼吸灯换中档：幅度略大、周期略短（边缘光与边框 / 外发光同频，整卡一起「喘」） */
+  animation-name: rank-glow-mid;
+  animation-duration: 5.2s;
+}
+
+.rank.tier-2 .rank__breath,
+.rank.tier-2 .rank__seal {
+  animation-duration: 5.2s;
+}
+
+/* tier-3：换个方向再加深一档，让「更高阶」在底色上也读得出来；呼吸也更急更亮 */
+.rank.tier-3 {
+  background-image: linear-gradient(
+    118deg,
+    var(--gz-accent-a12) 0%,
+    transparent 40%,
+    var(--gz-accent-a10) 72%,
+    var(--gz-accent-a12) 100%
+  );
+  animation-name: rank-glow-high;
+  animation-duration: 4s;
+}
+
+.rank.tier-3 .rank__breath,
+.rank.tier-3 .rank__seal {
+  animation-duration: 4s;
+}
+
+/* 满级（Lv.9）：印章由描边改实色渐变 —— 唯一的「到顶」形态 */
+.rank.is-max .rank__seal {
+  background: linear-gradient(135deg, var(--gz-accent), var(--gz-grad-to));
+  border-color: transparent;
+  color: var(--gz-on-cta);
+  box-shadow: 0 0 24rpx var(--gz-accent-a55);
+  /* 满级印章是实色渐变底 + 白字，字不再参与呼吸 ——
+     否则动画会把字色拉回主题色，白字读不出来 */
+  animation: none;
+}
+
+.rank.tier-3 .rank__tier-dot.is-on,
+.rank.is-max .rank__tier-dot.is-on {
+  box-shadow: 0 0 10rpx var(--gz-accent-a55);
+}
+
+/* 升级瞬效：进本页时等级刚涨（约 2.2s，随后由页面撤掉 is-up） */
+.rank.is-up {
+  animation: rank-up 0.9s ease;
+}
+
+.rank.is-up .rank__seal {
+  animation: rank-up-seal 0.9s ease;
+}
+
+@keyframes rank-up {
+  0% {
+    transform: scale(0.986);
+    box-shadow: 0 0 0 0 var(--gz-accent-a55), var(--gz-rank-shadow);
+  }
+
+  45% {
+    transform: scale(1.006);
+    box-shadow: 0 0 60rpx 6rpx var(--gz-accent-a12), var(--gz-rank-shadow);
+  }
+
+  100% {
+    transform: scale(1);
+    box-shadow: var(--gz-rank-shadow);
+  }
+}
+
+@keyframes rank-up-seal {
+  0% {
+    transform: scale(0.86);
+  }
+
+  55% {
+    transform: scale(1.14);
+  }
+
+  100% {
+    transform: scale(1);
+  }
 }
 
 /* 起点基线：建档结果（称号 · 得分率 · 建档日期）；未建档时这一行本身就是入口 */

@@ -585,7 +585,6 @@ export interface MeEntryWords {
 
   /* ---- 修行看板 ---- */
   board: string
-  boardBadge: (pct: number) => string
   /** 「还没攒够数据」的通用徽标（修行看板与年度回顾共用） */
   pending: string
 
@@ -637,7 +636,6 @@ export interface MeEntryWords {
 
   /* ---- 设置 ---- */
   settings: string
-  settingsBadge: string
 }
 
 const LOCAL_ME_ENTRY_WORDS: Record<ModeId, MeEntryWords> = {
@@ -649,7 +647,6 @@ const LOCAL_ME_ENTRY_WORDS: Record<ModeId, MeEntryWords> = {
     assessRetakeIn: (days) => `${days} 天后可重测`,
     assessRetakeNow: '可重测',
     board: '四维雷达 · 认知深度分布 · 知→行转化率 · 成长曲线',
-    boardBadge: (pct) => `转化 ${pct}%`,
     pending: '待积累',
     badges: (got, total) => `已点亮 ${got} / ${total} 枚 · 每一枚都是一段真实的坚持`,
     calendar: (days) => `本月已留下 ${days} 天 · 每一天的投入都看得见`,
@@ -676,7 +673,6 @@ const LOCAL_ME_ENTRY_WORDS: Record<ModeId, MeEntryWords> = {
     feedback: '更新的功能 · 接下来要做的 · 报个缺陷、提个想法',
     feedbackBadge: '有更新',
     settings: '修行语言 · 提醒 · 数据 · 关于',
-    settingsBadge: '可用',
   },
   tech: {
     dailyCard: '每日一张 · 段位与指标 · 可导出转发',
@@ -686,7 +682,6 @@ const LOCAL_ME_ENTRY_WORDS: Record<ModeId, MeEntryWords> = {
     assessRetakeIn: (days) => `${days} 天后可重采样`,
     assessRetakeNow: '可重采样',
     board: '四维雷达 · 加工深度分布 · 知→行转化率 · 增长曲线',
-    boardBadge: (pct) => `转化率 ${pct}%`,
     pending: '无样本',
     badges: (got, total) => `已解锁 ${got} / ${total} 枚 · 每枚对应一项已验证的行为`,
     calendar: (days) => `本月有效 ${days} 天 · 每次投入都有记录`,
@@ -713,7 +708,6 @@ const LOCAL_ME_ENTRY_WORDS: Record<ModeId, MeEntryWords> = {
     feedback: '版本记录 · 待办与优先级 · 提缺陷或需求',
     feedbackBadge: '有新版本',
     settings: '运行模式 · 提醒 · 数据 · 关于',
-    settingsBadge: '就绪',
   },
   dao: {
     dailyCard: '每日一张 · 境界与四维 · 可传于同道',
@@ -723,7 +717,6 @@ const LOCAL_ME_ENTRY_WORDS: Record<ModeId, MeEntryWords> = {
     assessRetakeIn: (days) => `${days} 日后可再测`,
     assessRetakeNow: '可再测',
     board: '四维雷达 · 悟道深浅分布 · 知→行转化率 · 修行曲线',
-    boardBadge: (pct) => `转化 ${pct}%`,
     pending: '未起',
     badges: (got, total) => `已得 ${got} / ${total} 枚徽记 · 每一记皆是一段真实的修行`,
     calendar: (days) => `本月行持 ${days} 日 · 每一日皆有着落`,
@@ -750,7 +743,6 @@ const LOCAL_ME_ENTRY_WORDS: Record<ModeId, MeEntryWords> = {
     feedback: '已行之处 · 将往之处 · 报缺陷、留一言',
     feedbackBadge: '有新迹',
     settings: '修行语言 · 提醒 · 数据 · 关于',
-    settingsBadge: '可用',
   },
 }
 

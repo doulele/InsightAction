@@ -1,0 +1,34 @@
+/**
+ * 全局箭头（2026-09-26）。
+ *
+ * 卡片 / 入口行右侧那枚箭头，全项目统一成「>」这个形态：**画出来**，不是打字形 ——
+ * 用方框的顶边 + 右边、整体旋转 45°，两条边就拼成一个指向右的尖角。
+ *
+ * 为什么不用字形：
+ *   · 字体里的 `→` 又矮又细（用户 2026-09-26 原话："改用成 >，但是需要高一点粗一点"），
+ *     加粗字号会把箭头一起撑宽，改不出"只长个儿不长胖"的效果；
+ *   · 字形墨迹的位置与大小随字体/机型漂移（与观页那个「＋」同一套理由，
+ *     见 pages/observe/index.vue 的 `.compose__plus`）。
+ * 画出来之后两件事各自可控：**高度看尺寸、粗细看边框**。
+ *
+ * 为什么是独立分片而不是写进 App.scss 全局：
+ * 自定义组件的 wxss 选不中 app.wxss 里的类（styleIsolation: isolated），
+ * 由用到它的页面 / 组件各自 `@import` 一份（同 styles/hover.scss 的理由）。
+ *
+ * 用法：
+ *   @import '../../styles/chevron';
+ *   .entry__arrow { @include gz-chevron(); }                              // 默认 20rpx / 4rpx / ink-3
+ *   .portal__arrow { @include gz-chevron(20rpx, 4rpx, $gz-accent); }      // 需要主色时显式传
+ *
+ * 注意：旋转后可视外框约为 1.41 倍（20rpx → 约 28rpx），卡片右内边距要能容得下。
+ */
+@mixin gz-chevron($size: 20rpx, $weight: 4rpx, $color: $gz-ink-3) {
+  display: none;
+  flex: none;
+  box-sizing: border-box;
+  width: $size;
+  height: $size;
+  border-top: $weight solid $color;
+  border-right: $weight solid $color;
+  transform: rotate(45deg);
+}

@@ -133,6 +133,83 @@ export function aiProverb(
   )
 }
 
+/* ---------------- 开通审批（2026-09-26 加，仅管理员） ---------------- */
+
+/** 一条开通申请 / 一条被拒记录 */
+export interface AiApplicant {
+  openid: string
+  /** 用户自己填的一句称呼（可空）—— 只有这个能帮他认人 */
+  name: string
+  /** 申请时间（ISO） */
+  at: string
+  /** 被拒时间（ISO）；只有 `rejected` 列表里的记录有值 */
+  rejectedAt?: string
+}
+
+/** 已开通名单里的一条 */
+export interface AiEntry {
+  openid: string
+  name: string
+  at: string
+}
+
+/** 审批页一次性拿到的全部数据 */
+export interface AiReviewData {
+  /** 待批申请 */
+  pending: AiApplicant[]
+  /** 被拒记录（留痕，随时可以改判） */
+  rejected: AiApplicant[]
+  /** 当前已开通名单 */
+  entries: AiEntry[]
+}
+
+/**
+ * 审批页数据（待批 + 被拒 + 已开通）。
+ *
+ * 为什么管理员身份不靠密钥：审批要在小程序里点，而管理密钥一旦进小程序包就等于公开
+ * （反编译即得，谁都能给自己开 AI、烧额度）—— 所以走**登录态**，
+ * 后端拿 `req.openid` 比对 `AI_ADMIN_OPENIDS`。不是管理员会拿 403。
+ *
+ * 超时给 15 秒：这里只是一次文件读取，不像 AI 推理那么慢，但也没必要卡 30 秒。
+ */
+export function aiReviewList(token: string): Promise<AiReviewData> {
+  return http.get<AiReviewData>('/ai/review/list', {
+    header: authHeader(token),
+    timeout: 15000,
+    showError: false,
+  })
+}
+
+/** 通过：加进白名单（后端热加载 —— 被批的人不用重新登录，服务也不用重启） */
+export function aiReviewApprove(token: string, openid: string, name = ''): Promise<AiEntry> {
+  return http.post<AiEntry, { openid: string; name: string }>(
+    '/ai/review/approve',
+    { openid, name },
+    { header: authHeader(token), timeout: 15000, showError: false },
+  )
+}
+
+/**
+ * 不通过：**留痕**（后端把这条标成 rejected，不删）。
+ * 对方下次点开关会看到「上次没通过 · 可以再申请一次」，再申请一次就回到待批。
+ */
+export function aiReviewReject(token: string, openid: string): Promise<{ rejected: boolean }> {
+  return http.post<{ rejected: boolean }, { openid: string }>(
+    '/ai/review/reject',
+    { openid },
+    { header: authHeader(token), timeout: 15000, showError: false },
+  )
+}
+
+/** 从白名单移除（收窄权限；`.env` 里那份种子要去 .env 改） */
+export function aiReviewRevoke(token: string, openid: string): Promise<{ removed: boolean }> {
+  return http.post<{ removed: boolean }, { openid: string }>(
+    '/ai/review/revoke',
+    { openid },
+    { header: authHeader(token), timeout: 15000, showError: false },
+  )
+}
+
 /* ---------------- 访问自检（2026-09-23 加） ---------------- */
 
 /**
@@ -149,7 +226,22 @@ export interface AiAccessInfo {
   allowed: boolean
   /** 「需要开通」时给用户扫的二维码地址；空串 = 后端没配，前端整块不显示 */
   qrcode: string
+  /**
+   * 这个人是不是**审批管理员**（后端比对 `AI_ADMIN_OPENIDS`）—— 2026-09-26 加。
+   * 只有 true 时设置页才渲染「AI 开通申请」入口。
+   */
+  admin: boolean
+  /**
+   * 他自己的申请状态 —— 决定「需要开通」弹框里那个按钮长什么样：
+   * `'none'` 没申请过（「申请开通」）/ `'pending'` 待批（「已申请 · 等我开通」）/
+   * `'rejected'` 上次没通过（「再次申请」）。
+   * 没有它，被拒的人会一直点同一个按钮、还以为自己没申请过（2026-09-26 加）。
+   */
+  applyState: AiApplyState
 }
+
+/** 申请状态：没申请过 / 待批 / 上次没通过 */
+export type AiApplyState = 'none' | 'pending' | 'rejected'
 
 /**
  * 查一次"我的账号能不能用 AI"。

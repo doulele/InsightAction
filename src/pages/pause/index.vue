@@ -413,13 +413,15 @@ function goAction(): void {
   navigateTo(ROUTES.tabAction)
 }
 
-/** 冷却期的状态徽标：起没起、哪一档（倒计时在冲动记录页里看） */
-const coolBadge = computed<EntryBadge>(() => {
-  const meta = cooldownKindMeta(urge.cooldownKind)
-  return urge.cooldownRemain() > 0
-    ? { text: `冷却中 · ${meta.label}`, tone: 'accent' }
-    : { text: '10 分钟 / 48 小时', tone: 'muted' }
-})
+/**
+ * 冷却期的状态徽标：起没起、哪一档（倒计时在冲动记录页里看）。
+ * 没在冷却就**不出徽标** —— 原先这里写「10 分钟 / 48 小时」，与副标题同一句话（2026-09-26 清理）。
+ */
+const coolBadge = computed<EntryBadge | undefined>(() =>
+  urge.cooldownRemain() > 0
+    ? { text: `冷却中 · ${cooldownKindMeta(urge.cooldownKind).label}`, tone: 'accent' }
+    : undefined,
+)
 
 /**
  * 止欲 · 冲动来袭时的三件：摁住（即时）→ 先不决策（分钟~两天）→ 看清（长期）
@@ -441,7 +443,7 @@ const wantEntries = computed<MoreEntry[]>(() => [
     badge:
       heldToday.value > 0
         ? { text: `今日守住 ${heldToday.value} 次`, tone: 'accent' }
-        : { text: '1-3 分钟', tone: 'muted' },
+        : undefined,
     url: ROUTES.pauseInterrupt,
   },
   {
@@ -456,11 +458,16 @@ const wantEntries = computed<MoreEntry[]>(() => [
     mark: '录',
     title: '冲动记录 · 触发点地图',
     subtitle: '每次冲动记一笔（想刷 / 嘴馋 / 想下单），攒够十几次在这儿看形状',
+    /*
+     * 累积那一支只报数字、且走 accent（2026-09-26）：
+     * 原先写「累计 N 次」+ muted —— 前缀是废话（它本来就是累计），灰色又让这枚
+     * 唯一的读数看着像"禁用"。徽标一律取主题主色，随皮肤变（normal 橄榄 / tech 电光蓝 / dao 朱砂）。
+     */
     badge:
       urgeToday.value > 0
         ? { text: `今日 ${urgeToday.value} 次`, tone: 'accent' }
         : urge.records.length > 0
-          ? { text: `累计 ${urge.records.length} 次`, tone: 'muted' }
+          ? { text: `${urge.records.length} 次`, tone: 'accent' }
           : { text: '记第一笔', tone: 'muted' },
     url: ROUTES.pauseUrge,
     params: { tab: 'map' },

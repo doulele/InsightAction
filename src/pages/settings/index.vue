@@ -191,42 +191,42 @@
             <text class="row__title">导出今日概览</text>
             <text class="row__sub">{{ $p('settings.exportToday.sub') }}</text>
           </view>
-          <text class="row__arrow">→</text>
+          <view class="row__arrow" />
         </view>
         <view class="row" hover-class="gz-hover" @click="exportAll">
           <view class="row__body">
             <text class="row__title">导出全部数据</text>
             <text class="row__sub">{{ $p('settings.exportAll.sub') }}</text>
           </view>
-          <text class="row__arrow">→</text>
+          <view class="row__arrow" />
         </view>
         <view class="row" hover-class="gz-hover" @click="exportArchive">
           <view class="row__body">
             <text class="row__title">导出修行档案</text>
             <text class="row__sub">{{ $p('settings.exportArchive.sub') }}</text>
           </view>
-          <text class="row__arrow">→</text>
+          <view class="row__arrow" />
         </view>
         <view class="row" hover-class="gz-hover" @click="importFromFile">
           <view class="row__body">
             <text class="row__title">从备份恢复</text>
             <text class="row__sub">{{ $p('settings.importFile.sub') }}</text>
           </view>
-          <text class="row__arrow">→</text>
+          <view class="row__arrow" />
         </view>
         <view class="row" hover-class="gz-hover" @click="resetToday">
           <view class="row__body">
             <text class="row__title is-danger">重置今日三件事</text>
             <text class="row__sub">{{ $p('settings.resetToday.sub') }}</text>
           </view>
-          <text class="row__arrow">→</text>
+          <view class="row__arrow" />
         </view>
         <view class="row" hover-class="gz-hover" @click="resetAll">
           <view class="row__body">
             <text class="row__title is-danger">重置全部修行数据</text>
             <text class="row__sub">{{ $p('settings.resetAll.sub') }}</text>
           </view>
-          <text class="row__arrow">→</text>
+          <view class="row__arrow" />
         </view>
       </view>
     </view>
@@ -255,7 +255,7 @@
             <text class="row__title">立即备份</text>
             <text class="row__sub">把本机当前进度上传一份（手动备份不做缩水拦截）</text>
           </view>
-          <text class="row__arrow">→</text>
+          <view class="row__arrow" />
         </view>
         <view
           v-if="account.cloudEnabled && cloudHasSnapshot"
@@ -267,7 +267,7 @@
             <text class="row__title">从云端恢复</text>
             <text class="row__sub">取回最近一次云端快照（覆盖本机，需二次确认）</text>
           </view>
-          <text class="row__arrow">→</text>
+          <view class="row__arrow" />
         </view>
         <view
           v-if="account.cloudEnabled && cloudHasSnapshot"
@@ -279,7 +279,7 @@
             <text class="row__title">恢复上一版</text>
             <text class="row__sub">误覆盖时的救援入口 · 服务器只保留一份上一版</text>
           </view>
-          <text class="row__arrow">→</text>
+          <view class="row__arrow" />
         </view>
       </view>
     </view>
@@ -302,6 +302,19 @@
             :color="modeMeta.accent"
             @change="onAiConsentToggle"
           />
+        </view>
+
+        <!--
+          管理员专用：AI 开通申请的审批入口（2026-09-26）。
+          后端回 `admin: true` 时才渲染 —— 但**真正的门在服务端**（`/ai/review/*` 比对登录态里的 openid），
+          这里只是不让无关的人看见一行用不上的入口。
+        -->
+        <view v-if="aiAdmin" class="row" hover-class="gz-hover" @click="openAiReview">
+          <view class="row__body">
+            <text class="row__title">AI 开通申请</text>
+            <text class="row__sub">{{ aiReviewSub }}</text>
+          </view>
+          <view class="row__arrow" />
         </view>
       </view>
     </view>
@@ -326,7 +339,8 @@
             <text class="row__title">检查更新</text>
             <text class="row__sub">{{ updateSub }}</text>
           </view>
-          <text class="row__arrow">{{ checking ? '…' : '→' }}</text>
+          <view v-if="!checking" class="row__arrow" />
+          <text v-else class="row__arrow-dots">…</text>
         </view>
       </view>
     </view>
@@ -449,11 +463,11 @@
         <text v-else class="ai-qr__none">二维码没取到 —— 可以在「关于」里找我。</text>
         <view
           class="ai-qr__apply"
-          :class="{ 'is-done': aiApplied }"
+          :class="{ 'is-done': aiApplied || aiApplyState === 'pending' }"
           hover-class="gz-hover"
           @click="applyAccess"
         >
-          {{ aiApplied ? '已申请 · 等我开通' : '申请开通' }}
+          {{ aiApplyLabel }}
         </view>
       </view>
     </GzDialog>
@@ -516,7 +530,7 @@ import { dayStats } from '@/utils/growth'
 import { WEEKDAY_LABEL } from '@/utils/sabbath'
 import { resetPracticeData } from '@/utils/localReset'
 import { levelIndexFromXp } from '@/config/levels'
-import { ROUTES } from '@/router/routes'
+import { navigateTo, ROUTES } from '@/router/routes'
 import { useContentStore } from '@/stores/content'
 import { useAccountStore } from '@/stores/account'
 import { useShareStore } from '@/stores/share'
@@ -539,6 +553,7 @@ import { buildArchive, writeArchiveFile } from '@/utils/archive'
 import { backupNow, disableCloudBackup, fetchCloudSnapshot } from '@/utils/cloudBackup'
 import { showModal } from '@/utils/dialog'
 import { AI_CONSENT, aiDeniedText, applyAiAccess, fetchAiAccess } from '@/utils/aiAccess'
+import { aiReviewList, type AiApplyState } from '@/api/modules/ai'
 
 const modeStore = useModeStore()
 const appStore = useAppStore()
@@ -560,6 +575,8 @@ const dl = useDimLabel()
 onShow(() => {
   /* 供「导出 / 重置」读取当日最新计数（跨天由 ensureToday 处理） */
   daily.ensureToday()
+  /* AI 那一块的状态（是不是管理员 / 申请到哪一步）—— 见 refreshAiAccess 的说明 */
+  void refreshAiAccess()
 })
 
 /** 返回：正常栈内 navigateBack；异常兜底回「我」大厅 */
@@ -853,9 +870,71 @@ const aiSub = computed(() =>
 const aiDeniedOpen = ref(false)
 /** 二维码地址由后端下发（运营物料，换码不用发版）；取不到就只显示文字兜底 */
 const aiQrcode = ref('')
-const aiDeniedContent = computed(() => aiDeniedText())
+/**
+ * 我自己当前的申请状态（**服务端说的**，不是本页自己猜的）。
+ *
+ * 为什么要它：`aiApplied` 那种布尔区分不出"还没申请"与"被拒了"——
+ * 而被拒的人最该看到的就是「上次没通过 · 可以再申请一次」（2026-09-26 加）。
+ */
+const aiApplyState = ref<AiApplyState>('none')
 /** 本页会话内是否已发过申请（不持久化 —— 后端对重复申请幂等，重开小程序再点一次也无害） */
 const aiApplied = ref(false)
+
+/** 弹框里那段说明：按状态换说法（文案本体在 utils/aiAccess，功能页用的是同一份） */
+const aiDeniedContent = computed(() =>
+  aiDeniedText(aiApplied.value ? 'pending' : aiApplyState.value),
+)
+
+/** 「需要开通」弹框里按钮上的字：没申请过 / 已申请待批 / 上次没通过 */
+const aiApplyLabel = computed(() => {
+  if (aiApplied.value || aiApplyState.value === 'pending') return '已申请 · 等我开通'
+  if (aiApplyState.value === 'rejected') return '再次申请'
+  return '申请开通'
+})
+
+/* ---------------- 管理员的审批入口（2026-09-26 加） ----------------
+ *
+ * 只有后端说 `admin: true`（我自己的 openid 在 `AI_ADMIN_OPENIDS` 里）时才渲染那一行。
+ * ⚠️「看不见」只是顺手：**真正的门在服务端** —— `/ai/review/*` 会比对登录态里的 openid，
+ * 所以就算有人手改路由闯进审批页，也只会拿到 403。
+ */
+const aiAdmin = ref(false)
+/** 待批条数（只在确认是管理员后才查，用来在入口那行提示"有人等你批"） */
+const aiPending = ref(0)
+const aiReviewSub = computed(() =>
+  aiPending.value > 0 ? `${aiPending.value} 条待批 · 点这里审批` : '当前没有待批的申请',
+)
+
+function openAiReview(): void {
+  navigateTo(ROUTES.meAiReview)
+}
+
+/**
+ * 进页面时问一次服务端：我是不是管理员、我自己申请到哪一步了。
+ *
+ * 为什么不等点开关再查：设置页是低频页面，一次请求换来的是
+ * 「入口该不该出现」「按钮该写什么」**一进来就是准的** ——
+ * 他刚被通过、刚被拒，都能当场看出来（2026-09-26 加）。
+ * 查不到一律不打扰：没网时保持原样，点开关时会再查一次。
+ */
+async function refreshAiAccess(): Promise<void> {
+  const info = await fetchAiAccess()
+  if (!info) return
+  aiAdmin.value = info.admin
+  aiApplyState.value = info.applyState
+  /* 服务端说还挂着，就把"已申请"这面旗接着举着（他重开小程序也看得到） */
+  if (info.applyState === 'pending') aiApplied.value = true
+  if (!info.admin) {
+    aiPending.value = 0
+    return
+  }
+  try {
+    const data = await account.withAuth((t) => aiReviewList(t))
+    aiPending.value = data.pending.length
+  } catch {
+    /* 审批数据取不到不影响本页别的事（点进去再看） */
+  }
+}
 
 /**
  * AI 开关的**显示值**。
@@ -936,6 +1015,11 @@ async function onAiConsentToggle(e: Event & { detail?: { value?: boolean } }): P
     const info = await fetchAiAccess()
     uni.hideLoading()
 
+    /* 顺手把「我是不是管理员」「我申请到哪一步了」更新掉（入口与按钮文案都吃这两个） */
+    if (info) {
+      aiAdmin.value = info.admin
+      aiApplyState.value = info.applyState
+    }
     /* 没查成（没网 / 服务端异常）不挡人：同意过了就先用着，真调不通时 useAi 会静默兜底 */
     if (info?.mode === 'denied') {
       account.aiConsent = false
@@ -965,7 +1049,11 @@ async function onAiConsentToggle(e: Event & { detail?: { value?: boolean } }): P
  * 后端只记 openid + 这句称呼 + 时间，开发者照着就能加人。
  */
 function applyAccess(): void {
-  if (aiApplied.value) return
+  /* 已经挂着一条待批的就别重复提交（后端也幂等，这里只是少一次来回 + 少一次困惑） */
+  if (aiApplied.value || aiApplyState.value === 'pending') {
+    uni.showToast({ title: '已经申请过了 · 等我开通就行', icon: 'none' })
+    return
+  }
   applyName.value = ''
   /*
    * ⚠️ 必须先收起二维码框（2026-09-23 报障「点申请开通没反应」）：
@@ -990,7 +1078,13 @@ async function sendApply(): Promise<void> {
     return
   }
   aiApplied.value = true
-  uni.showToast({ title: '已申请 · 开通后再回来打开这个开关', icon: 'none' })
+  aiApplyState.value = 'pending'
+  /*
+   * 回到「需要开通」那个框：他会看到按钮已经变成「已申请 · 等我开通」——
+   * 比只闪一句 toast 清楚（二维码还留着，想直接加我也顺手）。
+   */
+  aiDeniedOpen.value = true
+  uni.showToast({ title: '已申请 · 开通后回来打开这个开关', icon: 'none' })
 }
 
 /**

@@ -17,7 +17,7 @@
       <text v-if="subtitle" class="entry__sub">{{ subtitle }}</text>
     </view>
 
-    <text class="entry__arrow">→</text>
+    <view class="entry__arrow" />
   </view>
 </template>
 
@@ -73,6 +73,7 @@ function onTap(): void {
 
 <style lang="scss" scoped>
 @import '../../styles/hover';
+@import '../../styles/chevron';
 .entry {
   display: flex;
   align-items: center;
@@ -173,11 +174,13 @@ function onTap(): void {
   color: $gz-ink-3;
 }
 
-/* 箭头：原先挂了一条 `transition: transform`，但全项目没有任何地方改它的 transform（死属性） */
+/*
+ * 箭头（2026-09-26）：由字形「→」改成画出来的「>」（更瘦长、更利落）。
+ * 原先挂的 `transition: transform` 已删 —— 全项目没有任何地方改它的 transform（死属性），
+ * 且现在 transform 被 `gz-chevron` 的 45° 旋转占用。
+ */
 .entry__arrow {
-  flex: none;
-  color: $gz-ink-3;
-  font-size: 32rpx;
+  @include gz-chevron();
 }
 
 /* 禁用态降饱和 */

@@ -366,6 +366,13 @@
             "navigationStyle": "custom",
             "navigationBarTitleText": "写一句"
           }
+        },
+        {
+          "path": "ai-review/index",
+          "style": {
+            "navigationStyle": "custom",
+            "navigationBarTitleText": "AI 开通申请"
+          }
         }
       ]
     }

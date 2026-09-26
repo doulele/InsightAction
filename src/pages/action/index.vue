@@ -760,7 +760,8 @@ interface MoreEntry {
   mark: string
   title: string
   subtitle: string
-  badge: EntryBadge
+  /** 徽标：只在"有数据 / 有状态可说"时给（纯固定自我描述的标签不给，2026-09-26 清理） */
+  badge?: EntryBadge
   url?: RoutePath
   disabled?: boolean
 }
@@ -819,7 +820,6 @@ const moreEntries = computed<MoreEntry[]>(() => {
       mark: '迹',
       title: '行动周报 · 痕迹时间轴',
       subtitle: '本周完成统计与趋势，看见自己在真实世界的痕迹',
-      badge: { text: '周报', tone: 'accent' },
       url: ROUTES.actionWeekly,
     },
     /* 身体电量：微信运动步数（手动同步，本机留存），未同步时引导去读一次 */
@@ -827,8 +827,9 @@ const moreEntries = computed<MoreEntry[]>(() => {
       mark: '电',
       title: '身体电量 · 微信运动',
       subtitle: '今天的步数与最近七天，给自己一个身体的读数',
+      /* 只报数字（2026-09-26）：标题与副标题已经说过是"今天"，徽标不必再说一遍 */
       badge: body.hasToday
-        ? { text: `今日 ${body.todayStep} 步`, tone: 'accent' }
+        ? { text: `${body.todayStep} 步`, tone: 'accent' }
         : { text: '去同步', tone: 'muted' },
       url: ROUTES.actionBody,
     },

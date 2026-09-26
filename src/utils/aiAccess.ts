@@ -15,7 +15,7 @@
  * ⚠️ 同意文案只有这里一份 —— 两处各写一版会让用户以为这是两件不同的事。
  */
 import { useAccountStore } from '@/stores/account'
-import { aiAccess, aiApply, type AiAccessInfo } from '@/api/modules/ai'
+import { aiAccess, aiApply, type AiAccessInfo, type AiApplyState } from '@/api/modules/ai'
 import { showModal } from '@/utils/dialog'
 
 /** 知情同意的三块文案（设置页与功能页共用） */
@@ -94,8 +94,19 @@ export async function fetchAiAccess(): Promise<AiAccessInfo | null> {
   }
 }
 
-/** 「不在名单」时那句统一的说明（设置页弹框与功能页提示共用，避免两处说法不一致） */
-export function aiDeniedText(): string {
+/**
+ * 「不在名单」时那句统一的说明（设置页弹框与功能页提示共用，避免两处说法不一致）。
+ *
+ * 按**他自己的申请状态**分三种说法（2026-09-26 加）：被拒过却看到和"从没申请过"
+ * 一模一样的文案，他会以为上次的申请丢了、又点一遍 —— 说清楚才不至于让他反复试。
+ */
+export function aiDeniedText(state: AiApplyState = 'none'): string {
+  if (state === 'pending') {
+    return '你已经申请过了 —— 我这边看得到，开通之后回来打开这个开关就能用（不用再点申请）。'
+  }
+  if (state === 'rejected') {
+    return '上次那条申请没有通过。如果你还想用，可以再申请一次 —— 我会重新看一遍。'
+  }
   return 'AI 目前只对部分人开放 —— 每调用一次都会真实产生费用，所以先小范围开。'
     + '想用的话，下面点「申请开通」，我收到就能加你（你不用做别的）。'
 }

@@ -99,6 +99,12 @@ export const ROUTES = {
   meFeedbackPost: '/subpkg-me/feedback/post/index',
   /** 我：回音壁 · 写一句（分包 subpkg-me） */
   meFeedbackCompose: '/subpkg-me/feedback/compose/index',
+  /**
+   * 设置 → AI 开通申请 · 审批页（分包 subpkg-me，2026-09-26）。
+   * **只有管理员能进**（后端比对 AI_ADMIN_OPENIDS），入口也只在 admin=true 时才渲染 ——
+   * 不走 key 是为了不让管理密钥进小程序包（见 routes/ai.js 的 isAdmin 注）。
+   */
+  meAiReview: '/subpkg-me/ai-review/index',
   /** m7 · 止：触发干预卡片（1-3 分钟呼吸暂停，分包 subpkg-pause） */
   pauseInterrupt: '/subpkg-pause/interrupt/index',
   /** 止 · 立约（当日档：触发条件 + 承诺 + 替代动作，分包 subpkg-pause） */

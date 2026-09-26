@@ -4,13 +4,15 @@
       大厅头（五页共用组件）：名号已经并到这里 ——
       原先首屏是「印章『我』」与「名号卡『我』」两个我，现在印章位直接是头像、
       昵称当主标题、右侧挂「起号 / 修改」；点它在本页原地展开下面的编辑面板。
+      右侧那枚动作原先写作「起号 › / 修改 ›」，2026-09-26 按用户要求去掉箭头 ——
+      它本身已是描边胶囊（按钮形态），旁边再挂个箭头是重复表意。
     -->
     <HallHead
       :mark="profile.initial"
       :avatar="profile.avatar"
       :title="profile.nickname || '还没起号'"
       :state="profileSub"
-      :action="profile.settled ? '修改 ›' : '起号 ›'"
+      :action="profile.settled ? '修改' : '起号'"
       :line="headLine"
       :stats="headStats"
       @action="startEdit"
@@ -57,19 +59,50 @@
     <!-- 第一周解锁引导（第 6 天主角是「我」） -->
     <WeekGuide for="me" />
 
-    <!-- 等级卡：修为 store 真实累计，三模式各 9 级、叫法随皮肤 -->
-    <view class="rank">
+    <!--
+      等级卡：修为 store 真实累计，三模式各 9 级、叫法随皮肤。
+      卡面另挂「阶位特效」：四阶（素/纹/光/器）与小枢形阶**同源** ——
+      都由修为等级折出（config/buddyForms.ts），页面只加 class 与装饰节点，
+      阈值不在这里写第二遍。
+    -->
+    <view class="rank" :class="[`tier-${rankTier}`, { 'is-max': isMaxLv, 'is-up': levelUp }]">
+      <!--
+        装饰层（纯视觉、不接事件；样式见 index.scss 的 .rank.tier-N）：
+        呼吸灯边缘光（全阶位，中间文字区完全透明）+ 柔光晕 / 斜扫光（tier-2 起出现）。
+      -->
+      <view class="rank__breath" />
+      <view class="rank__aura" />
+      <view class="rank__sheen" />
       <view class="rank__row">
         <view>
           <text class="rank__mode">{{ modeMeta.label }}模式 · {{ modeMeta.growthName }}</text>
           <text class="rank__title">{{ lvName }} <text class="rank__lv">Lv.{{ lv }}</text></text>
         </view>
-        <view class="rank__seal">{{ modeMeta.label.slice(0, 1) }}</view>
+        <view class="rank__seal">
+          <!--
+            印章里那枚字 = **当前等级名的首字**（「展叶」→ 展、「金丹」→ 金），
+            随等级换、三套等级名各是一套字；刻意不用数字（用户明确否掉了阶位序号「一 / 二 / 三」）。
+            这枚字自己还在呼吸（见 .rank__seal 上的 rank-seal-breathe）。
+          -->
+          {{ rankSealChar }}
+          <view class="rank__seal-ring" />
+        </view>
       </view>
       <view class="bar">
         <view class="bar__fill" :style="{ width: `${lvPct}%` }" />
       </view>
-      <view class="rank__next">{{ nextHint }}</view>
+      <view class="rank__foot">
+        <text class="rank__next">{{ nextHint }}</text>
+        <!-- 阶位点阵：亮点数 = 当前阶位，一眼看出"长到第几阶" -->
+        <view class="rank__tier">
+          <view
+            v-for="i in FORM_STAGES.length"
+            :key="i"
+            class="rank__tier-dot"
+            :class="{ 'is-on': i <= rankTier + 1 }"
+          />
+        </view>
+      </view>
 
       <!-- 起点基线：建档结果直接长在等级卡里；未建档时这一行本身就是入口 -->
       <view class="rank__base" hover-class="gz-hover" @click="openAssessment">
@@ -212,7 +245,7 @@
  * - 今日四维：观=今日辨源、止=今日静修、知=今日产出、行=今日三件事，全部读真实 store；
  * - 修行档案：测评建档 / 成就墙 / 活跃日历 / 痕迹时间轴 / 设置均为可进入的真实子页。
  */
-import { computed, ref } from 'vue'
+import { computed, onUnmounted, ref } from 'vue'
 import HallHead from '@/components/HallHead/HallHead.vue'
 import { hallLine, meEntryWords } from '@/config/lexicon'
 import WeekGuide from '@/components/WeekGuide/WeekGuide.vue'
@@ -236,7 +269,10 @@ import { useSkinClass } from '@/composables/useSkin'
 import { applySkin, syncTabBar } from '@/utils/skin'
 import { requirePrivacyAuthorize } from '@/utils/privacy'
 import { getAssessmentBank, tierIndex } from '@/config/assessment'
-import { LEVEL_NAMES, LEVEL_THRESHOLDS, levelIndexFromXp, levelProgress } from '@/config/levels'
+import { LEVEL_COUNT, LEVEL_NAMES, LEVEL_THRESHOLDS, levelIndexFromXp, levelProgress } from '@/config/levels'
+/* 等级卡的阶位特效与小枢形阶同源（四阶都折自修为等级），故直接读同一份配置 */
+import { FORM_STAGES, stageFromLevel } from '@/config/buddyForms'
+import { getItem, setItem } from '@/utils/storage'
 import { BADGE_RULES } from '@/config/badges'
 import { useBadgeStore } from '@/stores/badges'
 import { badgeUnlockedCount, dayStats, monthActiveCount, syncBadgeLedger, yearStats } from '@/utils/growth'
@@ -302,6 +338,8 @@ onShow(() => {
       duration: 2600,
     })
   }
+  /* 等级卡：等级比「上次见到的」更高 → 播一次升级光效（见下方 checkLevelUp） */
+  checkLevelUp()
 })
 
 /* —— 个人名号：昵称与头像（微信头像昵称填写能力；只存本机） —— */
@@ -477,6 +515,42 @@ const nextHint = computed(() => {
   return `距「${next}」还差 ${remain} 点修为 · 累计 ${xp.total} 点`
 })
 
+/* —— 等级卡 · 阶位特效（2026-09-26）——
+ * 装饰按四阶递进（素 / 纹 / 光 / 器），阶位与小枢形阶**同源**：都由修为等级折出
+ * （区间见 config/buddyForms.ts 的 FORM_STAGES，别在这里另写一份阈值）。
+ * 页面只算「现在是第几阶、是不是刚升级」，长什么样全在 index.scss 的 .rank.tier-N。
+ */
+const rankTier = computed(() => stageFromLevel(lvIndex.value).tier)
+/** 印章里那枚字：当前等级名的首字（「展叶」→ 展、「金丹」→ 金；三套等级名各是一套字） */
+const rankSealChar = computed(() => lvName.value.slice(0, 1) || '印')
+/** 满级（Lv.9）：印章换实色渐变 —— 只此一处「到顶」形态 */
+const isMaxLv = computed(() => lvIndex.value >= LEVEL_COUNT - 1)
+
+/**
+ * 升级瞬效：进入本页时等级比「上次见到的」更高 → 播一次光效（约 2.2s 后撤）。
+ * 为什么记在本机而不是 trace：它只管「这页要不要放一次动画」，不是修行痕迹，
+ * 不该进时间轴、也不该影响任何统计，所以单独一个 key，不进任何 store。
+ * 首次进入（无记录）只落记录、不放光效 —— 否则老用户升到新版本时会莫名发光。
+ */
+const levelUp = ref(false)
+let levelUpTimer: ReturnType<typeof setTimeout> | null = null
+const RANK_SEEN_KEY = 'insight:me:rankSeen'
+function checkLevelUp(): void {
+  const seen = getItem<number>(RANK_SEEN_KEY, -1) ?? -1
+  const now = lvIndex.value
+  if (seen >= 0 && now > seen) {
+    levelUp.value = true
+    if (levelUpTimer) clearTimeout(levelUpTimer)
+    levelUpTimer = setTimeout(() => {
+      levelUp.value = false
+    }, 2200)
+  }
+  if (now !== seen) setItem(RANK_SEEN_KEY, now)
+}
+onUnmounted(() => {
+  if (levelUpTimer) clearTimeout(levelUpTimer)
+})
+
 /* —— 今日四维：观/止/知/行全部接真实 store（色值取「暗底也清晰」一档） —— */
 interface Dim {
   /** 维度名（随修行语言变） */
@@ -620,9 +694,10 @@ const moreEntries = computed<MoreEntry[]>(() => [
     mark: '板',
     title: '修行看板 · 四维与转化',
     subtitle: mw.value.board,
+    /* 只报数字（2026-09-26）：「转化」二字在标题与副标题里都有，徽标只说百分比 */
     badge:
       trace.traces.length > 0
-        ? { text: mw.value.boardBadge(conversionPct.value), tone: 'accent' }
+        ? { text: `${conversionPct.value}%`, tone: 'accent' }
         : { text: mw.value.pending, tone: 'muted' },
     url: ROUTES.meBoard,
   },
@@ -738,7 +813,6 @@ const moreEntries = computed<MoreEntry[]>(() => [
     mark: '设',
     title: '设置',
     subtitle: mw.value.settings,
-    badge: { text: mw.value.settingsBadge, tone: 'accent' },
     url: ROUTES.settings,
   },
 ])

@@ -2,6 +2,7 @@
  * index.vue 的样式（超过 100 行，按项目约定外置到同目录 index.scss）。
  * 由 index.vue 通过 @import 引入；以后改样式改本文件。
  */
+@import '../../styles/chevron';
 .page {
   min-height: 100vh;
   /* 底部留白 180rpx：避开小枢悬浮球（108rpx @ bottom 40rpx）压住页尾 */
@@ -642,11 +643,9 @@
   color: $gz-ink-2;
 }
 
+/* 箭头：与卡片同一枚「>」（styles/chevron.scss），这里是出口的主色版 */
 .portal__arrow {
-  flex-shrink: 0;
-  font-size: 32rpx;
-  line-height: 1;
-  color: $gz-accent;
+  @include gz-chevron(20rpx, 4rpx, $gz-accent);
 }
 
 .entries {
