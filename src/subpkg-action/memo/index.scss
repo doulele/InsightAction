@@ -1,0 +1,250 @@
+/**
+ * 待办 · 备忘页样式（超过 100 行，按项目约定外置到同目录 index.scss）。
+ * 由 index.vue 通过 @import 引入；改样式改本文件。
+ *
+ * 四条排版口径（2026-09-29 定版）：
+ *  1. **分类落在卡片头上**：今天 / 以后 / 已办各是一张独立卡片，每张的头是
+ *     一条浅色底条（`$gz-surface-2`）+ 段小印字 + 段名 + 计数 —— 一眼分得清"这是哪一段"。
+ *     「今天」另加一条模式色带（与行大厅「今日三件事」同款），因为它是这一页的主角；
+ *  2. **左边缘只有一条**：说明条、输入框、每张卡片都从同一个 x 起笔
+ *     （之前说明句与段标题各带 8rpx 内缩，整页参差）；
+ *  3. **计数不抢标题**：卡片头右边那枚数字是小药丸（20rpx），
+ *     不跟段名同一个字重；口径是「已完成 / 总数」（与行大厅三件事一致）；
+ *  4. **条目本体不画卡壳**：`components/PlanStep` 只画行与行之间的细线，
+ *     卡壳由这一页给 —— 在花纹纸底上，裸列表会显得发飘。
+ */
+.page {
+  min-height: 100vh;
+  /* 顶距为 0：状态栏那一份由 SubNav 让（见 SubNav.scss 的说明） */
+  padding: 0 $gz-page-pad 60rpx;
+}
+
+/* ---- 与「今日三件事」的分工：淡底说明条（页面第一句，也是这一页存在的原因） ---- */
+.intro {
+  display: block;
+  padding: 18rpx 22rpx;
+  font-size: $gz-fs-caption;
+  line-height: 1.7;
+  color: $gz-ink-2;
+  background: $gz-accent-a04;
+  border-radius: $gz-radius-md;
+}
+
+/* ---- 常驻输入框（整页第一件东西，不藏进按钮后面） ---- */
+.quick {
+  display: flex;
+  align-items: center;
+  gap: 16rpx;
+  margin-top: 22rpx;
+  padding: 10rpx 10rpx 10rpx 28rpx;
+  background: $gz-surface;
+  border: 1rpx solid $gz-line;
+  border-radius: $gz-radius-lg;
+}
+
+.quick__input {
+  flex: 1;
+  min-width: 0;
+  height: 76rpx;
+  font-size: $gz-fs-body;
+  color: $gz-ink;
+}
+
+.quick__ph {
+  color: $gz-ink-3;
+}
+
+/*
+ * 药丸按钮：外壳是大圆角长条，按钮再切小圆角会像"贴上去的方块"。
+ * 高度刻意**比输入框矮一档**（64 vs 76）—— 等高的实色块会压过输入框，
+ * 而这里是"你先写字、写完按一下"，按钮不该是主角。
+ */
+.quick__btn {
+  flex: none;
+  height: 64rpx;
+  padding: 0 30rpx;
+  font-size: $gz-fs-small;
+  font-weight: 600;
+  line-height: 64rpx;
+  color: $gz-on-cta;
+  text-align: center;
+  background: $gz-cta-bg;
+  border-radius: 999rpx;
+}
+
+/* ---- 整页空态（新用户唯一会看到的一句话） ---- */
+.empty {
+  padding: 120rpx 40rpx 0;
+  text-align: center;
+}
+
+.empty__seal {
+  width: 108rpx;
+  height: 108rpx;
+  margin: 0 auto 26rpx;
+  font-size: 52rpx;
+  line-height: 108rpx;
+  color: $gz-accent;
+  text-align: center;
+  background: $gz-accent-a10;
+  border-radius: $gz-radius-md;
+}
+
+.empty__text {
+  display: block;
+  font-size: $gz-fs-small;
+  line-height: 1.9;
+  color: $gz-ink-2;
+  /* 空态那两句是分行写的，别让它们挤成一段 */
+  white-space: pre-wrap;
+}
+
+/* ==========================================================================
+ * 三段卡片：今天 / 以后 / 已办
+ * ========================================================================== */
+
+.card {
+  position: relative;
+  overflow: hidden;
+  margin-top: 26rpx;
+  background: $gz-surface;
+  border: 1rpx solid $gz-line;
+  border-radius: $gz-radius-lg;
+}
+
+/* 输入框下面第一张卡：多让一口气（从这里开始是"内容"） */
+.quick + .card {
+  margin-top: 42rpx;
+}
+
+/*
+ * 顶部一条模式色带（与行大厅「今日三件事」同一做法）—— **三张卡都挂**：
+ * 它是"卡片头"的一部分；只在「今天」那张挂，三段看起来就不齐
+ * （2026-09-29 用户看到「以后」「已办」没有，要求统一）。
+ */
+.card::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 6rpx;
+  background: linear-gradient(90deg, $gz-accent, $gz-grad-to);
+}
+
+/*
+ * 卡片头 —— 分类就落在这条底上：印字 + 段名 + 计数。
+ *
+ * 底色**必须换色相，不能在米色系里调深浅**（2026-09-29 连改两版才定）：
+ *  - 第一版 `$gz-surface-2`（#F2ECDD）、第二版 `$gz-paper-deep`（#EDE6D6）都仍是米色，
+ *    而**页面底色就是米色**（#F4EFE4 + 方格纹）—— 卡头把格纹盖掉之后，看起来与背景一模一样
+ *    （用户两次报"卡头和背景一个颜色"）；
+ *  - 现在用**强调色淡底** `$gz-accent-a10`：色相与纸底不同（普通淡橄榄绿 / 科技淡电光蓝 /
+ *    修仙淡朱砂），三种皮肤下都一眼分得开，且"分类"这件事本来就该带一点主题色。
+ * 卡头与内容之间还有一条分界线（见 `.card__body` / `.card__empty` 的 `border-top`）。
+ */
+.card__head {
+  display: flex;
+  align-items: center;
+  gap: 14rpx;
+  /* 上内边距多让 6rpx：别贴着顶上那条色带 */
+  padding: 26rpx 26rpx 20rpx;
+  background: $gz-accent-a10;
+  /* 头与内容的分界线归**头部**（原先写在内容的 border-top 上，语义绕） */
+  border-bottom: 1rpx solid $gz-line;
+}
+
+/* 已办那一段整头可点（开合），给足点击面 */
+.card__head--fold {
+  min-height: 84rpx;
+}
+
+/*
+ * 段小印字：与 `.block__mark` / `EntryItem.mark` 同一套语言（白底 + 强调色描边），
+ * 尺寸收一档（44rpx）—— 卡片头里它只负责"是哪一段"，不抢段名。
+ */
+.card__mark {
+  flex: none;
+  box-sizing: border-box;
+  width: 44rpx;
+  height: 44rpx;
+  font-size: 24rpx;
+  font-weight: 600;
+  line-height: 42rpx;
+  color: $gz-accent;
+  text-align: center;
+  background: $gz-surface;
+  border: 1rpx solid $gz-accent;
+  border-radius: 12rpx;
+}
+
+.card__title {
+  font-size: $gz-fs-body;
+  font-weight: 700;
+  color: $gz-ink;
+  letter-spacing: 0.04em;
+}
+
+/* 计数药丸：与行大厅 `.block__badge` 同一套语言（小字、不抢标题） */
+.card__n {
+  flex: none;
+  margin-left: auto;
+  padding: 2rpx 14rpx;
+  font-size: 20rpx;
+  line-height: 1.7;
+  color: $gz-ink-3;
+  background: $gz-surface;
+  border-radius: 999rpx;
+  font-variant-numeric: tabular-nums;
+}
+
+/* 展开 / 收起：跟在计数右边（两个都靠右，所以这里不能再 auto） */
+.card__fold {
+  flex: none;
+  margin-left: 14rpx;
+  font-size: $gz-fs-caption;
+  color: $gz-ink-3;
+}
+
+/* 已办是"历史"：印字与段名各退一档（今天 > 以后 > 已办 的视觉层级） */
+.card--done .card__mark {
+  color: $gz-ink-3;
+  border-color: $gz-line;
+}
+
+.card--done .card__title {
+  color: $gz-ink-2;
+}
+
+/*
+ * 条目区：卡壳与"头/内容分界线"都已就位，这里只给左右内边距
+ * （行与行之间的细线由 `components/PlanStep` 自己画）。
+ */
+.card__body {
+  padding: 0 26rpx;
+}
+
+/* 段空态：一句话，跟在分界线下面（不另做虚线框 —— 它已经在卡片里了） */
+.card__empty {
+  display: block;
+  padding: 22rpx 26rpx 26rpx;
+  font-size: $gz-fs-caption;
+  line-height: 1.7;
+  color: $gz-ink-3;
+}
+
+/* ---- 条目右侧的小动作（走 PlanStep 的默认插槽） ---- */
+/* 用强调色淡底而不是中性灰：它是一颗"可以点的按钮"，不是一枚标签 */
+.mini {
+  padding: 8rpx 22rpx;
+  font-size: 20rpx;
+  color: $gz-accent;
+  background: $gz-accent-a06;
+  border-radius: 999rpx;
+}
+
+/* 已办条目的落款（数据格式化，不是措辞 —— 见页面 doneAt） */
+.stamp {
+  font-size: $gz-fs-caption;
+  color: $gz-ink-3;
+}

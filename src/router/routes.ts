@@ -121,6 +121,13 @@ export const ROUTES = {
   actionPlanDetail: '/subpkg-action/plans/detail',
   /** 行 · 身体电量：微信运动步数（只在本机留存，分包 subpkg-action） */
   actionBody: '/subpkg-action/body/index',
+  /**
+   * 行 · 待办 · 备忘（2026-09-29）—— 「三件事只有三条，多出来的事写哪儿」的答案。
+   * 三段：今天（stepsOf）/ 以后（poolStepsOf）/ 已办（memoDoneOf），
+   * 数据是 `stores/plan.ts` 的 `kind='memo'`（不排期就不属于任何一天，也不自动收走），
+   * 所以**没有新 store**，云备份与重置都不必改。
+   */
+  actionMemo: '/subpkg-action/memo/index',
 } as const
 
 export type RoutePath = (typeof ROUTES)[keyof typeof ROUTES]

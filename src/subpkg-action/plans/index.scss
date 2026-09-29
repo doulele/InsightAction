@@ -9,7 +9,7 @@
   padding: 0 $gz-page-pad 60rpx;
 }
 
-/* ---- Tab（四档：今日 / 短期 / 中期 / 长期，横向要能一行放下） ---- */
+/* ---- Tab（四档：日课 / 短期 / 中期 / 长期，横向要能一行放下） ---- */
 .tabs {
   display: flex;
   gap: 10rpx;
@@ -39,41 +39,7 @@
   font-variant-numeric: tabular-nums;
 }
 
-/* ---- 卡片 ---- */
-.card {
-  margin-bottom: 22rpx;
-  padding: 28rpx 30rpx;
-  background: $gz-surface;
-  border: 1rpx solid $gz-line;
-  border-radius: $gz-radius-lg;
-}
-
-.card__head {
-  display: flex;
-  align-items: baseline;
-  justify-content: space-between;
-}
-
-.card__title {
-  font-size: 32rpx;
-  font-weight: 700;
-  color: $gz-ink;
-}
-
-.card__n {
-  font-size: 38rpx;
-  font-weight: 800;
-  color: $gz-accent;
-  font-variant-numeric: tabular-nums;
-}
-
-.card__sub {
-  display: block;
-  margin-top: 8rpx;
-  font-size: $gz-fs-caption;
-  color: $gz-ink-2;
-}
-
+/* ---- 进度条（日课与各档计划共用） ---- */
 .bar {
   margin-top: 18rpx;
   height: 12rpx;
@@ -87,68 +53,6 @@
   border-radius: 999rpx;
   background: linear-gradient(90deg, $gz-accent, $gz-grad-to);
   transition: width 0.4s ease;
-}
-
-.steps {
-  margin-top: 6rpx;
-}
-
-.empty-inline {
-  display: block;
-  margin-top: 22rpx;
-  font-size: $gz-fs-caption;
-  line-height: 1.8;
-  white-space: pre-line;
-  color: $gz-ink-2;
-}
-
-/* ---- 快速加一条 ---- */
-.quick {
-  display: flex;
-  gap: 14rpx;
-  margin-top: 24rpx;
-}
-
-.quick__input {
-  flex: 1;
-  min-width: 0;
-  padding: 18rpx 22rpx;
-  border: 1rpx dashed $gz-line;
-  border-radius: $gz-radius-md;
-  font-size: $gz-fs-small;
-  color: $gz-ink;
-}
-
-.quick__ph {
-  color: $gz-ink-3;
-}
-
-.quick__btn {
-  flex: none;
-  display: flex;
-  align-items: center;
-  padding: 0 32rpx;
-  border-radius: $gz-radius-md;
-  background: $gz-accent;
-  color: $gz-on-cta;
-  font-size: $gz-fs-small;
-  font-weight: 600;
-}
-
-.quick__hint {
-  display: block;
-  margin-top: 12rpx;
-  font-size: $gz-fs-caption;
-  color: $gz-accent;
-}
-
-/* ---- 待办池动作 ---- */
-.mini {
-  padding: 6rpx 20rpx;
-  border: 1rpx solid $gz-line;
-  border-radius: 999rpx;
-  font-size: $gz-fs-caption;
-  color: $gz-ink-2;
 }
 
 /* ---- 期限档说明（列表顶部一句，说清这一档是什么） ---- */

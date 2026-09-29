@@ -2,7 +2,7 @@
   <view class="page" :class="skinClass">
         <SubNav :fallback="ROUTES.tabAction">{{ w.plan }}</SubNav>
 
-    <!-- 今日 / 日课 / 短期 / 中期 / 长期 -->
+    <!-- 日课 / 短期 / 中期 / 长期 -->
     <view class="tabs">
       <view
         v-for="t in TABS"
@@ -13,65 +13,20 @@
         @click="tab = t.id"
       >
         {{ t.label }}
-        <text v-if="t.id === 'today' && todaySteps.length" class="tab__n">{{ doneSteps }}/{{ todaySteps.length }}</text>
-        <text v-else-if="t.id === 'daily' && dailyList.length" class="tab__n">{{ dailyTodayKept }}/{{ dailyList.length }}</text>
+        <text v-if="t.id === 'daily' && dailyList.length" class="tab__n">{{ dailyTodayKept }}/{{ dailyList.length }}</text>
         <text v-else-if="isHorizonTab(t.id) && horizonCount(t.id)" class="tab__n">{{ horizonCount(t.id) }}</text>
       </view>
     </view>
 
-    <!-- 今天 -->
-    <template v-if="tab === 'today'">
-      <view class="card">
-        <view class="card__head">
-          <text class="card__title">{{ w.today }}</text>
-          <text class="card__n">{{ doneSteps }}/{{ todaySteps.length }}</text>
-        </view>
-        <view class="bar">
-          <view class="bar__fill" :style="{ width: `${todayPct}%` }" />
-        </view>
-
-        <view v-if="todaySteps.length" class="steps">
-          <PlanStep v-for="s in todaySteps" :key="s.key" :item="s" @toggle="onToggle" />
-        </view>
-        <text v-else class="empty-inline">{{ w.emptyToday }}</text>
-
-        <view class="quick">
-          <input
-            v-model="newToday"
-            class="quick__input"
-            :placeholder="w.newToday"
-            placeholder-class="quick__ph"
-            :maxlength="30"
-            confirm-type="done"
-            @confirm="addToday"
-          />
-          <view class="quick__btn" hover-class="gz-hover" @click="addToday">加</view>
-        </view>
-        <text v-if="todaySteps.length > TODAY_STEP_COMFORT" class="quick__hint">
-          今天排了 {{ todaySteps.length }} 条 —— 比平时多，走得完吗？
-        </text>
-      </view>
-
-      <view v-if="pool.length" class="card">
-        <view class="card__head">
-          <text class="card__title">{{ w.pool }}</text>
-          <text class="card__n">{{ pool.length }}</text>
-        </view>
-        <text class="card__sub">没排期的、过了日子的都攒在这。不做也不扣分。</text>
-        <view class="steps">
-          <PlanStep v-for="s in pool" :key="s.key" :item="s" @toggle="onToggle">
-            <view class="mini" hover-class="gz-hover" @click="reschedule(s)">排到今天</view>
-            <view class="mini" hover-class="gz-hover" @click="dropStep(s)">不做了</view>
-          </PlanStep>
-        </view>
-      </view>
-    </template>
-
     <!--
+      2026-09-29：这里原本还有一档「今日」（三件事之外的步子 + 待办池），整块搬去了
+      独立页「待办 · 备忘」（入口在行大厅三件事正下方）—— 那一页才是"多出来的事写哪儿"
+      的答案。计划页从这天起只管"路"：日课 / 短期 / 中期 / 长期。
+
       日课（2026-09-17）：早睡 / 锻炼 / 戒色这类"每天重复一次"的事。
       与长路分开一栏、分开计数（各 3 条）：一条"30 天早睡"和一条"重做作品集"占的心智不是一回事。
     -->
-    <template v-else-if="tab === 'daily'">
+    <template v-if="tab === 'daily'">
       <text class="horizon-note">{{ w.dailyNote }}</text>
 
       <view v-if="dailyList.length">
@@ -257,35 +212,34 @@
 
 <script setup lang="ts">
 /**
- * 行 · 计划列表（分包 subpkg-action）—— 今日 / 短期 / 中期 / 长期四个视图。
+ * 行 · 计划列表（分包 subpkg-action）—— 日课 / 短期 / 中期 / 长期四个视图。
  *
- * 「今日」= 三件事之外的步子：派到今天的节点 + 只活今天的一件事 + 待办池；
- * 其余三档 = 在走的路按**期限**分开看：短期一周内、中期一个月内、长期更久或不定日子。
+ * 三档 = 在走的路按**期限**分开看：短期一周内、中期一个月内、长期更久或不定日子；
+ * 「日课」是另一条轴（每天重复一次，见 stores/plan.ts 的 cadence），与三档并列。
  * 期限存 Plan.horizon（立路时定下，不随日子流逝自己换档，见 stores/plan.ts 的注释）。
  * 计分与收束规则全部在 stores/plan.ts 里闭环，本页只负责展示与转发。
+ *
+ * 2026-09-29：「今日」那一档（三件事之外的步子 + 待办池）搬去了独立页「待办 · 备忘」——
+ * 那一页才是"多出来的事写哪儿"的答案，这一页从此只管"路"。
  * 样式外置在 plans/index.scss（超过 100 行，按项目约定拆出）。
  */
 import { computed, ref } from 'vue'
 import { onShow } from '@dcloudio/uni-app'
 import {
   usePlanStore,
-  TODAY_STEP_COMFORT,
   MAX_LONG_ACTIVE,
   DAILY_PRESETS,
   DAILY_DEFAULT_DAYS,
   DAILY_MIN_DAYS,
   DAILY_MAX_DAYS,
   type Plan,
-  type StepItem,
   type ChallengeType,
   type PlanHorizon,
 } from '@/stores/plan'
 import { CHALLENGE_DESC, CHALLENGE_LABEL, HORIZON_DESC, HORIZON_LABEL, planWords } from '@/config/lexicon'
 import { useModeStore } from '@/stores/mode'
 import { useSkinClass } from '@/composables/useSkin'
-import { todayKey } from '@/stores/daily'
 import { navigateTo, ROUTES } from '@/router/routes'
-import { showModal } from '@/utils/dialog'
 
 const plan = usePlanStore()
 const mode = useModeStore()
@@ -293,23 +247,25 @@ const skinClass = useSkinClass()
 const w = computed(() => planWords(mode.id))
 
 /**
- * 今日之外按期限分三档；tab 的 id 直接复用 PlanHorizon，省一层映射。
+ * 期限三档 + 日课；tab 的 id 直接复用 PlanHorizon，省一层映射。
  * 「日课」（2026-09-17）是另一条轴：它没有期限档，只有"守住 N 天"。
+ *
+ * 2026-09-29：原来的第一档「今日」整块搬去了独立页「待办 · 备忘」，
+ * 这一页只剩"路" —— 默认落在「日课」（它与长路同级，都是已经在走的东西）。
  */
-type TabId = 'today' | 'daily' | PlanHorizon
+type TabId = 'daily' | PlanHorizon
 
 /** tab 名随模式（"日课 / 每日任务 / 日行"—— 见 config/lexicon.ts 的 PlanWords） */
 const TABS = computed<ReadonlyArray<{ id: TabId; label: string }>>(() => [
-  { id: 'today', label: '今日' },
   { id: 'daily', label: w.value.daily },
   { id: 'short', label: HORIZON_LABEL.short },
   { id: 'mid', label: HORIZON_LABEL.mid },
   { id: 'long', label: HORIZON_LABEL.long },
 ])
 
-/** 期限三档的 tab（日课与今日不算） */
+/** 期限三档的 tab（日课不算） */
 function isHorizonTab(id: TabId): id is PlanHorizon {
-  return id !== 'today' && id !== 'daily'
+  return id !== 'daily'
 }
 const HORIZONS: ReadonlyArray<{ id: PlanHorizon; label: string }> = (
   ['short', 'mid', 'long'] as PlanHorizon[]
@@ -318,67 +274,16 @@ const CHALLENGES: Array<{ id: ChallengeType; label: string }> = (
   ['abstain', 'try', 'cog'] as ChallengeType[]
 ).map((id) => ({ id, label: CHALLENGE_LABEL[id] }))
 
-const tab = ref<TabId>('today')
+const tab = ref<TabId>('daily')
 
 onShow(() => {
-  // 搁置满 3 天的 today 型计划自动收走（静默，不打扰）
+  /*
+   * 搁置满 3 天的 today 型计划自动收走（静默，不打扰）。
+   * 这一页已经不展示它们了，但收走的动作仍在行大厅与「待办 · 备忘」的 onShow 里跑 ——
+   * 留在这里只是"顺手对齐一次"，不依赖它。
+   */
   plan.sweep()
 })
-
-/* ---------------- 今天 ---------------- */
-const todaySteps = computed<StepItem[]>(() => plan.stepsOf())
-const pool = computed<StepItem[]>(() => plan.poolStepsOf())
-const doneSteps = computed(() => todaySteps.value.filter((s) => s.done).length)
-const todayPct = computed(() =>
-  todaySteps.value.length ? Math.round((doneSteps.value / todaySteps.value.length) * 100) : 0,
-)
-
-const newToday = ref('')
-
-function addToday(): void {
-  const title = newToday.value.trim()
-  if (!title) return
-  const created = plan.addPlan({ title, kind: 'today' })
-  if (created) {
-    newToday.value = ''
-    uni.showToast({ title: '已记下 · 今天多做一件', icon: 'none' })
-  }
-}
-
-function onToggle(item: StepItem): void {
-  const res = plan.toggleStep(item.planId, item.nodeId)
-  if (!res.closed) return
-  const target = plan.byId(item.planId)
-  if (target && target.kind === 'long') {
-    reflectPlan.value = target
-  } else {
-    uni.showToast({ title: '今日事已了', icon: 'none' })
-  }
-}
-
-/** 待办池：排到今天 */
-function reschedule(item: StepItem): void {
-  const ok =
-    item.kind === 'node' && item.nodeId !== undefined
-      ? plan.scheduleNode(item.planId, item.nodeId, todayKey())
-      : plan.rollToToday(item.planId)
-  if (ok) uni.showToast({ title: '已排到今天', icon: 'none' })
-}
-
-/** 待办池：不做了（只移除，不扣分） */
-function dropStep(item: StepItem): void {
-  showModal({
-    title: '不做了？',
-    content: item.kind === 'plan' ? '这条今日事会从清单里拿掉。' : '这一步会从计划里拿掉，其余步骤不受影响。',
-    confirmText: '拿掉',
-    cancelText: '再想想',
-    success: (res) => {
-      if (!res.confirm) return
-      if (item.kind === 'plan') plan.archivePlan(item.planId)
-      else if (item.nodeId !== undefined) plan.removeNode(item.planId, item.nodeId)
-    },
-  })
-}
 
 /* ---------------- 日课（2026-09-17） ---------------- */
 const dailyList = computed<Plan[]>(() => plan.dailyPlans)
@@ -397,7 +302,7 @@ function dailyTodayText(p: Plan): string {
 /** 当前这一档的路（进行中在前，已收束 / 已收起在后） */
 const horizonList = computed<Plan[]>(() => (isHorizonTab(tab.value) ? plan.horizonPlans(tab.value) : []))
 
-/** 当前这一档还在走几条（tab 徽标；「今日」档走的是步子数，不在这里算） */
+/** 当前这一档还在走几条（tab 徽标） */
 function horizonCount(h: PlanHorizon): number {
   return plan.horizonActiveCount(h)
 }

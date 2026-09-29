@@ -131,53 +131,22 @@
       </template>
     </view>
     <!--
-      今天要走的步子（2026-09-15 计划模块）：
-      三件事是「今天最重要的三件」，这里是「三件之外还要往前挪的步子」——
-      派到今天的节点 + 只活今天的一件事。未完成的会过期待办池，不催办、不扣分。
+      待办 · 备忘（2026-09-29，取代原来的「今天要走的步子」）：
+      三件事只装"今天最重要的三件"，装不下的都写在这儿。
+
+      它是一张**入口卡**、不是清单 —— 上一版把这一块做成本页的折叠清单，
+      还叫「今天要走的步子」，用户根本看不出那是干嘛的（本次改掉的就是这个）。
+      入口的说明句与徽标跟着模式走（config/lexicon.memoWords），
+      而**没有内容时也保留这一行**：否则"多出来的事该写哪"就没有答案了。
     -->
-    <view class="block steps">
-      <view class="block__head block__head--fold" hover-class="gz-hover" @click="stepOpen = !stepOpen">
-        <view class="block__title">
-          <text class="block__mark">{{ MARK.step }}</text>
-          <text class="block__label">{{ planW.today }}</text>
-          <text class="today__ask" hover-class="gz-hover" @click.stop="ask('step')">?</text>
-        </view>
-        <view class="block__right">
-          <text
-            class="block__badge"
-            :class="todaySteps.length === 0 || stepDone < todaySteps.length ? 'is-accent' : 'is-muted'"
-          >
-            {{ stepDone }}/{{ todaySteps.length }}
-          </text>
-          <text class="block__fold">{{ stepOpen ? FOLD.close : FOLD.open }}</text>
-        </view>
+    <view class="todo-card" hover-class="gz-hover" @click="goMemo">
+      <view class="todo-card__row">
+        <text class="todo-card__mark">{{ mw.mark }}</text>
+        <text class="todo-card__label">{{ mw.title }}</text>
+        <text class="todo-card__badge" :class="memoLeft > 0 ? 'is-accent' : 'is-muted'">{{ memoBadge }}</text>
+        <text class="todo-card__go">›</text>
       </view>
-      <template v-if="stepOpen">
-        <text class="block-hint">{{ exStep.hint }}</text>
-
-        <view v-if="todaySteps.length" class="steps__list">
-          <PlanStep v-for="s in todaySteps" :key="s.key" :item="s" @toggle="onToggleStep" />
-        </view>
-        <text v-else class="steps__empty">今天还没有额外的步子 —— 有想推进的，写一条。</text>
-
-        <view class="steps__quick">
-          <input
-            v-model="newStep"
-            class="steps__input"
-            :placeholder="planW.newToday"
-            placeholder-class="steps__ph"
-            :maxlength="30"
-            confirm-type="done"
-            @confirm="addStep"
-          />
-          <view class="steps__btn" hover-class="gz-hover" @click="addStep">加</view>
-        </view>
-
-        <text v-if="todaySteps.length > TODAY_STEP_COMFORT" class="steps__warn">
-          今天排了 {{ todaySteps.length }} 条 —— 比平时多，走得完吗？
-        </text>
-        <text v-if="poolHint" class="steps__pool" hover-class="gz-hover" @click="goPlans">{{ poolHint }}</text>
-      </template>
+      <text class="todo-card__hint">{{ mw.entryHint }}</text>
     </view>
 
     <!-- 在走的长路 -->
@@ -351,7 +320,7 @@ import { useSkinClass } from '@/composables/useSkin'
 import { useDailyStore, todayKey, type DailyTodo } from '@/stores/daily'
 import { useTraceStore } from '@/stores/trace'
 import { useHabitStore } from '@/stores/habit'
-import { usePlanStore, TODAY_STEP_COMFORT, type DailyItem, type Plan, type StepItem } from '@/stores/plan'
+import { usePlanStore, type DailyItem, type Plan } from '@/stores/plan'
 import { useBodyStore } from '@/stores/body'
 import { autoSyncWeRun } from '@/utils/werun'
 import { useClosingStore } from '@/stores/closing'
@@ -371,6 +340,7 @@ import {
   closingWords,
   dailyVsHabit,
   hallLine,
+  memoWords,
   planWords,
   type ActionBlockKey,
 } from '@/config/lexicon'
@@ -396,6 +366,8 @@ const body = useBodyStore()
 /** 今日收功（2026-09-17）：一天结束前把它收个尾 */
 const closing = useClosingStore()
 const planW = computed(() => planWords(modeStore.id))
+/** 待办 · 备忘的词表（入口卡与解释弹窗都用它） */
+const mw = computed(() => memoWords(modeStore.id))
 /** 三块今日清单的小印字 + 展开/收起措辞（与「把念头变成痕迹」入口行同一套语言） */
 const MARK = ACTION_BLOCK_MARK
 const FOLD = ACTION_FOLD_WORDS
@@ -411,9 +383,8 @@ const sabbathText = computed(() => sabbathLine(modeStore.id))
  * 三块的名词跟着模式走（日课 / 每日任务 / 日行），所以解释统一由 actionSplit 现取，
  * 页面不写死任何一句说明文案。
  */
-const exThree = computed(() => actionSplit('three', planW.value))
-const exDaily = computed(() => actionSplit('daily', planW.value))
-const exStep = computed(() => actionSplit('step', planW.value))
+const exThree = computed(() => actionSplit('three', planW.value, mw.value))
+const exDaily = computed(() => actionSplit('daily', planW.value, mw.value))
 
 /** 日课与习惯打卡的区别（有日课时才可能显示） */
 const dailyVs = computed(() => dailyVsHabit(planW.value.daily))
@@ -425,7 +396,7 @@ const explainOpen = ref(false)
 const explainList = computed(() =>
   [askedKey.value, ...ACTION_BLOCK_ORDER.filter((k) => k !== askedKey.value)].map((k) => ({
     key: k,
-    ...actionSplit(k, planW.value),
+    ...actionSplit(k, planW.value, mw.value),
   })),
 )
 
@@ -460,7 +431,6 @@ const closedAt = computed(() => (closing.todayRecord ? fmtClock(closing.todayRec
  * **不记住上次的手动开合**，免得"上次收起了，今天忘了看"。
  */
 const dailyOpen = ref(true)
-const stepOpen = ref(true)
 
 /** 摊开与否的最终判定：已收 → 恒摊；否则看上面那三条 */
 const closeShown = computed(() => closing.todayClosed || closeOpen.value)
@@ -571,12 +541,11 @@ onShow(() => {
   /* 搁置满 3 天的「今天做的一件事」自动收走（静默，不打扰） */
   planStore.sweep()
   /*
-   * 分类行的初值（2026-09-22）：日课还有没守住的、步子还有没走完的（或一条都还没排），
-   * 就默认摊开；全做完了才收成一行。**不记住上次的手动开合** ——
-   * 免得"上次收起了，今天忘了看"。
+   * 日课那一行的初值（2026-09-22）：还有没守住的就默认摊开，全守住了才收成一行。
+   * **不记住上次的手动开合** —— 免得"上次收起了，今天忘了看"。
+   * （步子那一块 2026-09-29 搬去了「待办 · 备忘」，行大厅不再摊清单。）
    */
   dailyOpen.value = dailyKept.value < dailyItems.value.length
-  stepOpen.value = todaySteps.value.length === 0 || stepDone.value < todaySteps.value.length
   /*
    * 小枢结算面板（23:00 后）点了「留一句」→ 直接摊开并滚过去。
    * （收工现在**默认摊开**，所以这里不再按钟点重算 `closeOpen`。）
@@ -594,37 +563,18 @@ onShow(() => {
   syncTabBar(modeStore.id)
 })
 
-/* ---------------- 今天要走的步子 ---------------- */
-const todaySteps = computed<StepItem[]>(() => planStore.stepsOf())
-const stepDone = computed(() => todaySteps.value.filter((s) => s.done).length)
+/* ---------------- 待办 · 备忘（2026-09-29） ---------------- */
+/**
+ * 入口卡读数。
+ *
+ * 这里只报数字，不再把清单摊在行大厅：行大厅负责"今天要做什么"（三件事 + 日课 + 长路），
+ * "还记着哪些事"归那一页自己。**卡上即使没有内容也留着** —— 它是"多出来的事写哪儿"的唯一答案。
+ */
+const memoLeft = computed(() => planStore.memoCounts.todayLeft)
+const memoBadge = computed(() => mw.value.counts(planStore.memoCounts.todayLeft, planStore.memoCounts.later))
 
-/** 待办池提示：有搁置的才出现，平时不占位（不催办，只是让它可被找到） */
-const poolHint = computed(() => {
-  const n = planStore.poolStepsOf().length
-  return n > 0 ? `${planW.value.pool}里还搁着 ${n} 条 · 去看看 ›` : ''
-})
-
-const newStep = ref('')
-
-function addStep(): void {
-  const title = newStep.value.trim()
-  if (!title) return
-  if (planStore.addPlan({ title, kind: 'today' })) {
-    newStep.value = ''
-    uni.showToast({ title: '已记下 · 今天多做一件', icon: 'none' })
-  }
-}
-
-/** 勾选一步：收束时按计划类型决定是否弹回望（today 型没有回望） */
-function onToggleStep(s: StepItem): void {
-  const res = planStore.toggleStep(s.planId, s.nodeId)
-  if (!res.closed) return
-  const target = planStore.byId(s.planId)
-  if (target && target.kind === 'long') {
-    reflectOn.value = target
-  } else {
-    uni.showToast({ title: '今日事已了', icon: 'none' })
-  }
+function goMemo(): void {
+  navigateTo(ROUTES.actionMemo)
 }
 
 /* ---------------- 在走的长路 ---------------- */
@@ -644,7 +594,7 @@ function nextHint(p: Plan): string {
   if (node) return `${planW.value.next} · ${node.title}`
   const remain = planStore.remainDaysOf(p)
   if (remain !== null && remain > 0) return `还剩 ${remain} 天`
-  return '步子都走完了'
+  return '已走到最后'
 }
 
 function openPlan(p: Plan): void {
@@ -772,20 +722,16 @@ const moreEntries = computed<MoreEntry[]>(() => {
   const wishes = wishStore.wishes
   const wishReady = wishes.filter((w) => !w.claimedAt && xpTotal.total >= w.needXp).length
   const wishClaimed = wishes.filter((w) => w.claimedAt).length
-  const stepTodo = todaySteps.value.filter((s) => !s.done).length
-  const poolN = planStore.poolStepsOf().length
   return [
     {
       mark: planW.value.mark,
       title: planW.value.plan,
-      /* 长路与日课是两条账（各 3 条）：入口把两边都报出来，别让人以为日课不算 */
+      /* 长路与日课是两条账（各自计数）：入口把两边都报出来，别让人以为日课不算 */
       subtitle: '跨天的目标拆成一步步走 · 每天重复的事走「日课」',
       badge:
-        longTop.value.length > 0 || stepTodo > 0 || planStore.activeDailyCount > 0
+        planStore.activeLongCount + planStore.activeDailyCount > 0
           ? { text: `进行中 ${planStore.activeLongCount + planStore.activeDailyCount} 个`, tone: 'accent' }
-          : poolN > 0
-            ? { text: `${poolN} 条搁置`, tone: 'muted' }
-            : { text: '立一条', tone: 'muted' },
+          : { text: '立一条', tone: 'muted' },
       url: ROUTES.actionPlans,
     },
     {

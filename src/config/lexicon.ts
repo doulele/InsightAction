@@ -194,7 +194,7 @@ export const HORIZON_DESC: Record<PlanHorizonKey, string> = {
   long: '一个月以上，或者干脆不定日子',
 }
 
-export type ActionBlockKey = 'three' | 'daily' | 'step'
+export type ActionBlockKey = 'three' | 'daily' | 'memo'
 
 /**
  * 一块"今日清单"该怎么被解释清楚（2026-09-22 重写）。
@@ -205,10 +205,10 @@ export type ActionBlockKey = 'three' | 'daily' | 'step'
  *   hint —— 标题下那一行：**一句话人话**，回答"它管什么"；
  *   what —— 弹窗里的定义（讲它是怎么来的）；
  *   eg   —— **举例**（抽象定义不如一句例子顶用）；
- *   fate —— **忘了做会怎样**。这才是三块真正的分界：清零 / 累积不断 / 顺延到待办池。
+ *   fate —— **忘了做会怎样**。这才是三块真正的分界：清零 / 累积不断 / 永不消失。
  *
- * `{daily}` `{step}` 是名词占位符 —— 日课与步子的叫法跟着模式走（见 `planWords`），
- * 由 `actionSplit(key, words)` 填。
+ * `{daily}` `{memo}` 是名词占位符 —— 日课与待办的叫法跟着模式走
+ * （见 `planWords` / `memoWords`），由 `actionSplit(key, words, memo)` 填。
  */
 export interface ActionBlockExplain {
   /** 标题下那一行 */
@@ -238,12 +238,12 @@ const LOCAL_ACTION_SPLIT: Record<ActionBlockKey, ActionBlockExplain> = {
     eg: '早睡 / 走二十分钟 / 睡前不刷手机',
     fate: '会累积：守住一天记一天，守满目标天数就收束（可以写一句回望）。今天没勾只是空白、不算破；真破了也不归零。',
   },
-  step: {
-    hint: '早就立好的目标里 · 派到今天的那一段',
-    name: '{step}',
-    what: '从长期那条路拆下来的具体节点，外加临时想加的一条。它是"除了三件事之外还在往前挪"的那部分。',
-    eg: '「写完第三章」排在今天 → 今天就认这一段',
-    fate: '不会清零：今天没走的进待办池，明天还在。不催办，也不扣分。',
+  memo: {
+    hint: '随手记下来的事 · 可以今天做，也可以过几天',
+    name: '{memo}',
+    what: '除了今天那三件之外，你还想做的事都记在这儿。它**不属于某一天** —— 写下来就一直在，办掉了才勾。',
+    eg: '「还上个月的花呗」「问问老王那个方案」',
+    fate: '不会清零、也不会自己消失：排到今天的没办完，明天沉回「以后」；搁久了的只标一句"搁了几天"，不收走、不扣分。',
   },
 }
 
@@ -269,26 +269,18 @@ export interface PlanWords {
   en: string
   /** 节点名词 */
   node: string
-  /** 今日派单区标题 */
-  today: string
-  /** 待办池 */
-  pool: string
   /** 进度文案（带上数字） */
   progress: (done: number, total: number) => string
-  /** 搁置文案（带上天数） */
+  /** 搁置文案（带上天数）—— 「待办 · 备忘」的搁置也用它 */
   shelf: (days: number) => string
   /** 长期空态 */
   emptyLong: string
   /** 某一档（短期 / 中期）的空态；长期仍用 emptyLong */
   emptyHorizon: (label: string) => string
-  /** 今日空态 */
-  emptyToday: string
   /** 长期计划上限提示（文案对齐习惯的「别贪多」） */
   cap: string
   /** 新建长期计划按钮 */
   newLong: string
-  /** 加一条今日事按钮 */
-  newToday: string
   /** 「下一节点」标签 */
   next: string
   /** 三态标签 */
@@ -338,16 +330,12 @@ const LOCAL_PLAN_WORDS: Record<ModeId, PlanWords> = {
     plan: '长路',
     en: 'ROAD · 一条要走很久的路',
     node: '一步',
-    today: '今天要走的步子',
-    pool: '待办池',
     progress: (done, total) => `走了 ${done}/${total} 步`,
     shelf: (days) => `已搁置 ${days} 天`,
     emptyLong: '还没有在走的长路。\n立一条，把「想做的事」变成一个能走完的东西。',
     emptyHorizon: (label) => `${label}这一档还没有路。\n想清楚这一档要什么，再立一条。`,
-    emptyToday: '今天还没有额外的步子。\n三件事之外还想做点什么，就写一条。',
     cap: '别贪多，先走完手上的 3 条长路',
     newLong: '立一条长路',
-    newToday: '加一条今天的步子',
     next: '下一步',
     statusActive: '在路上',
     statusDone: '已走完',
@@ -373,16 +361,12 @@ const LOCAL_PLAN_WORDS: Record<ModeId, PlanWords> = {
     plan: '计划',
     en: 'PLAN · 目标 · 里程碑 · 收敛',
     node: '里程碑',
-    today: '今日任务',
-    pool: '待排队列',
     progress: (done, total) => `进度 ${done}/${total}`,
     shelf: (days) => `积压 ${days} 天`,
     emptyLong: '暂无进行中的计划。\n建立一条，把一个模糊目标拆成可验证的里程碑。',
     emptyHorizon: (label) => `${label}暂无进行中的计划。\n建立一条，把该档期的目标拆成里程碑。`,
-    emptyToday: '今日无额外任务。\n除三项主任务外仍需推进的，在此登记。',
     cap: '并发上限 3，先收敛手上的计划',
     newLong: '新建计划',
-    newToday: '补录今日任务',
     next: '下一里程碑',
     statusActive: '进行中',
     statusDone: '已完成',
@@ -408,16 +392,12 @@ const LOCAL_PLAN_WORDS: Record<ModeId, PlanWords> = {
     plan: '大愿',
     en: 'VOW · 发愿 · 关隘 · 圆满',
     node: '关隘',
-    today: '今日功课',
-    pool: '未了之事',
     progress: (done, total) => `已过 ${done}/${total} 关`,
     shelf: (days) => `搁置 ${days} 日`,
     emptyLong: '尚无在行之大愿。\n立下一桩，把心之所向化作可过之关。',
     emptyHorizon: (label) => `${label}尚无在行之愿。\n量力而立，一档一桩足矣。`,
-    emptyToday: '今日无额外功课。\n三事之外尚有所求者，记于此。',
     cap: '大愿不宜多，先了结手上的三桩',
     newLong: '立一桩大愿',
-    newToday: '记一笔今日功课',
     next: '下一关隘',
     statusActive: '在行',
     statusDone: '圆满',
@@ -445,29 +425,211 @@ export function planWords(mode: ModeId): PlanWords {
   return LOCAL_PLAN_WORDS[mode] ?? LOCAL_PLAN_WORDS.normal
 }
 
+/* ==========================================================================
+ * 待办 · 备忘（2026-09-29）
+ *
+ * 为什么它需要单独一份词表，而不是蹭 planWords：
+ *   它是**独立的一页**（行大厅 → 待办 · 备忘）。上一版这类东西被塞在计划里叫
+ *   「今天要走的步子」，用户根本看不出那是干嘛的 —— 所以这一页的每个字都在回答
+ *   "我记在这儿的东西会怎么样"。
+ *
+ * 三条口径：
+ *   1. **标题做主题化**（待办 · 备忘 / 任务队列 · 备忘 / 未了之事 · 备忘）：
+ *      与「我」页那一列"标题不做主题化"相反 —— 那是定位词，这里要的是"用你的话说这件事"，
+ *      而三种模式的用户对"要办的事"本来就有不同说法；
+ *   2. **搁置文案不在这里**：复用 `planWords().shelf`（三模式已经写好），
+ *      同一件事没有必要出现第二种说法；
+ *   3. **纯内置**，与 planWords / closingWords 同一处理。
+ * ========================================================================== */
+
+export interface MemoWords {
+  /** 入口小印字（行大厅那张卡；与 ACTION_BLOCK_MARK.memo 同一枚字） */
+  mark: string
+  /** 入口与页面标题 */
+  title: string
+  /** 顶栏副标题（一行，回答"这儿干嘛的"） */
+  sub: string
+  /** 行大厅入口卡的那一行说明 */
+  entryHint: string
+  /** 页面顶部常驻说明（与三件事的分工，一句话说清） */
+  intro: string
+  /** 输入框占位 */
+  inputPh: string
+  /** 「记下」按钮 */
+  addAct: string
+  /* 三段标题：今天 / 以后 / 已办 */
+  today: string
+  later: string
+  done: string
+  /* 空态（整页空 / 各段空） */
+  emptyAll: string
+  emptyToday: string
+  emptyLater: string
+  emptyDone: string
+  /* 每一条的动作 */
+  planToday: string
+  unplan: string
+  drop: string
+  dropTitle: string
+  /** 不做了的说明：一条待办（直接移除） */
+  dropNote: string
+  /** 不做了的说明：计划派来的节点（只拿掉这一步） */
+  dropNoteNode: string
+  /** 不做了的说明：老数据的 today 型（整条从清单里拿掉） */
+  dropNotePlan: string
+  /** 弹框的取消键 */
+  cancel: string
+  /** 入口读数（今天还要办几件 / 以后攒着几件） */
+  counts: (todayLeft: number, later: number) => string
+  /* 几句如实反馈 */
+  saved: string
+  doneToast: string
+  undoneToast: string
+  planned: string
+  unplanned: string
+  dropped: string
+}
+
+const LOCAL_MEMO_WORDS: Record<ModeId, MemoWords> = {
+  normal: {
+    mark: '办',
+    title: '待办 · 备忘',
+    sub: '记下来就丢不了',
+    entryHint: '随手记下要做的事 —— 不会过期，做完勾掉',
+    intro: '三件事是今天最重要的三件；其余的都放这儿 —— 可以今天做，也可以过几天。',
+    inputPh: '记一件要做的事…',
+    addAct: '记下',
+    today: '今天',
+    later: '以后',
+    done: '已办',
+    emptyAll: '还没有待办。\n想做什么，随手写一条 —— 不会过期，也不会因为你没做完就消失。',
+    emptyToday: '今天还没有要办的事',
+    emptyLater: '以后的事都记在这儿，想起来了就写一条',
+    emptyDone: '还没有办掉的',
+    planToday: '排到今天',
+    unplan: '放回以后',
+    drop: '不做了',
+    dropTitle: '不做了？',
+    dropNote: '这条会从待办里拿掉 —— 不扣分，也不留痕。',
+    dropNoteNode: '这一步会从计划里拿掉，其余步骤不受影响。',
+    dropNotePlan: '这条今日事会从清单里拿掉。',
+    cancel: '再想想',
+    counts: (t, l) => (t > 0 ? `今天 ${t} 件 · 以后 ${l} 件` : `以后 ${l} 件`),
+    saved: '已记下',
+    doneToast: '办掉一件',
+    undoneToast: '又放回去了',
+    planned: '已排到今天',
+    unplanned: '已放回「以后」',
+    dropped: '已拿掉',
+  },
+  tech: {
+    mark: '队',
+    title: '任务队列 · 备忘',
+    sub: '登记即留存',
+    entryHint: '随手登记待执行任务 —— 不过期，完成后关闭',
+    intro: '主任务只有三项；其余全部在此登记 —— 可当日执行，也可排到后续。',
+    inputPh: '登记一条待执行任务…',
+    addAct: '登记',
+    today: '今日队列',
+    later: '待排队列',
+    done: '已完成',
+    emptyAll: '队列为空。\n登记一条 —— 不会过期，也不会因未完成而消失。',
+    emptyToday: '今日队列为空',
+    emptyLater: '未排期的任务都在此列，随时可补充',
+    emptyDone: '暂无已完成条目',
+    planToday: '排入今日',
+    unplan: '移出今日',
+    drop: '放弃',
+    dropTitle: '放弃这条？',
+    dropNote: '条目将被移除 —— 不扣分，也不留痕。',
+    dropNoteNode: '该里程碑将从计划中移除，其余步骤不受影响。',
+    dropNotePlan: '该条目将从队列中移除。',
+    cancel: '取消',
+    counts: (t, l) => (t > 0 ? `今日 ${t} · 待排 ${l}` : `待排 ${l}`),
+    saved: '已登记',
+    doneToast: '任务已关闭',
+    undoneToast: '已重新打开',
+    planned: '已排入今日',
+    unplanned: '已移出今日队列',
+    dropped: '已移除',
+  },
+  dao: {
+    mark: '事',
+    title: '未了之事 · 备忘',
+    sub: '记下便不丢',
+    entryHint: '随手记下未了之事 —— 不散不失，了结即勾',
+    intro: '三事为今日之要；余者皆可记于此 —— 今日可行，来日亦可。',
+    inputPh: '记下一桩未了之事…',
+    addAct: '记下',
+    today: '今日当行',
+    later: '来日再行',
+    done: '已了',
+    emptyAll: '尚无未了之事。\n想起什么便记一笔 —— 不会过期，也不会因未了而消散。',
+    emptyToday: '今日无未了之事',
+    emptyLater: '来日之事皆在此处，想起便记一笔',
+    emptyDone: '尚无可了之事',
+    planToday: '移至今日',
+    unplan: '置于来日',
+    drop: '作罢',
+    dropTitle: '就此作罢？',
+    dropNote: '此桩将从簿中移去 —— 不扣分，亦不留痕。',
+    dropNoteNode: '此关将从愿中移去，余关不受影响。',
+    dropNotePlan: '此功课将从今日簿中移去。',
+    cancel: '且慢',
+    counts: (t, l) => (t > 0 ? `今日 ${t} 桩 · 来日 ${l} 桩` : `来日 ${l} 桩`),
+    saved: '已记下',
+    doneToast: '了结一桩',
+    undoneToast: '又拾了回来',
+    planned: '已移至今日',
+    unplanned: '已置于来日',
+    dropped: '已移去',
+  },
+}
+
+/** 待办 · 备忘的三模式叫法（纯内置；改动随发版，故不接远端下发） */
+export function memoWords(mode: ModeId): MemoWords {
+  return LOCAL_MEMO_WORDS[mode] ?? LOCAL_MEMO_WORDS.normal
+}
+
+/**
+ * 三段卡片头里那枚**段小印字**（2026-09-29）。
+ *
+ * 与 `ACTION_BLOCK_MARK` 同一条口径：**它是骨架，不随模式变**。
+ * 换模式要换的是说法（待办 / 任务队列 / 未了之事、今天 / 今日队列 / 今日当行），
+ * 而"今 / 后 / 已"只回答"这是哪一段"—— 跟着模式换反而认不出。
+ */
+export const MEMO_SECTION_MARK = {
+  today: '今',
+  later: '后',
+  done: '已',
+} as const
+
 /**
  * 取某一块今日清单的解释，并把里面的名词占位符换成当前模式的叫法。
  * @param words 当前模式的计划词表（`planWords(mode.id)`）
+ * @param memo  当前模式的待办词表（`memoWords(mode.id)`）
  */
-export function actionSplit(key: ActionBlockKey, words: PlanWords): ActionBlockExplain {
+export function actionSplit(key: ActionBlockKey, words: PlanWords, memo: MemoWords): ActionBlockExplain {
   const b = LOCAL_ACTION_SPLIT[key]
-  const fill = (s: string) => s.replace(/\{daily\}/g, words.daily).replace(/\{step\}/g, words.today)
+  const fill = (s: string) => s.replace(/\{daily\}/g, words.daily).replace(/\{memo\}/g, memo.title)
   return { hint: fill(b.hint), name: fill(b.name), what: fill(b.what), eg: fill(b.eg), fate: fill(b.fate) }
 }
 
 /** 三块清单的固定顺序（弹解释时被点的那块会排到最前） */
-export const ACTION_BLOCK_ORDER: ActionBlockKey[] = ['three', 'daily', 'step']
+export const ACTION_BLOCK_ORDER: ActionBlockKey[] = ['three', 'daily', 'memo']
 
 /**
  * 三块「今日清单」的小印字（2026-09-22）。
  *
  * 与「把念头变成痕迹」那一串入口行（`EntryItem.mark`）同一套语言：一瞥即知是哪一类，
- * 不必先读标题。三块共用一套字、不随模式变 —— 模式只改名词（见 `actionSplit` / `planWords`）。
+ * 不必先读标题。三件事与日课那两枚字**不随模式变**（它们是骨架，见「我」页那一条口径）；
+ * 待办那块从 2026-09-29 起是**独立入口**，它的字跟着模式走（见 `memoWords().mark`）——
+ * 这里的 `memo` 只用于 `Record` 的完整性，页面不读它。
  */
 export const ACTION_BLOCK_MARK: Record<ActionBlockKey, string> = {
   three: '三',
   daily: '日',
-  step: '步',
+  memo: '办',
 }
 
 /**

@@ -28,8 +28,11 @@
 
 <script setup lang="ts">
 /**
- * PlanStep —— 一条「步子」行（今天要走的步子 / 待办池 / 计划详情共用）。
+ * PlanStep —— 一条「可勾的行」（计划详情 / 待办 · 备忘共用）。
  * 只做展示 + 一个勾选事件；逾期提示与挑战小印都按当前模式取词（config/lexicon.planWords）。
+ *
+ * 2026-09-29 起它也服务 `kind='memo'` 的待办条目（`item.kind === 'memo'` 时 planTitle 是空串，
+ * 于是不显示"来自哪条路"那一行 —— 待办不属于任何一条路）。
  *
  * 样式外置在 PlanStep.scss（超过 100 行，按项目约定拆出）。
  */

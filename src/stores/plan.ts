@@ -23,8 +23,18 @@ import { useTraceStore } from '@/stores/trace'
 import { useKnowledgeStore } from '@/stores/knowledge'
 import { logOnly, logTrace } from '@/utils/traceLog'
 
-/** long = 跨天的长期目标；today = 只活今天的一件事（单步，不挂节点） */
-export type PlanKind = 'long' | 'today'
+/**
+ * long  = 跨天的长期目标（可拆节点，也可做"每天重复一次"的日课）；
+ * today = 只活今天的一件事（单步，不挂节点）；
+ * memo  = 「待办 · 备忘」的一条（2026-09-29）。
+ *
+ * memo 与 today 的**唯一差别**就是"属于哪一天"：
+ *  - today 型生来属于某一天（`startDay`），那天没做完 → 进池 → 搁满 3 天被自动收走；
+ *  - memo **不排期就不属于任何一天**（只有可选的 `dueDay`），所以它不会因为过了零点而消失，
+ *    也不会被 `sweep()` 收走 —— 便签最忌讳的就是"我记的东西自己没了"。
+ * 它不进长路上限、不进期限档、不进日课，只在「待办 · 备忘」页出现。
+ */
+export type PlanKind = 'long' | 'today' | 'memo'
 export type PlanStatus = 'active' | 'done' | 'archived'
 /** 挑战三型（对齐规格 §4.4；普通计划可不填） */
 export type ChallengeType = 'abstain' | 'try' | 'cog'
@@ -167,6 +177,19 @@ export const TODAY_SHELF_LIMIT = 3
 /** 长期计划多少天没动作 → 提示「还继续吗」 */
 export const LONG_STALE_DAYS = 30
 
+/* ---------------- 待办 · 备忘（2026-09-29） ---------------- */
+
+/**
+ * 一条待办的文字上限。
+ * 与三件事的 40 字同口径：写长了它就不是"待办"，而是一段备注 —— 那该去「知」。
+ */
+export const MEMO_TEXT_MAX = 40
+/**
+ * 在办的待办条数上限（防它长成第二本日记）。
+ * 只数"还没办掉的"，办掉的进「已办」不占额度，且这个上限**只拦新增、不删旧数据**。
+ */
+export const MEMO_CAP = 200
+
 /* ---------------- 步骤嵌套（2026-09-17） ---------------- */
 
 /** 节点最深几层（根下第一层 = 1）。再深下去手机屏幕上就摆不下了，也说明这一步该拆成一条新路 */
@@ -179,18 +202,22 @@ export const NODE_INDENT_RPX = 24
  */
 export const PROGRESS_HORIZONS: readonly PlanHorizon[] = ['mid', 'long']
 
-/** 统一的「一条可勾的步子」视图模型（今天要走的步子 / 待办池共用） */
+/** 统一的「一条可勾的步子」视图模型（待办 · 备忘页的三段共用） */
 export interface StepItem {
-  /** 稳定 key：n-<planId>-<nodeId> / p-<planId> */
+  /** 稳定 key：n-<planId>-<nodeId> / p-<planId> / m-<planId> */
   key: string
-  kind: 'node' | 'plan'
+  /**
+   * node = 计划的一个叶子；plan = today 型（只活今天的一件事）；memo = 待办 · 备忘的一条。
+   * 页面据此决定"右侧给什么动作"（只有 memo 能改日子，只有 today 能"带回今天"）。
+   */
+  kind: 'node' | 'plan' | 'memo'
   planId: number
   nodeId?: number
   title: string
   planTitle: string
   /**
-   * 叶子在树里的父级路径（不含自己）—— 2026-09-17 步骤嵌套后，行大厅/待办池仍然**只吐叶子**
-   * 并平铺展示，靠这个字段说明"这是哪一段"，不必把整棵树搬进大厅。
+   * 叶子在树里的父级路径（不含自己）—— 2026-09-17 步骤嵌套后，待办页仍然**只吐叶子**
+   * 并平铺展示，靠这个字段说明"这是哪一段"，不必把整棵树搬进来。
    */
   path?: string
   done: boolean
@@ -198,6 +225,8 @@ export interface StepItem {
   overdue: boolean
   /** 已搁置天数（未逾期为 0） */
   shelfDays: number
+  /** 完成时刻（「已办」段按它倒序；老数据可能没有） */
+  doneAt?: number
   challenge?: ChallengeType
 }
 
@@ -601,7 +630,34 @@ export const usePlanStore = defineStore(
       return n
     }
 
-    /** 今天要走的步子：派到今天的未完成/已完成节点 ∪ today 型计划 */
+    /* ---------------- 待办 · 备忘（2026-09-29） ----------------
+     * 一条待办 = 一条 Plan（kind='memo'）。复用 Plan 而不是另开一个 store：
+     *   - 排期（dueDay）、勾选（toggleStep）、计分（action.todo）、周报的「一条路」（ref = plan-<id>）
+     *     与云备份全部白拿，而且**只有一份待办真相**；
+     *   - 代价是这里必须保证它不被当成"路"：activeLong / horizonPlans / dailyPlans / sweep
+     *     都只认 'long' / 'today'，新增遍历 plans 的代码时请一并确认。
+     */
+
+    /** 一条 memo 的视图模型（「以后」段按搁置天数排，搁得越久越靠前） */
+    function memoToItem(p: Plan, day: string): StepItem {
+      const overdue = Boolean(p.dueDay && p.dueDay < day)
+      return {
+        key: `m-${p.id}`,
+        kind: 'memo',
+        planId: p.id,
+        title: p.title,
+        planTitle: '',
+        done: p.status === 'done',
+        overdue,
+        shelfDays: overdue && p.dueDay ? diffDays(p.dueDay, day) : 0,
+        doneAt: p.doneAt,
+      }
+    }
+
+    /**
+     * 今天要办的：计划派到今天的节点 ∪ today 型的一件事 ∪ 排到今天的待办。
+     * 已完成的也留着 —— 用户要看到"今天确实做完了"，勾完当场蒸发是另一种折磨。
+     */
     function stepsOf(day = todayKey()): StepItem[] {
       const out: StepItem[] = []
       for (const plan of plans.value) {
@@ -628,6 +684,13 @@ export const usePlanStore = defineStore(
           })
           continue
         }
+        if (plan.kind === 'memo') {
+          /* 排到今天的才进「今天」段；没排期 / 排到别日的在 poolStepsOf 里 */
+          if (plan.dueDay !== day) continue
+          if (plan.status === 'archived') continue
+          out.push(memoToItem(plan, day))
+          continue
+        }
         if (plan.status !== 'active') continue
         /* 只吐叶子：父节点是分组，没有"今天做这一步"这回事（见「树的走法」） */
         for (const node of leavesOf(plan)) {
@@ -651,11 +714,19 @@ export const usePlanStore = defineStore(
       return out.sort((a, b) => Number(a.done) - Number(b.done))
     }
 
-    /** 待办池：未排期节点 ∪ 逾期未完成节点 ∪ 搁置中的 today 型计划 */
+    /**
+     * 「以后」段：未排期节点 ∪ 逾期未完成节点 ∪ 搁置中的 today 型 ∪ 没排到今天的待办。
+     * 这里的每一条都不催办、不扣分；待办那部分更是**永不自动消失**（见 sweep 的 kind 判断）。
+     */
     function poolStepsOf(day = todayKey()): StepItem[] {
       const out: StepItem[] = []
       for (const plan of plans.value) {
         if (plan.status !== 'active') continue
+        if (plan.kind === 'memo') {
+          if (plan.dueDay === day) continue // 今天的在 stepsOf 里，不重复出现
+          out.push(memoToItem(plan, day))
+          continue
+        }
         if (plan.kind === 'today') {
           if (plan.startDay >= day) continue
           out.push({
@@ -713,6 +784,10 @@ export const usePlanStore = defineStore(
     /**
      * 搁置满 TODAY_SHELF_LIMIT 天的 today 型计划自动归档。
      * 刻意**不留痕、不提示**：这是收走，不是惩罚，也不是成就。
+     *
+     * **只处理 today 型**（2026-09-29 明确）：待办（memo）永不自动收走 ——
+     * 它是"记着要做"的东西，被系统悄悄删掉就等于这本便签不可信。
+     * 计划节点也不在这里动（那是「路」的一部分，归它自己那张详情页管）。
      */
     function sweep(day = todayKey()): number {
       let n = 0
@@ -847,6 +922,77 @@ export const usePlanStore = defineStore(
       plans.value = plans.value.filter((p) => p.id !== id)
     }
 
+    /* ---------------- 待办 · 备忘的增删改（2026-09-29） ---------------- */
+
+    /**
+     * 记一条待办。
+     * `day` 省略 = 先进「以后」；给了日期 = 那天出现在「今天」段
+     * （当天没办完就沉回「以后」，仍然不消失）。
+     * **超上限只拦新增，绝不动老数据** —— 便签的底线是"我记的东西不会被系统删掉"。
+     */
+    function addMemo(title: string, day?: string): Plan | null {
+      const text = title.trim().slice(0, MEMO_TEXT_MAX)
+      if (!text) return null
+      const open = plans.value.filter((p) => p.kind === 'memo' && p.status === 'active').length
+      if (open >= MEMO_CAP) {
+        uni.showToast({ title: `在办的待办已满 ${MEMO_CAP} 条，先办掉一些`, icon: 'none' })
+        return null
+      }
+      const now = Date.now()
+      const created: Plan = {
+        id: nextId(),
+        title: text,
+        kind: 'memo',
+        nodes: [],
+        startDay: todayKey(),
+        dueDay: day || undefined,
+        status: 'active',
+        updatedAt: now,
+      }
+      plans.value.unshift(created)
+      return created
+    }
+
+    /** 排到某天（`day` 传空串 = 退回「以后」）。只对 memo 生效；计划节点走 scheduleNode */
+    function setMemoDay(id: number, day: string): boolean {
+      const memo = byId(id)
+      if (!memo || memo.kind !== 'memo') return false
+      const ok = updatePlan(id, { dueDay: day })
+      /* 已经办掉的又改了日子 → 它重新是"要办的"（与勾选的取消同一条路） */
+      if (ok && memo.status === 'done') reopenPlan(id)
+      return ok
+    }
+
+    /** 待办：不做了（直接移除）。不扣分、不留痕 —— 记错一条不该有代价 */
+    function dropMemo(id: number): boolean {
+      const memo = byId(id)
+      if (!memo || memo.kind !== 'memo') return false
+      removePlan(id)
+      return true
+    }
+
+    /** 已办的（按完成时刻倒序）：那一刻是真实的，所以它不进删除队列，只进这一列 */
+    function memoDoneOf(): StepItem[] {
+      const day = todayKey()
+      return plans.value
+        .filter((p) => p.kind === 'memo' && p.status === 'done')
+        .sort((a, b) => (b.doneAt ?? b.updatedAt) - (a.doneAt ?? a.updatedAt))
+        .map((p) => memoToItem(p, day))
+    }
+
+    /**
+     * 「待办 · 备忘」入口的读数：今天还要办几件（不含已勾的）、以后攒着几件。
+     * 与页面用的是同一个口径（stepsOf / poolStepsOf），所以徽标永远和进去看到的一致。
+     */
+    const memoCounts = computed(() => {
+      const today = stepsOf()
+      return {
+        todayLeft: today.filter((s) => !s.done).length,
+        todayAll: today.length,
+        later: poolStepsOf().length,
+      }
+    })
+
     /** 已收束 / 已归档的计划「重新开始」：状态回 active（不再补发修为、回望也不重复写卡） */
     function reopenPlan(id: number): boolean {
       const plan = byId(id)
@@ -957,17 +1103,18 @@ export const usePlanStore = defineStore(
     }
 
     /**
-     * 勾选 / 取消一条步子（节点或 today 型计划）。
+     * 勾选 / 取消一条步子（节点 / today 型计划 / 待办备忘）。
      * 计分规则在本方法里闭环，页面不重复实现：
      *   完成 → action.todo（同计划同日第二次起 value: 0）；节点全完成 → 自动收束并记 action.challenge。
+     *   **待办（memo）到这就结束**：它不记 action.challenge（closePlan 只认 'long'）、没有回望。
      * 返回 { done, closed }：done=本次勾选后的完成态；closed=本次是否触发计划收束（页面据此弹回望框）。
      */
     function toggleStep(planId: number, nodeId: number | undefined, day = todayKey()): { done: boolean; closed: boolean } {
       const plan = byId(planId)
       if (!plan) return { done: false, closed: false }
 
-      if (plan.kind === 'today' || nodeId === undefined) {
-        // 单步计划：整条勾掉即完成 → 直接收束
+      if (plan.kind === 'today' || plan.kind === 'memo' || nodeId === undefined) {
+        // 单步的一条：整条勾掉即完成 → 直接收束（memo 的收束就是"办掉了"）
         const closing = plan.status === 'active'
         if (closing) {
           const value = scoredToday(plan.id, day) ? 0 : undefined
@@ -1176,6 +1323,12 @@ export const usePlanStore = defineStore(
       archivePlan,
       removePlan,
       reopenPlan,
+      /* 待办 · 备忘（2026-09-29）：今天 / 以后 / 已办 三段的数据口 */
+      addMemo,
+      setMemoDay,
+      dropMemo,
+      memoDoneOf,
+      memoCounts,
       addNode,
       updateNode,
       removeNode,

@@ -277,6 +277,13 @@
             "navigationStyle": "custom",
             "navigationBarTitleText": "身体电量"
           }
+        },
+        {
+          "path": "memo/index",
+          "style": {
+            "navigationStyle": "custom",
+            "navigationBarTitleText": "待办 · 备忘"
+          }
         }
       ]
     },

@@ -17,28 +17,37 @@
   }
 }
 
+/*
+ * 勾选框：**小圆角方，不是圆形**（2026-09-29 用户反馈"圆圈有点大，改成小一点的方块"）。
+ * 尺寸与圆角**与行大厅「今日三件事」的 `.todo__check` 逐字对齐**（36rpx / 10rpx / 淡线）——
+ * 两处都是"一件事的勾"，手势与观感该是一套；圆角方也与全项目的"印 / 纸"语言一致
+ * （`block__mark`、`entry__mark` 都是圆角方）。
+ */
 .step__check {
   flex: none;
+  box-sizing: border-box;
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 44rpx;
-  height: 44rpx;
-  margin-top: 2rpx;
-  border: 2rpx solid $gz-ink-3;
-  border-radius: 50%;
+  width: 36rpx;
+  height: 36rpx;
+  /* 36rpx 的方比原来 44rpx 的圆矮，上边距要让多一点才与首行文字对齐 */
+  margin-top: 6rpx;
+  /* 未完成用淡线（不抢注意力），与三件事同一条口径 */
+  border: 2rpx solid $gz-line;
+  border-radius: 10rpx;
   color: transparent;
   transition: all 0.2s ease;
 }
 
 .step__check.is-on {
-  background: $gz-cta-bg;
-  border-color: $gz-cta-bg;
+  background: $gz-accent;
+  border-color: $gz-accent;
   color: $gz-on-cta;
 }
 
 .step__tick {
-  font-size: 26rpx;
+  font-size: 22rpx;
   font-weight: 700;
 }
 

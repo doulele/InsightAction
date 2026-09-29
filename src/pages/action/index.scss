@@ -19,7 +19,9 @@
  * 与「把念头变成痕迹」的入口行同一语言：小印 + 名称 + 「?」+ 计数徽章。
  * 一眼看出"这是同一类东西，但分工不同"，也把首屏从六行解释里解放出来。
  *
- * 主角标识只留给三件事（`block--hero` 的模式色带）；日课与步子是可折叠的分类行。
+ * 主角标识只留给三件事（`block--hero` 的模式色带）；日课是可折叠的分类行。
+ * （第三块「今天要走的步子」2026-09-29 搬成了独立页「待办 · 备忘」，
+ * 本页只留一张入口卡，样式见下面的 `.todo-card`。）
  */
 .block {
   position: relative;
@@ -343,20 +345,6 @@
   color: $gz-accent;
 }
 
-/* ---- 今天要走的步子（三件事之外的推进） ---- */
-/* 外壳、行头与计数都交给 .block（2026-09-22 统一），这里只留列表内部 */
-.steps__list {
-  margin-top: 8rpx;
-}
-
-.steps__empty {
-  display: block;
-  margin-top: 18rpx;
-  font-size: $gz-fs-caption;
-  line-height: 1.8;
-  color: $gz-ink-2;
-}
-
 /*
  * 三本待办账的分工说明（2026-09-17）：三块标题下面各一行小字。
  * 为什么不省掉：三个列表长得像，不点明"它管什么"，用户会以为重复了三遍。
@@ -374,51 +362,80 @@
   margin-top: 14rpx;
 }
 
-.steps__quick {
-  display: flex;
-  gap: 14rpx;
-  margin-top: 22rpx;
+/* ---- 待办 · 备忘（2026-09-29，取代原来的「今天要走的步子」） ----
+ * 它是一张**入口卡**：与 `.block` 同一套语言（小印 + 名称 + 徽章），但整块可点、
+ * 右侧带一枚箭头 —— 用户要一眼看出"这是一扇门，不是清单"。
+ * 上一版把这件事摊成折叠清单还叫「今天要走的步子」，没人看得懂（本次改掉的就是这个）。
+ */
+.todo-card {
+  margin-top: 24rpx;
+  padding: 26rpx 30rpx;
+  background: $gz-surface;
+  border: 1rpx solid $gz-line;
+  border-radius: $gz-radius-lg;
 }
 
-.steps__input {
-  flex: 1;
-  min-width: 0;
-  padding: 18rpx 22rpx;
-  border: 1rpx dashed $gz-line;
-  border-radius: $gz-radius-md;
-  font-size: $gz-fs-small;
+.todo-card__row {
+  display: flex;
+  align-items: center;
+}
+
+.todo-card__mark {
+  flex: none;
+  box-sizing: border-box;
+  width: 56rpx;
+  height: 56rpx;
+  margin-right: 14rpx;
+  font-size: 28rpx;
+  font-weight: 600;
+  line-height: 54rpx;
+  color: $gz-accent;
+  text-align: center;
+  background: $gz-accent-soft;
+  border: 1rpx solid $gz-accent;
+  border-radius: 14rpx;
+}
+
+.todo-card__label {
+  font-size: 32rpx;
+  font-weight: 700;
   color: $gz-ink;
 }
 
-.steps__ph {
-  color: $gz-ink-3;
-}
-
-.steps__btn {
+.todo-card__badge {
   flex: none;
-  display: flex;
-  align-items: center;
-  padding: 0 32rpx;
-  border-radius: $gz-radius-md;
-  background: $gz-accent;
-  color: $gz-on-cta;
-  font-size: $gz-fs-small;
-  font-weight: 600;
+  margin-left: auto;
+  padding: 4rpx 16rpx;
+  font-size: $gz-fs-caption;
+  line-height: 1.6;
+  border-radius: 999rpx;
+  font-variant-numeric: tabular-nums;
 }
 
-/* 舒适线提示：只提示不拦截（2026-09-15 定案） */
-.steps__warn {
-  display: block;
-  margin-top: 12rpx;
-  font-size: $gz-fs-caption;
+.todo-card__badge.is-accent {
+  background: $gz-accent-soft;
   color: $gz-accent;
 }
 
-.steps__pool {
+.todo-card__badge.is-muted {
+  background: $gz-line-soft;
+  color: $gz-ink-3;
+}
+
+.todo-card__go {
+  flex: none;
+  margin-left: 12rpx;
+  font-size: 30rpx;
+  color: $gz-ink-3;
+}
+
+/* 入口说明句：一句话回答"这儿是干嘛的"，与三件事的分工就靠它说清 */
+.todo-card__hint {
   display: block;
   margin-top: 12rpx;
-  font-size: $gz-fs-caption;
-  color: $gz-ink-3;
+  font-size: 20rpx;
+  letter-spacing: 0.02em;
+  color: $gz-ink-2;
 }
 
 /* ---- 在走的长路 ---- */
