@@ -169,11 +169,32 @@ export function collectBackup(): BackupPayload {
   return { app: 'guanzhi', schema: SCHEMA_VERSION, exportedAt: new Date().toISOString(), data }
 }
 
-/** 备份摘要（设置页确认弹框里展示） */
+/**
+ * 字符串的 UTF-8 字节长度。
+ *
+ * 为什么要自己算：小程序环境里没有 `TextEncoder`，而 `str.length` 数的是**字符**——
+ * 中文一个字算 1，实际占 3 字节。备份体积与服务端 `meta.bytes`（Buffer.byteLength）
+ * 必须是同一把尺子，否则"这份比云端小多少"会系统性低估，缩水提醒形同虚设。
+ * 算法就是标准的 UTF-8 编码规则（含代理对的四字节字符）。
+ */
+export function byteLength(text: string): number {
+  let n = 0
+  for (let i = 0; i < text.length; i += 1) {
+    const c = text.charCodeAt(i)
+    if (c < 0x80) n += 1
+    else if (c < 0x800) n += 2
+    else if (c >= 0xd800 && c <= 0xdbff) {
+      n += 4
+      i += 1
+    } else n += 3
+  }
+  return n
+}
+
+/** 备份摘要（设置页确认弹框里展示；体积与服务端同一口径，见 byteLength） */
 export function summarize(payload: BackupPayload): BackupSummary {
   const storeCount = Object.keys(payload.data).length
-  // 粗略体积（按字符数估算，仅用于给用户一个量级概念）
-  const sizeKB = Math.max(1, Math.round(JSON.stringify(payload).length / 1024))
+  const sizeKB = Math.max(1, Math.round(byteLength(JSON.stringify(payload)) / 1024))
   return { storeCount, sizeKB, exportedAt: payload.exportedAt }
 }
 

@@ -30,10 +30,27 @@ export interface RequestOptions<D = unknown> {
 
 const DEFAULT_TIMEOUT = 15000
 
-/** 拼接完整地址：全量 URL 原样返回，相对路径挂在 apiBaseUrl 下 */
+/**
+ * 拼接完整地址：全量 URL 原样返回，相对路径挂在 apiBaseUrl 下。
+ *
+ * ⚠️ 拼出来必须仍是 **绝对地址** —— 否则 `wx.request` 会直接以
+ * `request:fail invalid url` 拒绝，请求**根本发不出去**（真机上看着像"接口报错"，
+ * 其实服务器压根没收到）。两种典型来源，都是打包问题、不是网络问题：
+ *   · 空串：打包时没带上 `VITE_API_BASE_URL` → 拼出 `/sync/backup` 这种相对路径；
+ *   · 本机地址：把 `dist/dev/mp-weixin`（开发产物，指向 http://127.0.0.1:3002）
+ *     当成正式包上传 → 真机 / 电脑微信不认 http + IP 的地址。
+ * 2026-10-12 线上就栽过一次（线上包是开发产物），所以这里显式兜住并说清原因 ——
+ * 宁可在页面上弹一句人话，也别再让用户看到 "request:fail invalid url"。
+ */
 function normalizeUrl(url: string): string {
-  if (/^https?:\/\//.test(url)) return url
-  return `${ENV.apiBaseUrl.replace(/\/+$/, '')}/${url.replace(/^\/+/, '')}`
+  const full = /^https?:\/\//.test(url) ? url : `${ENV.apiBaseUrl.replace(/\/+$/, '')}/${url.replace(/^\/+/, '')}`
+  if (!/^https?:\/\//.test(full)) {
+    throw new BizError(
+      -1,
+      `接口地址没配好（本包请求的是「${full || '(空)'}」）—— 请用 npm run build:mp-weixin 重新打包上传`,
+    )
+  }
+  return full
 }
 
 /** 响应体可能是 JSON 字符串（部分网关），统一解析为对象 */

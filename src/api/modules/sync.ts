@@ -2,11 +2,17 @@
  * 云备份接口（需登录）。
  *
  * 登录本身不在这里 —— 见 `api/modules/auth.ts`（`wxLogin()`）。
- * 本模块只负责「已拿到 token 之后」的四件事：看元信息 / 取回 / 上传 / 删除。
+ * 本模块只负责「已拿到 token 之后」的几件事：看元信息 / 列版本 / 取回某一版 / 上传 / 删除。
  * 调用方一律通过 `account.withAuth()` 拿 token，不要自己调登录。
+ *
+ * 2026-10-12 起云端保留**多个版本**（默认 5 份历史），恢复时可以挑一版 ——
+ * 所以多了 `fetchVersions()` 与「按 id 取回」，`which=prev` 只作为旧口径的兼容保留。
  */
 import { http } from '@/api/http'
 import { SCHEMA_VERSION } from '@/config/schema'
+
+/** 快照来源：手动备份 / 自动备份 / 恢复前留档 / 旧版的"上一版" */
+export type SnapshotSource = 'manual' | 'auto' | 'pre-restore' | 'prev'
 
 export interface SyncMeta {
   updatedAt: string
@@ -16,11 +22,29 @@ export interface SyncMeta {
   gzBytes?: number
   /** 包含的 store 数量 */
   stores: number
-  source: 'manual' | 'auto' | 'prev'
-  /** 服务器是否还留着"上一版"（误覆盖救援用） */
+  source: SnapshotSource
+  /** 服务器是否还留历史版本（误覆盖救援用）—— 等价于 versions > 0 */
   hasPrev?: boolean
+  /** 服务器保留的**历史版本份数**（不含"最新"那一份） */
+  versions?: number
   /** 数据结构版本（服务端回传；未回传时前端按 1 处理） */
   schema?: number
+  /** 本次上传的内容与上一版完全相同（没有新变化）—— 服务端会去重、不占版本名额 */
+  unchanged?: boolean
+}
+
+/** 一个可恢复的版本：meta + 它在服务器上的 id（取回时用它，而不是用序号） */
+export interface SyncVersion extends SyncMeta {
+  /** 'latest' 或 'v<时间戳>' */
+  id: string
+  /** 是不是当前的最新快照 */
+  latest: boolean
+}
+
+export interface VersionListResult {
+  versions: SyncVersion[]
+  /** 服务器保留的历史版本份数上限（用于文案"最多留 N 版"） */
+  keep: number
 }
 
 export interface BackupResult {
@@ -44,15 +68,22 @@ export function fetchSyncMeta(token: string): Promise<SyncMeta | null> {
 }
 
 /**
- * 上传一份快照（source = 'auto' 时服务端会做缩水保护）。
+ * 可恢复的版本列表（最新在前，其后是各历史版本）。
+ * 只回元信息，不回正文 —— 用户挑定一版再取那一版。
+ */
+export function fetchVersions(token: string): Promise<VersionListResult> {
+  return http.get<VersionListResult>('/sync/versions', { header: authHeader(token), showError: false })
+}
+
+/**
+ * 上传一份快照（source = 'auto' / 'pre-restore' 时服务端会做缩水保护）。
  *
- * schema 一并上报（后端目前可忽略，属向前兼容字段）：
- * 将来后端把它存进 meta 并回传，就能在"用旧客户端恢复新快照"时提前拦下。
+ * schema 一并上报（服务端存进 meta 并回传，用于"旧客户端恢复新快照"时提前拦下）。
  */
 export function uploadBackup(
   token: string,
   data: Record<string, string>,
-  source: 'manual' | 'auto',
+  source: 'manual' | 'auto' | 'pre-restore',
   schema: number = SCHEMA_VERSION,
 ): Promise<BackupResult> {
   return http.post<BackupResult, { data: Record<string, string>; source: string; schema?: number }>(
@@ -62,9 +93,12 @@ export function uploadBackup(
   )
 }
 
-/** 取回快照（which = 'prev' 取"上一版"，用于误覆盖救援） */
-export function downloadSnapshot(token: string, which: 'latest' | 'prev' = 'latest'): Promise<SnapshotResult> {
-  return http.get<SnapshotResult>(`/sync/snapshot?which=${which}`, {
+/**
+ * 取回某一版快照。
+ * @param id 'latest'（缺省）或列表里给的 `v<时间戳>`
+ */
+export function downloadSnapshot(token: string, id: string = 'latest'): Promise<SnapshotResult> {
+  return http.get<SnapshotResult>(`/sync/snapshot?id=${encodeURIComponent(id)}`, {
     header: authHeader(token),
     showError: false,
   })

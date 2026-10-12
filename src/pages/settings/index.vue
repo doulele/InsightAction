@@ -179,11 +179,17 @@
       </view>
     </view>
 
-    <!-- 4 · 数据 -->
+    <!--
+      4 · 数据（本机文件那一路，2026-10-12 整理）
+      与下面「云备份」是**两件事**，文案上彻底分开：
+        · 这里：把数据写成本机 JSON 文件 → 转发到聊天 → 新机上从聊天里选文件恢复，**全程不走网络**；
+        · 下面：加密上传到服务器 → 换机时按版本取回。
+      标题分别用「导出备份文件 / 从备份文件恢复」，副标题各自写明要不要联网。
+    -->
     <view class="section">
       <view class="section__head">
         <text class="section__title">数据</text>
-        <text class="section__hint">本机存储 · 可导出 · 可恢复</text>
+        <text class="section__hint">本机文件 · 全程不上传服务器</text>
       </view>
       <view class="cards">
         <view class="row" hover-class="gz-hover" @click="exportToday">
@@ -195,7 +201,7 @@
         </view>
         <view class="row" hover-class="gz-hover" @click="exportAll">
           <view class="row__body">
-            <text class="row__title">导出全部数据</text>
+            <text class="row__title">导出备份文件</text>
             <text class="row__sub">{{ $p('settings.exportAll.sub') }}</text>
           </view>
           <view class="row__arrow" />
@@ -209,7 +215,7 @@
         </view>
         <view class="row" hover-class="gz-hover" @click="importFromFile">
           <view class="row__body">
-            <text class="row__title">从备份恢复</text>
+            <text class="row__title">从备份文件恢复</text>
             <text class="row__sub">{{ $p('settings.importFile.sub') }}</text>
           </view>
           <view class="row__arrow" />
@@ -231,7 +237,12 @@
       </view>
     </view>
 
-    <!-- 5 · 云备份：默认关闭；开启后才与服务器交互用户数据（微信标识匿名） -->
+    <!--
+      5 · 云备份：默认关闭；开启后才与服务器交互用户数据（微信标识匿名）。
+      2026-10-12 改：手动备份先弹二次确认（含与云端的体积对比）；恢复改成"先列版本再挑一版"。
+      「从云端恢复」这一行**不再依赖本机的 lastBackupAt** —— 换机后本机没有记录、
+      但云端可能好好有一份备份，旧写法会把它藏起来（那正是最需要它的时候）。
+    -->
     <view class="section">
       <view class="section__head">
         <text class="section__title">云备份</text>
@@ -253,31 +264,14 @@
         <view v-if="account.cloudEnabled" class="row" hover-class="gz-hover" @click="backupToCloud">
           <view class="row__body">
             <text class="row__title">立即备份</text>
-            <text class="row__sub">把本机当前进度上传一份（手动备份不做缩水拦截）</text>
+            <text class="row__sub">把本机当前进度上传一份 · 上传前先确认，旧的那份自动存进历史版本</text>
           </view>
           <view class="row__arrow" />
         </view>
-        <view
-          v-if="account.cloudEnabled && cloudHasSnapshot"
-          class="row"
-          hover-class="gz-hover"
-          @click="restoreFromCloud('latest')"
-        >
+        <view v-if="account.cloudEnabled" class="row" hover-class="gz-hover" @click="openVersions">
           <view class="row__body">
             <text class="row__title">从云端恢复</text>
-            <text class="row__sub">取回最近一次云端快照（覆盖本机，需二次确认）</text>
-          </view>
-          <view class="row__arrow" />
-        </view>
-        <view
-          v-if="account.cloudEnabled && cloudHasSnapshot"
-          class="row"
-          hover-class="gz-hover"
-          @click="restoreFromCloud('prev')"
-        >
-          <view class="row__body">
-            <text class="row__title">恢复上一版</text>
-            <text class="row__sub">误覆盖时的救援入口 · 服务器只保留一份上一版</text>
+            <text class="row__sub">{{ restoreRowSub }}</text>
           </view>
           <view class="row__arrow" />
         </view>
@@ -472,6 +466,64 @@
       </view>
     </GzDialog>
 
+    <!--
+      立即备份的二次确认（2026-10-12）：上传前必须让用户看清"现在多大、云端多大"。
+      若本机这份明显小于云端 → 换 danger 变体 + 改标题（这正是"备份上去的也是错的"那种事故，
+      冷冰冰一句"确定吗"挡不住；把可能的后果说出来才挡得住）。
+    -->
+    <GzDialog
+      :variant="backupPrev?.shrunk ? 'danger' : 'default'"
+      :show="backupAskOpen"
+      :title="backupAskTitle"
+      :content="backupAskContent"
+      :note="backupAskNote"
+      cancel-text="取消"
+      :confirm-text="backupPrev?.shrunk ? '仍然上传' : '上传'"
+      @cancel="backupAskOpen = false"
+      @confirm="confirmBackup"
+    />
+
+    <!--
+      云端版本列表（2026-10-12）：点「从云端恢复」先列出版本让用户挑，
+      而不是替他决定"要最新还是上一版"。列表项只吃元信息（时间/项数/体积/来源），
+      选中后才去取那一版的正文。
+    -->
+    <GzDialog
+      :show="versionsOpen"
+      title="从云端恢复"
+      :subtitle="versionsSub"
+      :banner="false"
+      :show-cancel="false"
+      confirm-text="关闭"
+      @confirm="versionsOpen = false"
+    >
+      <view class="ver">
+        <text v-if="versionsLoading" class="ver__empty">正在读取云端版本…</text>
+        <template v-else>
+          <view
+            v-for="v in versions"
+            :key="v.id"
+            class="ver__item"
+            hover-class="gz-hover"
+            @click="pickVersion(v)"
+          >
+            <view class="ver__body">
+              <view class="ver__head">
+                <text class="ver__time">{{ formatBackupTime(v.updatedAt) }}</text>
+                <text v-if="v.latest" class="ver__tag is-latest">最新</text>
+                <text class="ver__tag">{{ SOURCE_LABEL[v.source] || v.source }}</text>
+              </view>
+              <text class="ver__sub">{{ v.stores }} 项 · 约 {{ sizeKB(v.bytes) }}KB</text>
+            </view>
+            <text class="ver__go">恢复</text>
+          </view>
+          <text v-if="!versions.length" class="ver__empty">
+            云端还没有备份 —— 先回去点一次「立即备份」。
+          </text>
+        </template>
+      </view>
+    </GzDialog>
+
     <!-- 覆盖恢复确认：备份文件与云端快照共用（覆盖式操作，必须二次确认） -->
     <GzDialog
       variant="danger"
@@ -550,7 +602,18 @@ import {
 } from '@/utils/localBackup'
 import type { BackupPayload, BackupSummary } from '@/utils/localBackup'
 import { buildArchive, writeArchiveFile } from '@/utils/archive'
-import { backupNow, disableCloudBackup, fetchCloudSnapshot } from '@/utils/cloudBackup'
+import {
+  backupBeforeRestore,
+  backupNow,
+  disableCloudBackup,
+  fetchCloudSnapshot,
+  loadCloudMeta,
+  loadCloudVersions,
+  previewBackup,
+} from '@/utils/cloudBackup'
+import type { BackupPreview } from '@/utils/cloudBackup'
+import type { SyncMeta, SyncVersion } from '@/api/modules/sync'
+import { DEFAULT_KEEP_VERSIONS, SOURCE_LABEL } from '@/config/backup'
 import { showModal } from '@/utils/dialog'
 import { AI_CONSENT, aiDeniedText, applyAiAccess, fetchAiAccess } from '@/utils/aiAccess'
 import { aiReviewList, type AiApplyState } from '@/api/modules/ai'
@@ -577,6 +640,13 @@ onShow(() => {
   daily.ensureToday()
   /* AI 那一块的状态（是不是管理员 / 申请到哪一步）—— 见 refreshAiAccess 的说明 */
   void refreshAiAccess()
+  /*
+   * 云端备份的状态也要按服务端说的来（2026-10-12）：现在是多版本，
+   * "有没有备份 / 有几版 / 最近一次什么时候"本机那份 lastBackupAt 说不了 ——
+   * 换机之后它是空的，而云端可能好好躺着几版，旧写法会把「从云端恢复」整行藏起来
+   * （偏偏那正是最需要它的时刻）。
+   */
+  void refreshCloudMeta()
 })
 
 /** 返回：正常栈内 navigateBack；异常兜底回「我」大厅 */
@@ -615,11 +685,15 @@ const switchNote = computed(() => p('switch.note', targetMeta.value.id))
 
 const dangerKind = ref<'resetToday' | 'resetAll' | null>(null)
 const dangerTitle = computed(() => (dangerKind.value === 'resetToday' ? '重置今日三件事？' : '重置全部修行数据？'))
-const dangerNote = computed(() =>
-  dangerKind.value === 'resetToday'
-    ? '将清空今天的三条待办与完成状态。跨天本就会自动重置，此操作仅影响今天。'
-    : '将清空：修为、等级、徽章、知识卡、习惯、痕迹、盲盒、测评、定时与收藏等全部修行记录。此操作不可撤销，语言与提醒偏好会保留。',
-)
+const dangerNote = computed(() => {
+  if (dangerKind.value === 'resetToday') {
+    return '将清空今天的三条待办与完成状态。跨天本就会自动重置，此操作仅影响今天。'
+  }
+  /* 口径按"有没有退路"分：开了云备份的先留档，没开的就如实说清没有副本 */
+  return account.cloudEnabled
+    ? '将清空：修为、等级、徽章、知识卡、习惯、痕迹、盲盒、测评、定时与收藏等全部修行记录（语言与提醒偏好保留）。开始前会先把现在这份存进云端历史版本，之后可以恢复回来。'
+    : '将清空：修为、等级、徽章、知识卡、习惯、痕迹、盲盒、测评、定时与收藏等全部修行记录。语言与提醒偏好会保留。未开启云备份 —— 清掉就没有副本了，此操作不可撤销。'
+})
 
 function resetToday(): void {
   dangerKind.value = 'resetToday'
@@ -655,6 +729,13 @@ async function runDanger(): Promise<void> {
   let revoked: { ok: number; failed: number }
   try {
     revoked = await share.revokeAll()
+    /*
+     * 清空之前先给"现在这份"留一版（2026-10-12）。
+     * 用户报过"不知道为什么数据会被清理掉" —— 重置是这类事故里最常见的一步，
+     * 而它以前是**不可逆**的。留档对用户是纯收益：开了云备份就多一个可恢复的版本，
+     * 没开则什么都不会发生（backupBeforeRestore 自己跳过）。
+     */
+    await backupBeforeRestore()
     resetPracticeData()
   } finally {
     uni.hideLoading()
@@ -676,14 +757,27 @@ async function runDanger(): Promise<void> {
 
 /** 待应用的备份（文件或云端），非空即弹覆盖确认 */
 const restorePayload = ref<BackupPayload | null>(null)
-const restoreFrom = ref<'file' | 'cloud-latest' | 'cloud-prev'>('file')
+/** 这份待恢复的数据从哪来：本机文件 / 云端某一版（文案与"会不会丢步数"都按它分） */
+const restoreFrom = ref<'file' | 'cloud'>('file')
 const restoreSummary = computed(() => (restorePayload.value ? summarize(restorePayload.value) : null))
-const restoreTitle = computed(() => (restoreFrom.value === 'file' ? '用这份备份覆盖本机？' : '用云端备份覆盖本机？'))
+const restoreTitle = computed(() => (restoreFrom.value === 'file' ? '用这份文件覆盖本机？' : '用这一版云端备份覆盖本机？'))
 const restoreNote = computed(() => {
   const s = restoreSummary.value
   if (!s) return ''
-  const src = restoreFrom.value === 'file' ? '备份文件' : restoreFrom.value === 'cloud-prev' ? '云端上一版' : '云端快照'
-  return `将用${src}覆盖本机 ${s.storeCount} 项数据（约 ${s.sizeKB}KB，导出于 ${formatBackupTime(s.exportedAt)}）。覆盖后本机现有进度会被替换，且无法撤销。`
+  const head = restoreFrom.value === 'file'
+    ? `将用备份文件覆盖本机 ${s.storeCount} 项数据（约 ${s.sizeKB}KB，导出于 ${formatBackupTime(s.exportedAt)}）。`
+    : `将用这一版云端备份覆盖本机 ${s.storeCount} 项数据（约 ${s.sizeKB}KB，存于 ${formatBackupTime(s.exportedAt)}）。`
+  const lines = [
+    head,
+    restoreFrom.value === 'file'
+      ? '文件备份里有全部数据（含步数与时间胶囊）。覆盖后本机现有进度会被替换。'
+      : '云端备份不含步数与时间胶囊（这两项只在本机，会保持现状）。',
+    /* 2026-10-12：恢复不再是不可逆的 —— 覆盖前先给"现在的本机"留一版 */
+    account.cloudEnabled
+      ? '覆盖之前会把你现在的数据也上传存成一版，恢复错了还能回来。'
+      : '本机现有进度会被替换（未开启云备份，这次覆盖无法回退）。',
+  ]
+  return lines.join('\n')
 })
 
 /**
@@ -709,10 +803,11 @@ async function exportAll(): Promise<void> {
 
   const ok = await new Promise<boolean>((resolve) => {
     showModal({
-      title: '导出全部数据？',
+      title: '导出备份文件？',
       content:
         `共 ${sum.storeCount} 项、约 ${sum.sizeKB}KB。\n`
-        + '会生成一个 JSON 备份文件并转发到聊天里，请自己留存好 —— 全程不上传服务器。',
+        + '会生成一个 JSON 文件并转发到聊天里，请自己留存好 —— 全程不上传服务器；'
+        + '换机时在这个页面选「从备份文件恢复」，从聊天里挑这份文件即可。',
       confirmText: '导出',
       cancelText: '算了',
       success: (r) => resolve(!!r.confirm),
@@ -813,14 +908,27 @@ function cancelRestore(): void {
   restorePayload.value = null
 }
 
-/** 真正落地恢复：写 storage + 回写内存 store，然后重启到启动页（让所有页面吃上新数据） */
-function applyRestore(): void {
+/** 真正落地恢复：先给"现在的本机"留一版 → 写 storage + 回写内存 store → 重启到启动页 */
+async function applyRestore(): Promise<void> {
   const payload = restorePayload.value
   restorePayload.value = null
   if (!payload) return
-  /* 恢复要写全部 storage + patch 30 个 store，全是同步操作；给个转圈免得像卡死 */
-  uni.showLoading({ title: '正在恢复…', mask: true })
   try {
+    /*
+     * ① 恢复前留档（2026-10-12）。
+     *
+     * 为什么这一步值一条网络请求：恢复是覆盖式的，用户挑错版本 / 挑到一份别人误传的旧数据，
+     * 在以前就是**再也回不去**（本机被覆盖、云端那份也是同一份）。留一版之后，
+     * 最坏情况也只是再进一次这个列表、把"恢复前留档"那一版取回来。
+     *
+     * 未开启云备份 / 本机已经是空数据时，它会自己跳过（见 backupBeforeRestore）。
+     */
+    if (account.cloudEnabled) {
+      uni.showLoading({ title: '正在留档…', mask: true })
+      await backupBeforeRestore()
+    }
+    /* ② 写全部 storage + patch 30 个 store，全是同步操作；给个转圈免得像卡死 */
+    uni.showLoading({ title: '正在恢复…', mask: true })
     const result = applyBackup(payload)
     uni.hideLoading()
     uni.showToast({ title: `${p('toast.restored')} · ${result.restoredStores} 项`, icon: 'none' })
@@ -837,16 +945,84 @@ function applyRestore(): void {
 const cloudIntroOpen = ref(false)
 /** 关闭云备份（删除云端数据）确认 */
 const cloudDeleteOpen = ref(false)
-/** 云端是否有可恢复的快照（未备份过则为 false） */
-const cloudHasSnapshot = computed(() => Boolean(account.lastBackupAt))
+/**
+ * 云端最新快照的元信息（含历史份数）。
+ *
+ * 为什么不看本机的 `lastBackupAt`（2026-10-12 改）：换机之后本机这份记录是空的，
+ * 而云端可能好好躺着好几版备份 —— 拿本机记录判断，等于在最需要「从云端恢复」的时候
+ * 把它整行藏起来。所以一律以服务端 `/sync/meta` 的答复为准。
+ */
+const cloudMeta = ref<SyncMeta | null>(null)
+/** 云端可恢复的版本列表（打开恢复面板时拉一次，只含元信息） */
+const versions = ref<SyncVersion[]>([])
+const versionsOpen = ref(false)
+const versionsLoading = ref(false)
+/** 服务端保留的历史版本数（用于文案；由 /sync/versions 回传） */
+const versionsKeep = ref(DEFAULT_KEEP_VERSIONS)
 
-const cloudSub = computed(() =>
-  account.cloudEnabled
-    ? account.lastBackupAt
-      ? `已开启 · 上次备份 ${formatBackupTime(account.lastBackupAt)} · ${account.lastBackupStores} 项`
-      : '已开启 · 尚未备份过，点「立即备份」上传一次'
-    : '关闭时数据只在本机 · 开启后仅用微信标识（匿名）区分你自己的备份',
+/**
+ * 是否**成功读到过**云端状态。
+ *
+ * 为什么需要它：`cloudMeta === null` 有两种完全不同的含义 —— "云端确实没有备份"
+ * （该引导他去备份）与"没读到 / 没网"（该提示检查网络）。吞掉错误就分不开了，
+ * 界面会把第二种说成第一种。见 cloudBackup.ts 的 `loadCloudMeta`。
+ */
+const cloudMetaLoaded = ref(false)
+
+/** 刷新云端元信息（未开启云备份就不问服务器；读不到只记状态，不打扰） */
+async function refreshCloudMeta(): Promise<void> {
+  if (!account.cloudEnabled) {
+    cloudMeta.value = null
+    cloudMetaLoaded.value = false
+    return
+  }
+  try {
+    cloudMeta.value = await loadCloudMeta()
+    cloudMetaLoaded.value = true
+  } catch (e) {
+    console.warn('[settings] 读取云端状态失败：', e)
+    cloudMetaLoaded.value = false
+  }
+}
+
+const cloudSub = computed(() => {
+  if (!account.cloudEnabled) return '关闭时数据只在本机 · 开启后仅用微信标识（匿名）区分你自己的备份'
+  const m = cloudMeta.value
+  if (m) return `已开启 · 最近一次备份 ${formatBackupTime(m.updatedAt)} · ${m.stores} 项`
+  if (!cloudMetaLoaded.value) {
+    /* 没读到：退回本机记得的那一次，并如实说明"这不是云端说的" */
+    return account.lastBackupAt
+      ? `已开启 · 本机记录上次备份 ${formatBackupTime(account.lastBackupAt)} · 没能读到云端状态`
+      : '已开启 · 没能读到云端状态（检查网络）'
+  }
+  return '已开启 · 尚未备份过，点「立即备份」上传一次'
+})
+
+/** 「从云端恢复」那行的说明：按服务端的版本数与最近时间说话 */
+const restoreRowSub = computed(() => {
+  if (versionsLoading.value) return '正在读取云端版本…'
+  const m = cloudMeta.value
+  if (m) {
+    const total = Number(m.versions || 0) + 1
+    const head = total > 1 ? `云端有 ${total} 版可选` : '目前只有最新一版'
+    return `${head} · 最近一次 ${formatBackupTime(m.updatedAt)}`
+  }
+  return cloudMetaLoaded.value
+    ? '云端还没有备份 · 先点「立即备份」上传一份'
+    : '没能读到云端状态 · 检查网络后再进来'
+})
+
+/** 版本列表面板的副标题 */
+const versionsSub = computed(() =>
+  versionsLoading.value
+    ? '正在读取云端版本…'
+    : `默认保留最近 ${versionsKeep.value} 版 · 点一版覆盖本机（覆盖前会先把你现在的数据也留一版）`,
 )
+
+/** 字节 → KB 显示（与服务端 meta.bytes 同一口径） */
+function sizeKB(bytes?: number): number {
+  return Math.max(1, Math.round((Number(bytes) || 0) / 1024))
+}
 
 /**
  * AI 授权：与云备份是两码事 —— 云备份传的是修行数据到我们自己的服务器，
@@ -1121,14 +1297,84 @@ async function enableCloud(): Promise<void> {
   await backupToCloud()
 }
 
+/* ---- 立即备份（手动）：先二次确认，再上传 ---- */
+
+/** 这次要上传的数据摘要 + 与云端体积的对比（确认框的内容全吃它） */
+const backupPrev = ref<BackupPreview | null>(null)
+const backupAskOpen = ref(false)
+
+const backupAskTitle = computed(() =>
+  backupPrev.value?.shrunk ? '这批数据比云端少很多，仍要覆盖？' : '上传一份备份？',
+)
+const backupAskContent = computed(() => {
+  const b = backupPrev.value
+  if (!b) return ''
+  const local = `本机现有 ${b.storeCount} 项 · 约 ${b.sizeKB}KB`
+  const cloud = b.cloudBytes ? `云端现有约 ${sizeKB(b.cloudBytes)}KB` : '云端还没有备份'
+  return `${local}；${cloud}。`
+})
+const backupAskNote = computed(() => {
+  const b = backupPrev.value
+  if (!b) return ''
+  /*
+   * 缩水那一支才是这个确认框存在的理由：用户报过"数据被清了、备份上去的也是错的"，
+   * 而当时手动备份一路无阻 —— 一句"确定吗"挡不住已经慌了的人，把后果说清楚才挡得住。
+   */
+  const head = b.shrunk
+    ? '这次要上传的比云端小很多，可能本机已经被清空或重置过。点「仍然上传」会用现在这份覆盖云端最新版 —— 原来那份不会消失，会退到历史版本里，随时能恢复回来。'
+    : '上传后这份会成为云端最新版，原来那份自动存进历史版本（默认保留 5 版，可随时恢复回来）。'
+  return `${head}\n步数与时间胶囊只在本机，不随云备份上传。`
+})
+
+/**
+ * 「立即备份」：取云端元信息 + 打包本机数据算摘要 → 弹二次确认。
+ *
+ * 为什么要先拿 cloudMeta：只有知道云端现在多大，才认得出
+ * "这次是拿一份明显更小的数据去覆盖它"（缩水警告的依据就在这里）。
+ */
 async function backupToCloud(): Promise<void> {
+  uni.showLoading({ title: '正在整理…', mask: true })
+  let preview: BackupPreview
+  try {
+    const meta = await loadCloudMeta()
+    cloudMeta.value = meta
+    cloudMetaLoaded.value = true
+    preview = previewBackup(meta)
+  } catch (e) {
+    uni.hideLoading()
+    console.warn('[settings] 备份前读取云端状态失败：', e)
+    showModal({
+      title: '没能读到云端状态',
+      content: '多半是网络问题，请检查网络后再试一次。本机数据不受影响。',
+      showCancel: false,
+    })
+    return
+  }
+  uni.hideLoading()
+
+  if (!preview.storeCount) {
+    showModal({ title: '还没有可备份的数据', content: '本机现在是空的 —— 没有内容可以上传。', showCancel: false })
+    return
+  }
+  backupPrev.value = preview
+  backupAskOpen.value = true
+}
+
+/** 二次确认里按下「上传」 */
+async function confirmBackup(): Promise<void> {
+  backupAskOpen.value = false
+  backupPrev.value = null
   /* 全量快照上传：数据量 + 网络，慢起来十几秒 —— 没有转圈的话用户会以为点空了 */
   uni.showLoading({ title: '正在上传…', mask: true })
   try {
     const outcome = await backupNow()
     uni.hideLoading()
     if (outcome.saved) {
-      uni.showToast({ title: '已备份到云端', icon: 'none' })
+      void refreshCloudMeta()
+      uni.showToast({
+        title: outcome.meta?.unchanged ? '已备份 · 与上一版内容相同' : '已备份到云端',
+        icon: 'none',
+      })
     } else {
       showModal({ title: '未能备份', content: outcome.reason || '本次备份被跳过', showCancel: false })
     }
@@ -1142,6 +1388,9 @@ async function confirmDeleteCloud(): Promise<void> {
   try {
     const removed = await disableCloudBackup()
     cloudDeleteOpen.value = false
+    /* 云端已清空 —— 本页那两处状态（Meta / 版本列表）也要跟着归零，别留上一轮的读数 */
+    cloudMeta.value = null
+    versions.value = []
     uni.showToast({ title: `已删除云端 ${removed} 项数据`, icon: 'none' })
   } catch (e) {
     cloudDeleteOpen.value = false
@@ -1151,13 +1400,34 @@ async function confirmDeleteCloud(): Promise<void> {
   }
 }
 
-/** 取回云端快照（latest / prev）→ 交给统一的覆盖确认 */
-async function restoreFromCloud(which: 'latest' | 'prev'): Promise<void> {
+/* ---- 从云端恢复：先列版本，再挑一版 ---- */
+
+/** 打开版本列表面板（面板先出来，列表拉到再填） */
+async function openVersions(): Promise<void> {
+  versionsOpen.value = true
+  versionsLoading.value = true
+  const res = await loadCloudVersions()
+  versionsLoading.value = false
+  if (!res) {
+    versionsOpen.value = false
+    showModal({ title: '没能读到云端版本', content: '请检查网络后再试一次；本机数据不受影响。', showCancel: false })
+    return
+  }
+  versions.value = res.versions
+  versionsKeep.value = res.keep || DEFAULT_KEEP_VERSIONS
+  /* 顺手对齐外面那一行的读数（列表是最权威的一次读数） */
+  cloudMeta.value = res.versions[0] ?? null
+  cloudMetaLoaded.value = true
+}
+
+/** 挑定一版：取回正文 → 交给统一的覆盖确认框 */
+async function pickVersion(v: SyncVersion): Promise<void> {
+  versionsOpen.value = false
   /* 从服务器把整份快照拉下来，数据量大时不算快 */
   uni.showLoading({ title: '正在取回…', mask: true })
   try {
-    const payload = await fetchCloudSnapshot(which)
-    restoreFrom.value = which === 'prev' ? 'cloud-prev' : 'cloud-latest'
+    const payload = await fetchCloudSnapshot(v.id)
+    restoreFrom.value = 'cloud'
     /* 紧接着要弹覆盖确认框（原生 showModal 会顶掉 showLoading）—— 先收起转圈再让它出 */
     uni.hideLoading()
     restorePayload.value = payload

@@ -356,6 +356,80 @@
 }
 
 /*
+ * 云端版本列表（2026-10-12）：「从云端恢复」面板里的一列版本卡。
+ * 每一项要能一眼读出「什么时候存的 / 多少项 / 多大 / 谁存的」，所以标题行是
+ * 时间 + 「最新」「手动备份」两个小印。列表项只吃元信息，正文要点了才会去取。
+ */
+.ver {
+  display: flex;
+  flex-direction: column;
+  gap: 14rpx;
+}
+
+.ver__item {
+  display: flex;
+  align-items: center;
+  gap: 18rpx;
+  padding: 20rpx 22rpx;
+  border: 1rpx solid $gz-line;
+  border-radius: $gz-radius-md;
+  background: $gz-input-bg;
+}
+
+.ver__body {
+  flex: 1;
+  min-width: 0;
+}
+
+.ver__head {
+  display: flex;
+  align-items: center;
+  gap: 12rpx;
+}
+
+.ver__time {
+  font-size: $gz-fs-body;
+  font-weight: 600;
+  color: $gz-ink;
+}
+
+.ver__tag {
+  flex: none;
+  padding: 2rpx 12rpx;
+  border-radius: 999rpx;
+  border: 1rpx solid $gz-line;
+  font-size: $gz-fs-caption;
+  color: $gz-ink-3;
+}
+
+.ver__tag.is-latest {
+  border-color: transparent;
+  background: $gz-accent-soft;
+  color: $gz-accent;
+}
+
+.ver__sub {
+  display: block;
+  margin-top: 4rpx;
+  font-size: $gz-fs-caption;
+  color: $gz-ink-2;
+}
+
+.ver__go {
+  flex: none;
+  font-size: $gz-fs-small;
+  color: $gz-accent;
+}
+
+.ver__empty {
+  display: block;
+  padding: 20rpx 4rpx;
+  font-size: $gz-fs-small;
+  line-height: 1.7;
+  color: $gz-ink-2;
+}
+
+/*
  * ⚠️ 以下 .mask / .dialog / .dialog__* / .dbtn 整段是**历史遗留死样式**：
  * 换肤确认框早已改为使用共用组件 GzDialog，本页模板里没有任何对应节点
  * （只有 5 处 <GzDialog>），这些规则不会被编译进任何界面。
