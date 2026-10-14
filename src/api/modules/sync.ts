@@ -79,16 +79,24 @@ export function fetchVersions(token: string): Promise<VersionListResult> {
  * 上传一份快照（source = 'auto' / 'pre-restore' 时服务端会做缩水保护）。
  *
  * schema 一并上报（服务端存进 meta 并回传，用于"旧客户端恢复新快照"时提前拦下）。
+ *
+ * `force`（2026-10-14 加）：手动备份的**极端**缩水在服务端也会被拦一道
+ * （不到云端的 20% 且云端 >64KB）。用户在危险确认框里看过后果并点了「仍然上传」时
+ * 才带它 —— 那道闸门挡的是"没弹任何确认"的路径，不是用户自己。
  */
 export function uploadBackup(
   token: string,
   data: Record<string, string>,
   source: 'manual' | 'auto' | 'pre-restore',
   schema: number = SCHEMA_VERSION,
+  force = false,
 ): Promise<BackupResult> {
-  return http.post<BackupResult, { data: Record<string, string>; source: string; schema?: number }>(
+  return http.post<
+    BackupResult,
+    { data: Record<string, string>; source: string; schema?: number; force?: boolean }
+  >(
     '/sync/backup',
-    { data, source, schema },
+    { data, source, schema, force },
     { header: authHeader(token), showError: false },
   )
 }

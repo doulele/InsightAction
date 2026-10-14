@@ -718,7 +718,7 @@ const stateText = computed(() => hallStatus('observe', modeStore.id, { read: use
 function explainQuota(): void {
   showModal({
     title: '今日信息配额',
-    content: `今日 ${usedQuota.value}/${quota.value} 次。\n\n「一次」= 今天新存进来的内容，今天读完并写下自己的话。前几天存下的补处理不占额 —— 还债不受限。\n\n用「导入文件」进来的不占额：一篇长文常常要读好几天，不该一口吃掉当天的名额。\n\n${observe.quotaNote()}`,
+    content: `今日 ${usedQuota.value}/${quota.value} 次。\n\n「一次」= 今天新存进来的内容，今天读完并写下自己的话。前几天存下的补处理不占额 —— 还债不受限。\n\n用「导入表单」进来的不占额：一篇长文常常要读好几天，不该一口吃掉当天的名额。\n\n${observe.quotaNote()}`,
     showCancel: false,
     confirmText: '知道了',
   })

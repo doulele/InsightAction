@@ -54,60 +54,57 @@
       拿一份外来清单进来（2026-09-17 选文件 / 2026-09-19 加粘贴）：
       让外部 AI 按契约生成一份清单，拿进来把表单填好。刻意放在最上面（形态之后）——
       它的用途就是"省掉手打"，埋在后面等于没有。
-      为什么「粘贴」排在「导入文件」前面：AI 本来就在聊天里，复制一段文本比
+      为什么「粘贴表单」排在「导入表单」前面：AI 本来就在聊天里，复制一段文本比
       "存成文件 → 转发到聊天 → 回小程序里选回来"少一大截；选文件留给本机那几种
       （MD / TXT）与要上传解析的二进制格式（Word / Excel / PDF / 图片）。
     -->
     <view class="import">
       <!--
-        第一行：三个等宽按钮（2026-09-20 用户定版）。
-        前两个是"把清单拿进来"的两条路；第三个是"把格式拿出去"（转发 JSON / MD 模板、复制契约示例、
-        看格式说明 —— 见 showContract 的动作表）。它原来是个 44rpx 的「?」圆标：一个问号兜不住
-        背后四件事，用户也看不出它是什么。之所以也是**按钮**而不是一行小字：这三个控件是同一层
-        的入口（都在回答"清单从哪来、格式往哪去"），长得一样才不会被当成脚注略过。
+        抬头 + 一句用法（2026-10-14 加）：用户看截图说这一块"一眼看不出是干嘛的"。
+        原来只有三个按钮 + 一行格式小字，而按钮上写的是**动作 / 名词**（AI提示词 / 粘贴JSON表单 /
+        导入表单），始终没说**这是干嘛的**。所以给一句用途（让 AI 帮你填）+ 一句用法
+        （「使用『AI提示词』让AI整理表单」，用户给的原话），再摆按钮；
+        格式那行小字留在最下面，只管"具体支持什么"。用法那句**贴在标题右侧、与它同一行**
+        —— 这一块在最上面，每多一行都在把表单往下推（宽度账见 index.scss）。
+      -->
+      <view class="import__head">
+        <view class="import__mark" />
+        <text class="import__title">让 AI 帮你填</text>
+        <text class="import__lead">使用『AI提示词』让AI整理表单</text>
+      </view>
+      <!--
+        三个等宽按钮（2026-09-20 定版；**顺序 2026-10-14 按"实际怎么用"重排**）：
+        ① AI提示词 —— 先把格式拿出去（复制提示词 / 转发 / 看说明，见 showContract）；
+        ② 粘贴JSON表单 —— 把 AI 回的那份粘回来；
+        ③ 导入表单 —— 或者从聊天里选一个文件导进来。
+        三个**长得一模一样**（都是描边按钮、谁也不描主题色）：它们是同一层的入口，
+        没有"下一步"之分；全页的主操作只有一个（存入收件匣）。
+        第三个控件的来历：它原来是个 44rpx 的「?」圆标 —— 一个问号兜不住背后几件事，
+        用户也看不出它是什么，所以改成写着用途的按钮。
       -->
       <view class="import__row">
-        <view class="import__btn import__btn--main" hover-class="gz-hover" @click="openPaste">
-          <text class="import__text">粘贴清单</text>
+        <view class="import__btn" hover-class="gz-hover" @click="showContract">
+          <text class="import__text">AI提示词</text>
+        </view>
+        <view class="import__btn" hover-class="gz-hover" @click="openPaste">
+          <text class="import__text">粘贴JSON表单</text>
         </view>
         <view class="import__btn" :class="{ 'is-off': importing }" hover-class="gz-hover" @click="doImport">
-          <text class="import__text">{{ importing ? '解析中…' : '导入文件' }}</text>
-        </view>
-        <view class="import__btn" hover-class="gz-hover" @click="showContract">
-          <text class="import__text import__text--help">格式转发/说明</text>
+          <text class="import__text">{{ importing ? '解析中…' : '导入表单' }}</text>
         </view>
       </view>
       <!--
-        说明一行（2026-09-20 用户定的版式：收回一行）：格式清单回到这一行里。
+        说明一行（2026-09-20 用户定的版式：收回一行）：只管"具体支持什么"。
         它**不是入口**（没有下划线、不挂 hover）—— 三个按钮已经把话说清了，这行只作信息，
-        所以折行也无所谓。
+        所以折行也无所谓。（"怎么用"那层说明在抬头右侧的 import__lead 里，别在这重复。）
       -->
-      <text class="import__hint"><text class="import__k">JSON 粘进来最准</text><text class="import__c">· 选文件：{{ importOtherExts }}/Word/Excel/PDF/图片</text></text>
+      <text class="import__hint"><text class="import__k">粘贴JSON表单最准</text><text class="import__c">·导入表单格式：{{ importOtherExts }}/Word/Excel/PDF/图片</text></text>
     </view>
     <view v-if="importNotice" class="import__notice">
       <!-- 谁整理的要说清：AI 整理过就标 AI，图片识别标图片识别，别混着说 -->
       <AiBadge v-if="importSourceLabel" :source="importSource === 'ai' ? 'ai' : 'local'" :text="importSourceLabel" />
       <text class="import__notice-text">{{ importNotice }}</text>
       <text class="import__notice-x" hover-class="gz-hover" @click="closeNotice">×</text>
-    </view>
-
-    <!-- 主题：先归到哪些领域（可多选，六个一行排满） -->
-    <view class="field">
-      <view class="field__top">
-        <text class="field__label">主题<text class="field__opt">选填 · 可多选</text></text>
-      </view>
-      <view class="topics">
-        <view
-          v-for="t in OBSERVE_TOPICS"
-          :key="t"
-          class="topic"
-          :class="{ 'is-on': form.topics.includes(t) }"
-          hover-class="gz-hover"
-          @click="toggleTopic(t)"
-        >
-          <text class="topic__text">{{ t }}</text>
-        </view>
-      </view>
     </view>
 
     <!-- 一 · 来源：这条内容从哪来（链接 / 标题 / 出处 / 原文） -->
@@ -417,7 +414,33 @@
 
     </view>
 
-    <!-- 三 · 标签：以后还找得回来 -->
+    <!--
+      三 · 主题：归到哪些领域（可多选，六个一行排满）。
+      2026-10-14 由"裸放在页面上、且在表单最前面"改成与「标签」同款的卡片，并挪到它上面 ——
+      两者是同一类东西（都是"以后找得回来的线索"），放在最后一起收尾；卡片内的 chips 底色
+      也随之从 `$gz-surface` 改成 `$gz-input-bg`（卡片本身就是 surface，同色会看不出边界）。
+    -->
+    <view class="card">
+      <view class="card__head">
+        <view class="card__mark" />
+        <text class="card__title">主题</text>
+        <text class="card__hint">选填 · 可多选</text>
+      </view>
+      <view class="topics">
+        <view
+          v-for="t in OBSERVE_TOPICS"
+          :key="t"
+          class="topic"
+          :class="{ 'is-on': form.topics.includes(t) }"
+          hover-class="gz-hover"
+          @click="toggleTopic(t)"
+        >
+          <text class="topic__text">{{ t }}</text>
+        </view>
+      </view>
+    </view>
+
+    <!-- 四 · 标签：以后还找得回来 -->
     <view class="card">
       <view class="card__head">
         <view class="card__mark" />
@@ -460,7 +483,7 @@
     -->
     <view v-if="pasteOpen" class="mask" @click="closePaste">
       <view class="sheet" @click.stop>
-        <text class="sheet__title">粘贴清单</text>
+        <text class="sheet__title">粘贴表单</text>
         <!-- 一行写完不放换行：模板里的换行会原样变成空格 -->
         <text class="sheet__sub">把 AI 给你的那段内容整段粘在下面 —— JSON（以 { 开头）最准，也可以是「字段：值」逐行的清单。不用存成文件。</text>
         <textarea
@@ -479,7 +502,56 @@
       </view>
     </view>
 
-    <!-- 复制契约示例（剪贴板）与选文件都属隐私接口，首次调用前要过这道门 -->
+    <!--
+      格式说明（2026-10-14 从原生弹框搬进 GzDialog + 分块排版）：
+      原来走 utils/dialog.ts 的 showModal，本质是**一整段纯文本塞进原生弹框** ——
+      在手机屏幕上就是一坨（`\n` 还会被吞成空格），用户原话是"不愿意看"。
+      现在换成主题弹框，用"小标题 + 列表 + 一个提醒块"分块，并把内容砍到只剩三类：
+      ① 这三条路分别怎么用；② 哪四格永远不进提示词；③ 什么会上传手机。
+      （三种形态的字段清单 / MD 语法 / Excel 两列建议都删了 —— 前两条 AI 自己会读，
+       Excel 那条挪到了上传前的确认框里，出现在真正用得上的地方。）
+    -->
+    <GzDialog
+      :show="formatHelpOpen"
+      :banner="false"
+      title="清单格式说明"
+      confirm-text="知道了"
+      :show-cancel="false"
+      @confirm="formatHelpOpen = false"
+      @cancel="formatHelpOpen = false"
+    >
+      <view class="fmt">
+        <view class="fmt__lead">这一步是把清单「交给 AI」：让它按固定格式整理好，你再粘回来。</view>
+
+        <view class="fmt__block">
+          <view class="fmt__h">三条路</view>
+          <view class="fmt__row">
+            <text class="fmt__k">复制提示词</text>
+            <text class="fmt__v">手机上：粘给聊天里的 AI</text>
+          </view>
+          <view class="fmt__row">
+            <text class="fmt__k">转发提示词</text>
+            <text class="fmt__v">电脑上：发给文件传输助手，在电脑上打开</text>
+          </view>
+          <view class="fmt__row">
+            <text class="fmt__k">转发空模板</text>
+            <text class="fmt__v">想自己填，或 AI 只会写「字段：值」</text>
+          </view>
+          <view class="fmt__foot">提示词跟着上面选的「形态」走 —— 文章 / 视频 / 一句话，字段各不相同。</view>
+        </view>
+
+        <view class="fmt__block">
+          <view class="fmt__h">有四个格子永远不进提示词</view>
+          <view class="fmt__p">归属（事 / 理 / 道）、主题、标签、为什么成立 —— 前三个在应用里点一下就有（归属是你对它的判断，原文里并没有写着「这是理」）；「为什么成立」只在归到「理」时才用得上。</view>
+        </view>
+
+        <view class="fmt__note">只有 Word / Excel / PDF / 图片会上传到服务器解析（解析完即删）；粘清单、MD / TXT 文件都在手机上解析，不离开手机。</view>
+
+        <view class="fmt__foot">不管哪种方式，拿进来的都只是预填 —— 最后那一下「存入收件匣」永远由你按。</view>
+      </view>
+    </GzDialog>
+
+    <!-- 复制提示词（剪贴板）与选文件都属隐私接口，首次调用前要过这道门 -->
     <PrivacyGate />
   </view>
 </template>
@@ -494,13 +566,14 @@
  *  2. **保存不入账**：修为在收件匣里"处理"时才给，所以这里存多少都不加分；
  *  3. **两张卡各管一件事**：「来源」管这条内容从哪来（链接 / 标题 / 出处 / 正文原文）；
  *     「你的话」管你写的和你选的（经典语句 / 摘要 / 重要观点 / 一句话总结 / 感悟 / 为什么成立）——
- *     版式按「来源 → 你的话 → 归档」三张卡分堆，长表单分段，读者始终知道自己在填哪一格；
- *  4. 主题六选一放在最上面（先归领域，再写内容），标签放在最后，两者都选填；
+ *     版式按「来源 → 你的话 → 主题 → 标签」四张卡分堆，长表单分段，读者始终知道自己在填哪一格；
+ *  4. **主题与标签都放在最后**（2026-10-14 起）：两块是同一类东西 —— 都是"以后找得回来的线索"，
+ *     不像归属 / 形态那样决定这条内容住在哪儿，所以不进前面的正文区、一起收尾，两块也都选填；
  *  5. **草稿是旁路**：存草稿不做必填校验（没写完就是没写完），只留一份、不进收件匣、不入账修为；
  *     真按下「存下」那一刻草稿自动清掉，不留影子；放满 14 天（DRAFT_HOLD_MS）也会自动清掉，
  *     且进页时明说一句，不悄悄吞掉用户敲过的字。草稿槽见 stores/composeDraft.ts。
  *
- * 两条外来清单的路（2026-09-17 起，2026-09-19 加粘贴）：契约与模板在 utils/importTemplate.ts
+ * 两条外来清单的路（2026-09-17 起，2026-09-19 加粘贴）：提示词 / 空模板与契约在 utils/importTemplate.ts
  * （**按当前形态给字段**，并带 `form` 那一格 —— 清单自己声明身份；`why` 仍不在契约里），
  * 解析在 utils/fileImport.ts、没有 form 时的反推也在那里（`inferForm`）；
  * 这里只负责"问一句 → 落进表单 → 明说填了什么"，且永远不代存。
@@ -529,7 +602,7 @@ import {
   type PickedFile,
 } from '@/utils/fileImport'
 import { parseFile } from '@/api/modules/parse'
-import { FORM_LABEL, contractJson, shareTemplate, type TemplateKind } from '@/utils/importTemplate'
+import { FORM_LABEL, contractPrompt, shareTemplate, type TemplateKind } from '@/utils/importTemplate'
 import { ROUTES } from '@/router/routes'
 import { showModal } from '@/utils/dialog'
 
@@ -915,12 +988,12 @@ watch(
   },
 )
 
-/* ---------------- 粘贴清单（2026-09-19） ----------------
+/* ---------------- 粘贴表单（2026-09-19） ----------------
  * 手机上的「选文件」其实是四步：让 AI 把内容存成文件 → 转发到聊天 → 回小程序里选回来 → 读。
  * 而 AI 本来就在聊天里 —— 复制一段文本、粘进来，两步就完了。所以粘贴是这一页的主路，
  * 选文件退到它该在的位置（本机 MD / TXT，以及要上传解析的 Word / Excel / PDF / 图片）。
  *
- * 三条规矩与导入文件**完全一致**：只预填、不代存、不覆盖你没动过的格。
+ * 三条规矩与导入表单**完全一致**：只预填、不代存、不覆盖你没动过的格。
  * 刻意**不调 wx.getClipboardData**：读剪贴板要先在小程序后台声明"读取你的剪切板"，
  * 而 PRIVACY.md 对外的承诺是"只写不读"；长按粘贴同样是两步，不破这个承诺更要紧。
  */
@@ -1004,7 +1077,7 @@ function usePaste(): void {
     : declared
       ? `这份清单自己写着是「${FORM_LABEL[declared]}」（形态那一格），填的时候会用清单里写的那个；`
         + `你现在选的是「${FORM_LABEL[form.value.form]}」。\n`
-        + `若这不是你要的，先「再看看」回页面切到对的签、重新复制一份契约再让 AI 填。\n\n`
+        + `若这不是你要的，先「再看看」回页面切到对的签、重新复制一份提示词再让 AI 填。\n\n`
       : `看着像「${FORM_LABEL[guessed]}」的清单（它没有形态那一格），填的时候会顺手把形态切过去。\n\n`
   showModal({
     title: '粘进来的这份清单',
@@ -1025,7 +1098,7 @@ function usePaste(): void {
   })
 }
 
-/* ---------------- 导入文件（2026-09-17） ----------------
+/* ---------------- 导入表单（2026-09-17） ----------------
  * 三条规矩，都指向同一件事：**导入只是预填**。
  *  1. 只覆盖文件里真写了的字段，没写的一律保留用户当前输入；
  *  2. 回填后明说一句"过一遍再存"，不装作是自己写的；
@@ -1081,12 +1154,15 @@ async function doImport(): Promise<void> {
  * 用户有权在这一刻选择"不传"，而且我们要给他一条不用传的路（手打 / 换成 JSON 或 md）。
  */
 function confirmUpload(file: PickedFile): Promise<boolean> {
+  /* Excel 的那条建议只在真选到 Excel 时出现（从格式说明里挪过来的，见 showFormatHelp） */
+  const isSheet = ['xlsx', 'xls'].includes(extOf(file.name))
   return new Promise((resolve) => {
     showModal({
       title: '这个文件要上传解析',
       content:
         `「${file.name}」这类文件本机读不了，需要上传到服务器解析。\n\n`
         + '解析完成即删除：不落盘、不留存、不用于其他用途。\n\n'
+        + (isSheet ? '表格建议摆成两列：左列字段名、右列内容 —— 这样最不容易抽错。\n\n' : '')
         + '不想上传也有办法：直接手打，或让 AI 输出 .json / .md 文本 —— 那两种全程不离开手机。',
       confirmText: '上传解析',
       cancelText: '不上传',
@@ -1148,85 +1224,84 @@ function applyImport(f: ImportedForm): void {
   if (v.form === 'quote') v.contentHtml = ''
 }
 
-/* ---------------- 格式说明 / 契约与模板（2026-09-18 建立，2026-09-19 改成按形态给） ----------------
- * 第一行第三个按钮「格式转发/说明」打开这个动作表（2026-09-20 由「?」圆标改来），四项各对应一件事：
- *   复制契约示例 —— 手机上的 AI：文本粘过去就行；
- *   转发 JSON 模板 —— 电脑上的 AI：文件发过去，让它照它填（最推荐）；
- *   转发 MD 模板 —— 电脑上人工填，或 AI 只会写「字段：值」时用；
- *   看格式说明 —— 把"为什么 JSON 最稳、哪些格式要上传"讲清。
- * 两条不许破：模板**本机生成**（不经后端、不上传）；拿进来永远只是预填，不代存。
+/* ---------------- AI提示词 / 拿模板 / 看说明（2026-09-18 建立，2026-09-19 按形态给，2026-10-14 加提示词） ----------------
+ * 第一行第三个按钮「AI提示词」打开这个动作表。**四项按"这份东西给谁、怎么到手"摆**，
+ * 不再按文件格式摆（2026-10-14 重整 —— 原来「转发 JSON 模板 / 转发 MD 模板 / 复制契约示例」
+ * 三件事挤在一起分不清，用户说"功能有点模糊"）：
+ *   复制提示词 —— 手机上：整段粘给聊天里的 AI，让它读完你贴的内容再照结构输出；
+ *   转发提示词 —— 电脑上：发给「文件传输助手」，在电脑上打开给 AI；
+ *   转发空模板 —— 想自己填，或 AI 只会写「字段：值」时用（空着的地方不用删）；
+ *   看格式说明 —— 把"提示词是什么、哪些格子 AI 不该写、哪些格式要上传"讲清。
+ * 原来的「复制契约示例」（裸 JSON）被提示词吸收 —— 提示词里本就含契约，留着只会多一个近义项。
+ * 两条不许破：提示词与模板**本机生成**（不经后端、不上传）；拿进来永远只是预填，不代存。
  *
- * **按当前形态给**（2026-09-19，用户两轮校正后定）：形态的四种签上选着哪个，就给哪一套字段 ——
+ * **按当前形态给**（2026-09-19，用户两轮校正后定）：形态那三张签上选着哪个，就给哪一套字段 ——
  * 把"视频链接"塞进一篇公众号文章的清单里，只会诱导 AI 替你编一格。
- * 所以动作表里带着形态名（「复制契约示例（文章）」），免得选着这个形态、拿的却是那个形态的清单。
+ * 所以动作表里带着形态名（「复制提示词（文章）」），免得选着这个形态、拿的却是那个形态的清单。
  */
 function showContract(): void {
   const label = formLabel.value
   uni.showActionSheet({
-    itemList: [`转发 JSON 模板（${label}）`, `转发 MD 模板（${label}）`, `复制契约示例（${label}）`, '看格式说明'],
+    itemList: [`复制提示词（${label}）`, `转发提示词（${label}）`, `转发空模板（${label}）`, '看格式说明'],
     success: (res) => {
-      if (res.tapIndex === 0) void sendTemplate('json')
-      else if (res.tapIndex === 1) void sendTemplate('md')
-      else if (res.tapIndex === 2) copyContract()
+      if (res.tapIndex === 0) copyPrompt()
+      else if (res.tapIndex === 1) void sendTemplate('prompt')
+      else if (res.tapIndex === 2) void sendTemplate('md')
       else showFormatHelp()
     },
   })
 }
 
-/** 复制契约示例：给手机上的 AI（一段文本就够，不必造文件） */
-function copyContract(): void {
+/** 复制提示词：给手机上的 AI（一段文本就够，不必造文件）—— 整段粘进对话即可 */
+function copyPrompt(): void {
   uni.setClipboardData({
-    data: contractJson(form.value.form),
+    data: contractPrompt(form.value.form),
     success: () =>
-      uni.showToast({ title: `${formLabel.value}清单已复制 · 交给 AI 照它填`, icon: 'none', duration: 2600 }),
-    fail: () => uni.showToast({ title: '复制失败，可手动照抄字段名', icon: 'none' }),
+      uni.showToast({ title: `${formLabel.value}提示词已复制 · 粘给 AI 让它照结构填`, icon: 'none', duration: 2600 }),
+    fail: () => uni.showToast({ title: '复制失败，可改用「转发提示词」', icon: 'none' }),
   })
 }
 
 /**
- * 转发模板文件：本机写文件 → 转发到聊天（用户发给「文件传输助手」，再在电脑上打开）。
+ * 转发提示词 / 空模板：本机写文件 → 转发到聊天（用户发给「文件传输助手」，再在电脑上打开）。
  * 文案里刻意不出现"下载" —— 微信里没有下载落点，落点就是"转发到聊天"。
  * 形态一起带下去：文件名里带形态（一眼看得出），契约里也有 `form` 那一格 —— 两处都对得上。
  */
 async function sendTemplate(kind: TemplateKind): Promise<void> {
+  const isPrompt = kind === 'prompt'
   try {
     await shareTemplate(kind, form.value.form)
     uni.showToast({
-      title: `已生成${formLabel.value}模板 · 发给电脑让 AI 照它填`,
+      title: isPrompt
+        ? `已生成${formLabel.value}提示词 · 发给电脑上的 AI`
+        : `已生成${formLabel.value}空模板 · 自己填或让人填`,
       icon: 'none',
       duration: 2600,
     })
   } catch (e) {
     showModal({
-      title: '模板没能转发',
-      content: `${e instanceof Error ? e.message : '未知错误'}\n\n可以改用「复制契约示例」，把格式直接粘给 AI。`,
+      title: isPrompt ? '提示词没能转发' : '模板没能转发',
+      content: `${e instanceof Error ? e.message : '未知错误'}\n\n可以改用「复制提示词」，把整段直接粘给 AI。`,
       showCancel: false,
     })
   }
 }
 
+/** 格式说明面板（2026-10-14 由原生弹框改成页面自己的 GzDialog，分块排版见模板） */
+const formatHelpOpen = ref(false)
+
 /**
- * 格式说明：只解释，不再兼做复制（复制已经单独是一项）。
- * 正文里不用 `**` 表强调 —— 原生弹框不认 Markdown，星号会原样显示出来。
+ * 格式说明：打开 GzDialog，不再兼做复制（复制已经单独是一项）。
+ *
+ * 为什么不走 `utils/dialog.ts` 的 showModal（2026-10-14 改）：
+ * 那条路是**一整段纯文本塞进原生弹框** —— 手机上就是一坨：没有层级、不能扫读，
+ * `\n\n` 只剩一点缝、`\n` 干脆被吞成空格（用户截图里整页糊成一片，原话是"不愿意看"）。
+ * 换成主题弹框后能用小标题 / 列表 / 提醒块分块，而且跟随皮肤。
+ * 内容也顺势砍到三分之一：三种形态的字段清单（AI 自己会读提示词）、MD 语法、
+ * Excel 两列建议都删了 —— 最后那条挪进了上传前的确认框。
  */
 function showFormatHelp(): void {
-  showModal({
-    title: '清单格式说明',
-    content:
-      '契约跟着上面选中的「形态」走 —— 三种形态字段不一样（每种都带「形态」那一格，写着这份清单是给哪一格用的）：\n'
-      + '· 文章：标题 / 来源 / 原文链接 / 经典语句 / 摘要 / 重要观点 / 一句话总结 / 感悟 / 正文（外加一份带样式的正文）；\n'
-      + '· 视频：把「原文链接」换成「视频链接」，其余同上；\n'
-      + '· 一句话：只有正文（那一句话）与感悟。\n'
-      + '粘进来的时候：清单里写了哪一格就以它为准（拿错契约会当场告诉你）；没写这一格的（老文件、手写清单）才按字段猜，猜不出就不动。\n\n'
-      + '不进契约的是这四格：归属（事 / 理 / 道）、主题、标签、为什么成立 —— 前三格在应用里点一下就有（归属是你对它的判断，原文里并没有写着「这是理」）；「为什么成立」只在归到「理」时才用得上，判不准就别让 AI 替你写。\n\n'
-      + 'JSON 最准：字段名与表单一一对应，把「JSON 模板」转发到电脑、让 AI 照它填，最不容易出错。\n\n'
-      + 'MD 与 JSON 是同一套字段，只是写法不同：按「字段：值」逐行写，字段名后面能用括号注明"这格要什么"；「正文：」以下全算正文，用 # 小标题、**加粗**、- 列表、> 引用写，会自动转成富文本。\n\n'
-      + '粘清单与 MD / TXT 文件都在小程序本机解析，内容不会离开手机。\n\n'
-      + 'Word / Excel / PDF / 图片本机读不了，会上传到服务器解析（解析完即删，也不占当日信息配额）。Excel 建议摆成两列：左列字段名、右列内容；PDF 若是扫描件、或中文用了非标准字体，可能抽不出文字 —— 那种情况改用文本清单最省事；图片直接读上面的文字（走微信官方识别）。\n\n'
-      + '不管哪种方式，拿进来的都只是预填：最后那一下「存入收件匣」永远由你按。',
-    showCancel: false,
-    confirmText: '知道了',
-  })
+  formatHelpOpen.value = true
 }
 
 function save(): void {
@@ -1315,7 +1390,7 @@ onLoad((query) => {
 
 onShow(() => {
   // 刻意不读剪贴板：一是"已读取剪贴板"的系统提示太打扰，二是 PRIVACY.md 承诺过"只写不读"；
-  // 要粘清单点「粘贴清单」、要贴链接长按输入框自己粘（2026-09-19 加了粘贴台，仍不碰剪贴板）
+  // 要粘表单点「粘贴表单」、要贴链接长按输入框自己粘（2026-09-19 加了粘贴台，仍不碰剪贴板）
   // 过期草稿在这里清掉，并明说一声 —— 那些字是用户自己敲的，不该默默消失
   if (draftStore.prune()) {
     draftResumed.value = false

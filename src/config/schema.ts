@@ -7,7 +7,11 @@
  *  - 恢复时若 `备份.schema > SCHEMA_VERSION` → **拒绝恢复**并明确提示
  *    （这是「换机后脊椎变脏数据」的最后一道防线，宁可不让恢复，也不能让界面错乱）。
  *
- * 当前 = 16：新增 stores/feedback.ts（回音壁的本机留痕）—— 待发的队列（写好了没送出去的，
+ * 当前 = 17：account 增四个**备份自省**字段（2026-10-14）—— lastBackupBytes（上次上传体积）、
+ * lastBackupShape（上次上传时逐库的字节数）、lastBackupFingerprint（内容指纹）、
+ * lastBackupSkipAt（上次自动备份被保护拦下的时间）。它们是"这次是不是比上次少了很多"的唯一依据，
+ * 老数据一律按空 / 0 兼容（视为"没有可比对的基线"，于是不提醒，行为与从前一致），无需迁移脚本。
+ * 上一版（16）：新增 stores/feedback.ts（回音壁的本机留痕）—— 待发的队列（写好了没送出去的，
  * 进页自动重发）、成功送出的条数（徽章「回音」的判定依据）、更新版本号。
  * 老数据没有这个 store，按空队列兼容，无需迁移脚本。
  * 上一版（15）：settings 增 soundLevel（静修音效的「声音大小」档：小 / 中 / 大）——
@@ -23,7 +27,7 @@
  * contentHtml / imported / handleNote），knowledge 增 domain / qa / ref，
  * 并删掉 stores/quality.ts（信息源质量榜 → 派生的来源账本）。
  */
-export const SCHEMA_VERSION = 16
+export const SCHEMA_VERSION = 17
 
 /** 结构升级记录：给未来的自己看「哪一版改了什么」 */
 export const SCHEMA_HISTORY: ReadonlyArray<{ version: number; note: string }> = [
@@ -69,5 +73,9 @@ export const SCHEMA_HISTORY: ReadonlyArray<{ version: number; note: string }> = 
   {
     version: 16,
     note: '新增 stores/feedback.ts：回音壁（「我」→ 回音壁）的本机留痕 —— pending（写好了没送出去的队列，进页自动重发）、sent（累计成功送出的条数，徽章「回音」的唯一依据）、latestBoard / seenBoard（更新日志看到哪一版，「我」页入口那枚「有更新」徽标读它）。回音壁的**内容本身在服务器上**（与分享同口径：读免登录、写要登录、先审后发），不在本地数据里。老数据没有这个 store，按空队列兼容，无需迁移脚本',
+  },
+  {
+    version: 17,
+    note: 'account 增四个备份自省字段（2026-10-14）：lastBackupBytes（上次成功上传的体积，口径与服务端 meta.bytes 一致）、lastBackupShape（上次上传时逐库的字节数，用来在下次备份前说清"哪几个库明显变小了"）、lastBackupFingerprint（内容指纹，认出"自上次上传以来没有变化"从而不必重复上传整包）、lastBackupSkipAt（上次自动备份被缩水保护拦下的时间，避免每次启动都撞同一道闸）。老数据全为空 / 0：视为"没有可比对的基线"，不提醒、不跳过，行为与从前一致，无需迁移脚本',
   },
 ]

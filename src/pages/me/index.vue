@@ -263,7 +263,12 @@ import { useCapsuleStore } from '@/stores/capsule'
 import { useFeedbackStore } from '@/stores/feedback'
 import { useAccountStore } from '@/stores/account'
 import { useIdentityStore } from '@/stores/identity'
-import { backupNow } from '@/utils/cloudBackup'
+import { backupNow, loadCloudMeta, previewBackup } from '@/utils/cloudBackup'
+import type { BackupPreview } from '@/utils/cloudBackup'
+import { BACKUP_UNCHANGED_TOAST, backupNote, backupOverLimitText, backupSummary, backupTitle } from '@/config/backup'
+import type { ShrinkCtx } from '@/config/backup'
+import { WARN_COLOR } from '@/config/palette'
+import { showModal } from '@/utils/dialog'
 import { poke, bondLv, bondXp, buddyStageName } from '@/composables/useBuddy'
 import { useSkinClass } from '@/composables/useSkin'
 import { applySkin, syncTabBar } from '@/utils/skin'
@@ -419,15 +424,78 @@ const backupText = computed(() => {
   return days <= 0 ? '今天已备份 · 数据在云上' : `上次备份 ${days} 天前`
 })
 
+/**
+ * 一键备份（「我」页这一条）。
+ *
+ * ⚠️ **不能**直接 `backupNow()` —— 那是一条"不看云端现状、也不弹确认"的裸上传：
+ * 手动备份服务端不拦缩水，本机被重置后点一下，云端那份好数据就被空数据顶掉了
+ * （2026-10-12 那次事故就是这个形状）。所以这里与设置页共用同一套判据与文案
+ * （都在 config/backup.ts），只是把 GzDialog 换成原生弹框（本页没有挂那个组件）。
+ *
+ * 入口目前在模板里是注释掉的；这段逻辑留着，是为了"哪天再挂出来时它就是安全的"。
+ */
 async function goBackup(): Promise<void> {
   if (!account.cloudEnabled) {
     navigateTo(ROUTES.settings)
     uni.showToast({ title: '在设置里开启云备份', icon: 'none' })
     return
   }
-  uni.showLoading({ title: '备份中' })
+  uni.showLoading({ title: '正在整理…', mask: true })
+  let preview: BackupPreview
   try {
-    const outcome = await backupNow()
+    preview = previewBackup(await loadCloudMeta())
+  } catch {
+    uni.hideLoading()
+    showModal({
+      title: '没能读到云端状态',
+      content: '多半是网络问题，请检查网络后再试一次。本机数据不受影响。',
+      showCancel: false,
+    })
+    return
+  }
+  uni.hideLoading()
+
+  if (!preview.storeCount) {
+    uni.showToast({ title: '本机还没有可备份的数据', icon: 'none' })
+    return
+  }
+  if (preview.unchanged && preview.cloudMatches) {
+    uni.showToast({ title: BACKUP_UNCHANGED_TOAST, icon: 'none' })
+    return
+  }
+  if (preview.overLimit) {
+    showModal({ title: '这份数据太大了', content: backupOverLimitText(preview.sizeKB), showCancel: false })
+    return
+  }
+
+  const ctx: ShrinkCtx = {
+    level: preview.level,
+    storeCount: preview.storeCount,
+    sizeKB: preview.sizeKB,
+    cloudKB: Math.max(1, Math.round(preview.cloudBytes / 1024)),
+    hasCloud: preview.hasCloud,
+    unchanged: preview.unchanged,
+    drops: preview.drops,
+    missingStores: preview.missingStores,
+  }
+  const dangerous = ctx.level === 'heavy' || ctx.level === 'extreme'
+  const ok = await new Promise<boolean>((resolve) => {
+    showModal({
+      title: backupTitle(ctx),
+      content: `${backupSummary(ctx)}\n\n${backupNote(ctx)}`,
+      confirmText: dangerous ? '仍然上传' : '上传',
+      cancelText: '取消',
+      ...(dangerous ? { confirmColor: WARN_COLOR } : {}),
+      success: (r) => resolve(!!r.confirm),
+      fail: () => resolve(false),
+    })
+  })
+  if (!ok) return
+
+  uni.showLoading({ title: '正在上传…', mask: true })
+  try {
+    /* force 只在极端缩水时带：用户已经在危险弹框里看过后果（与设置页同一口径） */
+    const outcome = await backupNow('manual', ctx.level === 'extreme')
     uni.hideLoading()
     if (outcome.saved) {
       uni.showToast({ title: `已备份 ${account.lastBackupStores} 项数据`, icon: 'none' })

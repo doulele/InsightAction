@@ -2,23 +2,27 @@
  * 云备份的高层动作：登录、备份、列版本、取回、删除、自动触发。
  * 设置页与 App.vue 共用，避免把网络与登录细节散在页面里。
  *
- * **四道防线**（按发生的先后）：
- *   1. 前端：数据为空则不备份；距上次不足 24 小时不自动备份；手动备份先弹二次确认，
- *      并在"这批数据明显比云端少"时给强警告（那才是"备份上去的也是错的"那种事故）；
+ * **五道防线**（按发生的先后，2026-10-14 补第 1、3 道）：
+ *   1. 前端：数据为空则不备份；本机自上次上传以来没变则不重复上传整包；
+ *      超过单份体积上限提前拦下（别传完一轮才被服务端拒）；手动备份先弹二次确认，
+ *      并按"比基线少多少"给三档缩水提醒 —— 哪几个库明显变小会**点名**说出来；
  *   2. 服务端：自动备份 / 恢复前留档做缩水保护（体积骤降视为误清空，跳过不覆盖）；
- *   3. 服务端：覆盖前把当前快照**归档成历史版本**（默认留 5 份）—— 误覆盖不再不可逆；
- *   4. 前端：恢复前自动留档本机当前数据（source = 'pre-restore'），让"恢复"本身也可回退。
+ *   3. 服务端：**手动**备份的极端缩水也拦一道（不到云端的 20% 且云端 >64KB），
+ *      客户端在用户看过危险确认框后带 `force` 放行 —— 挡的是"没弹任何确认"的野路子；
+ *   4. 服务端：覆盖前把当前快照**归档成历史版本**（默认留 5 份）—— 误覆盖不再不可逆；
+ *   5. 前端：恢复前自动留档本机当前数据（source = 'pre-restore'），让"恢复"本身也可回退。
  *
- * 第 3、4 条是 2026-10-12 补的。在此之前只有"最新 + 上一版"两份，用户遇到
- * 「数据被清了 → 随手点了立即备份 → 云端好数据被空数据顶掉」，两次就彻底没救。
+ * 第 3、4、5 条里的第 4、5 是 2026-10-12 补的。在此之前只有"最新 + 上一版"两份，
+ * 用户遇到「数据被清了 → 随手点了立即备份 → 云端好数据被空数据顶掉」，两次就彻底没救。
  */
 import { applyBackup, byteLength, collectBackup, summarize } from './localBackup'
-import type { BackupPayload, BackupSummary } from './localBackup'
+import type { BackupPayload } from './localBackup'
 import { STORE_PREFIX } from '@/stores/index'
 import { useAccountStore } from '@/stores/account'
 import { deleteCloudBackup, downloadSnapshot, fetchSyncMeta, fetchVersions, uploadBackup } from '@/api/modules/sync'
 import type { SyncMeta, VersionListResult } from '@/api/modules/sync'
-import { SHRINK_WARN_RATIO } from '@/config/backup'
+import { SHAPE_DROP, STORE_LABEL, UPLOAD_MAX_BYTES, shrinkLevelOf } from '@/config/backup'
+import type { ShrinkLevel } from '@/config/backup'
 
 /** 自动备份的最小间隔：24 小时 */
 const AUTO_INTERVAL_MS = 24 * 60 * 60 * 1000
@@ -43,24 +47,80 @@ export interface BackupOutcome {
   meta?: SyncMeta
 }
 
-/** 本机数据剔除"只在本机"的 store 之后，才是要上云的那一份 */
-function cloudData(): { data: Record<string, string>; schema: number; stores: number } {
-  const payload = collectBackup()
-  const data = { ...payload.data }
-  for (const key of LOCAL_ONLY_STORES) delete data[STORE_PREFIX + key]
-  return { data, schema: payload.schema, stores: Object.keys(data).length }
+/** 一份"要上云的数据"及其读数（体积与指纹都按**上云的那一份**算，不含只在本机的库） */
+interface CloudData {
+  data: Record<string, string>
+  schema: number
+  /** 包含的 store 数 */
+  stores: number
+  /** 与服务端 `meta.bytes` 同一把尺子：同一结构 JSON 的 UTF-8 字节数 */
+  bytes: number
+  /** 短 key → 该库的字节数（下次备份前拿它逐库对比） */
+  shape: Record<string, number>
+  /** 内容指纹（同一份数据必得同一个值） */
+  fingerprint: string
 }
 
-/** 立即备份（手动）：用户的明确意图，服务端不做缩水拦截（但界面必须先弹二次确认） */
-export async function backupNow(): Promise<BackupOutcome> {
+/** FNV-1a 32 位。小程序里没有 crypto，而指纹只需要"同一份数据同一个值"，不求抗碰撞 */
+function fnv1a(text: string): string {
+  let h = 0x811c9dc5
+  for (let i = 0; i < text.length; i += 1) {
+    h ^= text.charCodeAt(i)
+    h = Math.imul(h, 0x01000193) >>> 0
+  }
+  return h.toString(16).padStart(8, '0')
+}
+
+const kbOf = (bytes: number): number => Math.max(1, Math.round(bytes / 1024))
+
+/**
+ * 本机数据剔除"只在本机"的库之后，才是要上云的那一份（连同体积、逐库形态与指纹）。
+ *
+ * 两处刻意的口径：
+ *  · **键排序**：体积与指纹都要能跨次比较，而 storage 的键顺序不保证 —— 排一下，
+ *    服务端"与上一版完全相同"的判定也更容易命中（它比的是原始 JSON 文本）；
+ *  · 体积的算法与 `services/syncService.js` 的 `Buffer.byteLength(JSON.stringify({app,schema,data}))`
+ *    一字不差 —— 口径不齐的话，"比云端小多少"会系统性偏。
+ */
+function cloudData(payload?: BackupPayload): CloudData {
+  const p = payload ?? collectBackup()
+  const data: Record<string, string> = {}
+  const shape: Record<string, number> = {}
+  for (const key of Object.keys(p.data).sort()) {
+    const short = key.slice(STORE_PREFIX.length)
+    if (LOCAL_ONLY_STORES.includes(short)) continue
+    data[key] = p.data[key]
+    shape[short] = byteLength(p.data[key])
+  }
+  const keys = Object.keys(data)
+  return {
+    data,
+    schema: p.schema,
+    stores: keys.length,
+    bytes: byteLength(JSON.stringify({ app: 'guanzhi', schema: p.schema, data })),
+    shape,
+    fingerprint: fnv1a(keys.map((k) => `${k}\u0000${data[k]}`).join('\u0001')),
+  }
+}
+
+/**
+ * 立即备份。
+ *
+ * @param source 'manual'（用户在设置里点的）/ 'auto'（启动时的 24 小时自动备份）。
+ *   ⚠️ 这个参数必须传对：服务端的缩水保护与结构倒退保护**只对 auto / pre-restore 生效**，
+ *   2026-10-14 之前自动备份借用了 manual 这条路，那两道保护其实是失效的。
+ * @param force 用户已经在危险确认框里看过后果并确认（只对极端缩水的 manual 有用，
+ *   服务端据此放行；自动备份永远不带它，那是机器行为，不该能覆盖极端缩小的一份）
+ */
+export async function backupNow(source: 'manual' | 'auto' = 'manual', force = false): Promise<BackupOutcome> {
   const account = useAccountStore()
-  const { data, schema, stores } = cloudData()
-  if (!stores) {
+  const d = cloudData()
+  if (!d.stores) {
     return { saved: false, skipped: true, reason: '本机还没有可备份的数据' }
   }
 
-  const res = await account.withAuth((t) => uploadBackup(t, data, 'manual', schema))
-  if (res.saved) account.markBackedUp(stores)
+  const res = await account.withAuth((t) => uploadBackup(t, d.data, source, d.schema, force))
+  if (res.saved) account.markBackedUp(d.stores, d.bytes, d.shape, d.fingerprint)
   return {
     saved: !!res.saved,
     skipped: !!res.skipped,
@@ -69,27 +129,93 @@ export async function backupNow(): Promise<BackupOutcome> {
   }
 }
 
-export interface BackupPreview extends BackupSummary {
-  /** 本机这份数据明显比云端少（可能是误清空，确认框要重提示） */
-  shrunk: boolean
-  /** 云端现有体积（字节）；0 = 还没备份过 */
+/** 一个明显变小的库（给确认框点名用） */
+export interface StoreShrink {
+  key: string
+  label: string
+  fromKB: number
+  toKB: number
+}
+
+export interface BackupPreview {
+  /** 本次将上传的项数与体积 */
+  storeCount: number
+  sizeKB: number
+  bytes: number
+  /** 本机全部（含只在本机、不上传的那两个库）—— 只用于把话说全 */
+  localStoreCount: number
+  localSizeKB: number
+  /** 云端最新一版的体积；0 = 还没备份过 */
   cloudBytes: number
+  hasCloud: boolean
+  /** 缩水判定的基线体积（优先云端，其次本机记的上次） */
+  baselineBytes: number
+  /** 缩水分档 */
+  level: ShrinkLevel
+  /** 明显变小的库（最多三条，说得出口的那种） */
+  drops: StoreShrink[]
+  /** 上次备份里有、这次整个没有的库数 */
+  missingStores: number
+  /** 与上一次成功上传的内容逐字节相同 */
+  unchanged: boolean
+  /** 云端的项数与体积也正好等于本次（"确实不用再传"的判据） */
+  cloudMatches: boolean
+  /** 超过单份上限（传上去也会被拒） */
+  overLimit: boolean
 }
 
 /**
  * 「立即备份」的二次确认所需的摘要（**不联网**，只读本机 + 传进来的云端 meta）。
  *
  * 为什么要先算：`collectBackup()` 是同步读 storage，数据一多会卡主线程几百毫秒 ——
- * 先用 loading 盖住，再把"共多少项、多大、云端现在多大"摆出来让用户决定要不要覆盖。
+ * 先用 loading 盖住，再把"共多少项、多大、云端现在多大、哪几个库瘦了"摆出来让用户决定。
+ *
+ * 基线**优先取云端**（服务端拦不拦也是拿它比，两边同一把尺子）；只有读不到云端 meta 时
+ * 才回落到本机记的上一次体积。逐库明细只能跟本机记的形态比（云端回不了逐库体积）。
  */
 export function previewBackup(cloud?: SyncMeta | null): BackupPreview {
+  const account = useAccountStore()
   const payload = collectBackup()
   const sum = summarize(payload)
-  const bytes = byteLength(JSON.stringify(payload))
+  const d = cloudData(payload)
+
   const cloudBytes = Number(cloud?.bytes) || 0
-  // 云端太小（<4KB）时不判缩水：那本来就没什么可失去的（与服务端同一口径）
-  const shrunk = cloudBytes > 4096 && bytes < cloudBytes * SHRINK_WARN_RATIO
-  return { ...sum, shrunk, cloudBytes }
+  const cloudStores = Number(cloud?.stores) || 0
+  const localBytes = Number(account.lastBackupBytes) || 0
+  const baselineBytes = cloudBytes || localBytes
+
+  const lastShape = account.lastBackupShape || {}
+  const drops: StoreShrink[] = []
+  let missingStores = 0
+  for (const [key, before] of Object.entries(lastShape)) {
+    const after = d.shape[key]
+    if (after === undefined) {
+      missingStores += 1
+      continue
+    }
+    if (before >= SHAPE_DROP.minBytes && after < before * SHAPE_DROP.ratio) {
+      drops.push({ key, label: STORE_LABEL[key] || key, fromKB: kbOf(before), toKB: kbOf(after) })
+    }
+  }
+  /* 缩得最狠的排前面，只摆三条 —— 确认框里超过三条就没人看了 */
+  drops.sort((a, b) => (b.fromKB - b.toKB) - (a.fromKB - a.toKB))
+
+  return {
+    storeCount: d.stores,
+    sizeKB: kbOf(d.bytes),
+    bytes: d.bytes,
+    localStoreCount: sum.storeCount,
+    localSizeKB: sum.sizeKB,
+    cloudBytes,
+    hasCloud: cloudBytes > 0,
+    baselineBytes,
+    level: shrinkLevelOf(d.bytes, baselineBytes),
+    drops: drops.slice(0, 3),
+    missingStores,
+    unchanged: !!account.lastBackupFingerprint && account.lastBackupFingerprint === d.fingerprint,
+    cloudMatches: cloudBytes > 0 && d.bytes === cloudBytes && cloudStores === d.stores,
+    overLimit: d.bytes > UPLOAD_MAX_BYTES,
+  }
 }
 
 /**
@@ -105,11 +231,11 @@ export async function backupBeforeRestore(): Promise<'off' | 'saved' | 'skipped'
   const account = useAccountStore()
   if (!account.cloudEnabled) return 'off'
   try {
-    const { data, schema, stores } = cloudData()
-    if (!stores) return 'skipped'
-    const res = await account.withAuth((t) => uploadBackup(t, data, 'pre-restore', schema))
+    const d = cloudData()
+    if (!d.stores) return 'skipped'
+    const res = await account.withAuth((t) => uploadBackup(t, d.data, 'pre-restore', d.schema))
     if (res.saved) {
-      account.markBackedUp(stores)
+      account.markBackedUp(d.stores, d.bytes, d.shape, d.fingerprint)
       return 'saved'
     }
     return 'skipped'
@@ -120,21 +246,29 @@ export async function backupBeforeRestore(): Promise<'off' | 'saved' | 'skipped'
 }
 
 /**
- * 自动备份（启动时调用）：距上次不足 24 小时则跳过。
+ * 自动备份（启动时调用）：距上次成功备份（或被保护拦下的那一次）不足 24 小时则跳过。
  * 静默失败——备份是后台行为，任何异常都不该打扰用户。
+ *
+ * `source = 'auto'` 是**关键**：服务端的缩水保护与结构倒退保护只认它。
  */
 export async function autoBackupIfDue(): Promise<void> {
   const account = useAccountStore()
   if (!account.cloudEnabled) return
 
   const last = account.lastBackupAt ? Date.parse(account.lastBackupAt) : 0
-  if (Date.now() - last < AUTO_INTERVAL_MS) return
+  const lastSkip = account.lastBackupSkipAt ? Date.parse(account.lastBackupSkipAt) : 0
+  if (Date.now() - Math.max(last, lastSkip) < AUTO_INTERVAL_MS) return
 
   try {
-    const outcome = await backupNow()
-    if (!outcome.saved && outcome.reason) {
-      console.warn('[backup] 自动备份未执行：', outcome.reason)
-    }
+    const outcome = await backupNow('auto')
+    if (outcome.saved) return
+    /*
+     * 被服务端拦下（缩水 / 结构倒退）时记一笔时间：数据不会因为"再试一次"就变大，
+     * 而每次尝试都是一整包上行 —— 记下之后节拍同样按 24 小时走。
+     * 网络异常则**不记**：那多半只是一次性的，下次启动该重试。
+     */
+    account.lastBackupSkipAt = new Date().toISOString()
+    if (outcome.reason) console.warn('[backup] 自动备份未执行：', outcome.reason)
   } catch (e) {
     console.warn('[backup] 自动备份失败（忽略）：', e)
   }
@@ -195,5 +329,9 @@ export async function disableCloudBackup(): Promise<number> {
   account.cloudEnabled = false
   account.lastBackupAt = ''
   account.lastBackupStores = 0
+  account.lastBackupBytes = 0
+  account.lastBackupShape = {}
+  account.lastBackupFingerprint = ''
+  account.lastBackupSkipAt = ''
   return res.removed ?? 0
 }

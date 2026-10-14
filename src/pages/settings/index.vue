@@ -467,18 +467,20 @@
     </GzDialog>
 
     <!--
-      立即备份的二次确认（2026-10-12）：上传前必须让用户看清"现在多大、云端多大"。
-      若本机这份明显小于云端 → 换 danger 变体 + 改标题（这正是"备份上去的也是错的"那种事故，
-      冷冰冰一句"确定吗"挡不住；把可能的后果说出来才挡得住）。
+      立即备份的二次确认（2026-10-12，2026-10-14 分档）：上传前必须让用户看清
+      "现在多大、云端多大、哪几个库瘦了"。
+      若本机这份比基线明显少 / 少得多 → 换 danger 变体 + 改标题 + 换按钮文案
+      （这正是"备份上去的也是错的"那种事故，冷冰冰一句"确定吗"挡不住；
+      把可能的后果说出来才挡得住）。只是略小时不换红 —— 红旗要留给真出事的时候。
     -->
     <GzDialog
-      :variant="backupPrev?.shrunk ? 'danger' : 'default'"
+      :variant="backupDanger ? 'danger' : 'default'"
       :show="backupAskOpen"
       :title="backupAskTitle"
       :content="backupAskContent"
       :note="backupAskNote"
       cancel-text="取消"
-      :confirm-text="backupPrev?.shrunk ? '仍然上传' : '上传'"
+      :confirm-text="backupConfirmText"
       @cancel="backupAskOpen = false"
       @confirm="confirmBackup"
     />
@@ -613,7 +615,16 @@ import {
 } from '@/utils/cloudBackup'
 import type { BackupPreview } from '@/utils/cloudBackup'
 import type { SyncMeta, SyncVersion } from '@/api/modules/sync'
-import { DEFAULT_KEEP_VERSIONS, SOURCE_LABEL } from '@/config/backup'
+import {
+  BACKUP_UNCHANGED_TOAST,
+  DEFAULT_KEEP_VERSIONS,
+  SOURCE_LABEL,
+  backupNote,
+  backupOverLimitText,
+  backupSummary,
+  backupTitle,
+} from '@/config/backup'
+import type { ShrinkCtx } from '@/config/backup'
 import { showModal } from '@/utils/dialog'
 import { AI_CONSENT, aiDeniedText, applyAiAccess, fetchAiAccess } from '@/utils/aiAccess'
 import { aiReviewList, type AiApplyState } from '@/api/modules/ai'
@@ -1303,34 +1314,42 @@ async function enableCloud(): Promise<void> {
 const backupPrev = ref<BackupPreview | null>(null)
 const backupAskOpen = ref(false)
 
-const backupAskTitle = computed(() =>
-  backupPrev.value?.shrunk ? '这批数据比云端少很多，仍要覆盖？' : '上传一份备份？',
-)
-const backupAskContent = computed(() => {
+/** 把预览读数折成文案层要的形状（config/backup.ts 只管措辞，不碰数据） */
+const backupCtx = computed<ShrinkCtx | null>(() => {
   const b = backupPrev.value
-  if (!b) return ''
-  const local = `本机现有 ${b.storeCount} 项 · 约 ${b.sizeKB}KB`
-  const cloud = b.cloudBytes ? `云端现有约 ${sizeKB(b.cloudBytes)}KB` : '云端还没有备份'
-  return `${local}；${cloud}。`
+  if (!b) return null
+  return {
+    level: b.level,
+    storeCount: b.storeCount,
+    sizeKB: b.sizeKB,
+    cloudKB: sizeKB(b.cloudBytes),
+    hasCloud: b.hasCloud,
+    unchanged: b.unchanged,
+    drops: b.drops.map((d) => ({ label: d.label, fromKB: d.fromKB, toKB: d.toKB })),
+    missingStores: b.missingStores,
+  }
 })
-const backupAskNote = computed(() => {
-  const b = backupPrev.value
-  if (!b) return ''
-  /*
-   * 缩水那一支才是这个确认框存在的理由：用户报过"数据被清了、备份上去的也是错的"，
-   * 而当时手动备份一路无阻 —— 一句"确定吗"挡不住已经慌了的人，把后果说清楚才挡得住。
-   */
-  const head = b.shrunk
-    ? '这次要上传的比云端小很多，可能本机已经被清空或重置过。点「仍然上传」会用现在这份覆盖云端最新版 —— 原来那份不会消失，会退到历史版本里，随时能恢复回来。'
-    : '上传后这份会成为云端最新版，原来那份自动存进历史版本（默认保留 5 版，可随时恢复回来）。'
-  return `${head}\n步数与时间胶囊只在本机，不随云备份上传。`
-})
+const backupAskTitle = computed(() => (backupCtx.value ? backupTitle(backupCtx.value) : ''))
+const backupAskContent = computed(() => (backupCtx.value ? backupSummary(backupCtx.value) : ''))
+const backupAskNote = computed(() => (backupCtx.value ? backupNote(backupCtx.value) : ''))
+/*
+ * 缩水那一支才是这个确认框存在的理由：用户报过"数据被清了、备份上去的也是错的"，
+ * 而当时手动备份一路无阻 —— 一句"确定吗"挡不住已经慌了的人，把后果说清楚才挡得住。
+ *
+ * 只让"明显少"与"少得多"两档用危险样式：略小也用红旗的话，
+ * 真出事时那张红框就没有分量了（见 config/backup.ts 的三档阈值）。
+ */
+const backupDanger = computed(() => backupPrev.value?.level === 'heavy' || backupPrev.value?.level === 'extreme')
+const backupConfirmText = computed(() => (backupDanger.value ? '仍然上传' : '上传'))
 
 /**
  * 「立即备份」：取云端元信息 + 打包本机数据算摘要 → 弹二次确认。
  *
  * 为什么要先拿 cloudMeta：只有知道云端现在多大，才认得出
- * "这次是拿一份明显更小的数据去覆盖它"（缩水警告的依据就在这里）。
+ * "这次是拿一份明显更小的数据去覆盖它"（缩水分档的依据就在这里）。
+ *
+ * 三道前置（2026-10-14 加后两道）：本机空的、与上次完全相同的、超过单份上限的，
+ * 都在**弹确认框之前**说清楚 —— 前两者不必打扰，后者不该白白传一整轮。
  */
 async function backupToCloud(): Promise<void> {
   uni.showLoading({ title: '正在整理…', mask: true })
@@ -1356,18 +1375,37 @@ async function backupToCloud(): Promise<void> {
     showModal({ title: '还没有可备份的数据', content: '本机现在是空的 —— 没有内容可以上传。', showCancel: false })
     return
   }
+  /*
+   * 本机自上次成功上传以来逐字节没变、且云端那一份的体积与项数也正好等于本次
+   * → 再传一遍只是把同一份内容写回去（服务端也只刷新时间戳，不新增版本）。
+   * 话术只说"本机没有变化"，不替云端打包票。
+   */
+  if (preview.unchanged && preview.cloudMatches) {
+    uni.showToast({ title: BACKUP_UNCHANGED_TOAST, icon: 'none' })
+    return
+  }
+  if (preview.overLimit) {
+    showModal({ title: '这份数据太大了', content: backupOverLimitText(preview.sizeKB), showCancel: false })
+    return
+  }
   backupPrev.value = preview
   backupAskOpen.value = true
 }
 
 /** 二次确认里按下「上传」 */
 async function confirmBackup(): Promise<void> {
+  const level = backupPrev.value?.level
   backupAskOpen.value = false
   backupPrev.value = null
   /* 全量快照上传：数据量 + 网络，慢起来十几秒 —— 没有转圈的话用户会以为点空了 */
   uni.showLoading({ title: '正在上传…', mask: true })
   try {
-    const outcome = await backupNow()
+    /*
+     * force 只在**极端**缩水时带：用户已经在危险确认框里看过后果并点了「仍然上传」。
+     * 前端这一档比服务端那道闸门更敏感（35% vs 20%），所以不会出现
+     * "用户明明确认过、服务端还拦下来"的别扭。
+     */
+    const outcome = await backupNow('manual', level === 'extreme')
     uni.hideLoading()
     if (outcome.saved) {
       void refreshCloudMeta()
