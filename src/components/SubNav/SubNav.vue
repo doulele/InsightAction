@@ -49,7 +49,8 @@
       <text class="nav__title"><slot /></text>
       <text class="nav__sub">{{ subtitle }}</text>
     </view>
-    <text v-else class="nav__title"><slot /></text>
+    <!-- 单行版：右侧动作比返回键宽时标题会整体让开（见 script 的 titleStyle） -->
+    <text v-else class="nav__title" :style="titleStyle"><slot /></text>
 
     <!-- 右边距按胶囊位置算（让到胶囊左侧），见 script 的 rightStyle -->
     <view
@@ -66,7 +67,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, useSlots } from 'vue'
+import { computed, getCurrentInstance, nextTick, onMounted, ref, useSlots } from 'vue'
 import { useSkinClass } from '@/composables/useSkin'
 import { capsuleInsetPx, safeTopPx } from '@/utils/safeArea'
 import type { RoutePath } from '@/router/routes'
@@ -89,6 +90,15 @@ const hasRight = computed(() => !!slots.right)
 /** 皮肤类挂在组件**自己**的根节点上：组件 wxss 选不中组件外的祖先类（见 HallHead 的说明） */
 const skinClass = useSkinClass()
 
+/** 页面左右内边距（rpx）——必须与 `$gz-page-pad`（src/uni.scss）一致 */
+const PAGE_PAD_RPX = 48
+/** 右侧动作盒的基准宽度（rpx）：与返回键同宽；不超过它就说明是图标 / 单字动作 */
+const RIGHT_MIN_RPX = 76
+/** 标题与右侧动作之间留的一口气（px） */
+const TITLE_GAP_PX = 6
+/** 单行版标题的左右走廊（rpx）——与 SubNav.scss 里 `.nav__title` 的 padding 一致 */
+const TITLE_PAD_RPX = 190
+
 /**
  * 顶距（24rpx = 原先各页「.page 顶距 16rpx + .nav 顶距 8rpx」的合计）。
  * 走内联 CSS 变量而不是 scss 里的 `calc(var(--status-bar-height) + 24rpx)`：
@@ -105,8 +115,83 @@ const navVars = `--nav-top:${safeTopPx(24)}px`
  * 取不到胶囊信息时（H5 等非微信端）它为 0 —— 那端本来也没有胶囊。
  *
  * 只在有 `#right` 时生效（空的占位盒没有视觉，不必让）。
+ *
+ * 2026-10-12：改成本地态 + **挂载后再要一次**。
+ * setup 阶段页面还没渲染，这时问胶囊可能得到 0，右侧动作会整个压在胶囊底下
+ * （看上去像"这个功能没做"）；挂载完成时再要一次，拿到有效值就换过来。
+ * 配套改动在 `utils/safeArea.ts`：取到 0 不再缓存，否则这一次的 0 会黏住整个生命周期。
+ *
+ * ⚠️ 让位留白要**减掉页面的左右内边距**（`$gz-page-pad` 48rpx）：
+ * `capsuleInsetPx()` 量的是「屏幕右缘 → 胶囊左缘」，而动作盒贴在 **nav 的右缘**，
+ * nav 自己已经被页面内边距内缩了 48rpx —— 不减就会多让一个内边距，
+ * 动作离胶囊还空着一小段，白占本来就不宽裕的标题走廊。
  */
-const rightStyle = { marginRight: `${capsuleInsetPx()}px` }
+const insetPx = ref(capsuleInsetPx())
+/** 与实际让位一致（px）：标题避让要用它反推右侧动作的左缘 */
+const insetFinalPx = computed(() => Math.max(0, insetPx.value - uni.upx2px(PAGE_PAD_RPX)))
+const rightStyle = computed(() => ({ marginRight: `${insetFinalPx.value}px` }))
+
+/**
+ * 标题右上角的让位（2026-10-12）。
+ *
+ * 单行版的标题是**绝对定位铺满整行屏幕居中**的（为什么不用 flex 居中见 SubNav.scss）。
+ * 这在右侧只有「改」这种窄动作时没问题；但收件匣 / 理库的右侧是「＋ 记一笔」药丸（约 150rpx），
+ * 屏幕居中的标题会被它压住 —— 顶栏一共只有「屏宽 − 48rpx×2」，本来就没那么多空。
+ *
+ * 所以：实测右侧动作的可见宽度，**只有它比返回键还宽时才让**，
+ * 让的量刚好等于"标题右缘探进药丸那一段"，把标题整块往左挪（仍尽量居中）。
+ * 量不到（H5 时机、没有 #right）就什么都不做，退回 scss 里的默认走廊。
+ *
+ * 用 `padding-right` 让位而不是改 left/right：标题的定位盒仍是整行，
+ * text-align: center 会把文字放到"扣掉走廊后的内容区"中央 —— 走廊只加右边，
+ * 文字中心就跟着左移，且左侧照样受 190rpx 走廊保护（不会压到返回键）。
+ */
+const titleW = ref(0)
+const rightW = ref(0)
+const winW = ref(0)
+const instance = getCurrentInstance()
+
+onMounted(() => {
+  const v = capsuleInsetPx()
+  if (v !== insetPx.value) insetPx.value = v
+  nextTick(measureRight)
+})
+
+/** 量标题与右侧动作的宽度（只在有 #right 时量） */
+function measureRight(): void {
+  try {
+    winW.value = Number(uni.getSystemInfoSync().windowWidth) || 0
+  } catch {
+    winW.value = 0
+  }
+  if (!hasRight.value) return
+  try {
+    const query = uni.createSelectorQuery().in(instance?.proxy ?? undefined)
+    query.select('.nav__title').boundingClientRect()
+    query.select('.nav__side--right').boundingClientRect()
+    query.exec((res) => {
+      const list = (res ?? []) as Array<{ width: number } | null>
+      rightW.value = list[1]?.width ?? 0
+      titleW.value = list[0]?.width ?? 0
+    })
+  } catch {
+    /* 量不到就保持默认走廊，顶多多一次轻微重叠，不至于整块错位 */
+  }
+}
+
+const titleStyle = computed(() => {
+  const right = rightW.value
+  // 右侧动作没比返回键宽（「改」这类图标 / 单字）：不必让
+  if (!winW.value || right <= uni.upx2px(RIGHT_MIN_RPX)) return undefined
+  const padPx = uni.upx2px(PAGE_PAD_RPX)
+  // 标题铺满 nav 且 nav 左右内边距对称 → 标题中心就是屏幕中心
+  const titleRight = winW.value / 2 + titleW.value / 2
+  const pillLeft = winW.value - padPx - insetFinalPx.value - right
+  const need = titleRight - pillLeft + TITLE_GAP_PX
+  // 让出去 X px 中心正好左移 X / 2，所以走廊要加两倍
+  if (need <= 0) return undefined
+  return { paddingRight: `${uni.upx2px(TITLE_PAD_RPX) + need * 2}px` }
+})
 
 function onBack(): void {
   if (!props.fallback) {

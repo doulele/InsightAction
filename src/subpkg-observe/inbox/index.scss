@@ -11,11 +11,17 @@
 /*
  * 右侧动作是 #right 插槽的内容（算页面的节点），所以样式留在这里。
  * 与理库同款：2026-09-23 从「空心圆里的 ＋」改成带字的窄药丸（见 theorylib/index.scss 的注）。
+ *
+ * 2026-10-12：加 `flex: none` + `white-space: nowrap` —— 药丸是**自适应宽度**的，
+ * 一旦让 flex 压缩就会把「＋ 记一笔」折成好几行、撑破这个 56rpx 高的盒子。
+ * 外层的让位与最小热区由 components/SubNav 负责，这里只管药丸自己不被压。
  */
 .nav__add {
   display: flex;
   align-items: center;
   justify-content: center;
+  flex: none;
+  white-space: nowrap;
   height: 56rpx;
   padding: 0 20rpx;
   box-sizing: border-box;

@@ -64,6 +64,13 @@ let cachedInset: number | null = null
  * 所以按胶囊的真实左缘算一次：`屏幕宽 - 胶囊左缘 + 10`。
  *
  * 非微信端没有胶囊，返回 0（元素照旧贴右缘）。
+ *
+ * ⚠️ 取到 0 时**不缓存**（2026-10-12 修）：
+ * 第一次调用发生在 SubNav 组件 setup 里，那会儿页面还没渲染完，
+ * `getMenuButtonBoundingClientRect()` 可能返回 left=0 —— 一旦把 0 缓存下来，
+ * 之后的整个小程序生命周期里**所有页面**的右侧动作都会重新贴到右缘、
+ * 被系统胶囊盖住（收件匣 / 理库的「＋ 记一笔」看着像没做这个功能）。
+ * 只缓存算出来的有效值；取不到就让下次再算一遍（开销极小，胶囊位置本来就是常量）。
  */
 export function capsuleInsetPx(): number {
   if (cachedInset !== null) return cachedInset
@@ -79,6 +86,6 @@ export function capsuleInsetPx(): number {
     inset = 0
   }
   // #endif
-  cachedInset = inset
+  if (inset > 0) cachedInset = inset
   return inset
 }

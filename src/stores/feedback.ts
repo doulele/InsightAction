@@ -17,7 +17,7 @@
 import { defineStore } from 'pinia'
 import { computed, ref } from 'vue'
 import { createFeedbackPost } from '@/api/modules/feedback'
-import type { FeedbackType } from '@/config/feedback'
+import { FEEDBACK_PRIVATE, type FeedbackType } from '@/config/feedback'
 import { useAccountStore } from '@/stores/account'
 
 export interface PendingFeedback {
@@ -114,9 +114,14 @@ export const useFeedbackStore = defineStore(
               type: item.type,
               title: item.title,
               body: item.body,
-              allowComment: item.allowComment,
-              name: item.name || undefined,
-              tier: item.tier || undefined,
+              /*
+               * 收口期（见 config/feedback.ts 的 FEEDBACK_PRIVATE）按收口口径发：
+               * 队列里可能还躺着 2026-10-12 之前存的条目（那时允许署名与回应），
+               * 补发时不能把老口径再送上去 —— 一律匿名、不许别人回应。
+               */
+              allowComment: FEEDBACK_PRIVATE ? false : item.allowComment,
+              name: FEEDBACK_PRIVATE ? undefined : item.name || undefined,
+              tier: FEEDBACK_PRIVATE ? undefined : item.tier || undefined,
             }),
           )
           drop(item.localId)

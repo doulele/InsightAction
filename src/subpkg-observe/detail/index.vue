@@ -238,8 +238,11 @@
           分享（2026-09-22 从顶栏移到这里）：与编辑 / 删除同一层 —— 三者都是"对这条做的事"。
           点它是开面板（见文件末的 .mask/.sheet），不是直接转发：转发必须是
           `<button open-type="share">`，那个按钮在面板里。
+
+          2026-10-12 收口：这个入口是本项目**唯一**的发布入口（收件匣 / 理库 / 母题库的卡片都不给），
+          所以关掉它等于关掉了整条「分享」链 —— 开关见 config/share.ts。
         -->
-        <view class="acts__ghost" hover-class="gz-hover" @click="openShare">
+        <view v-if="SHARE_ENABLED" class="acts__ghost" hover-class="gz-hover" @click="openShare">
           <text class="acts__ghost-text">分享</text>
         </view>
         <view v-if="!item.handledAt" class="save" :class="{ 'is-off': !canRead }" hover-class="gz-hover" @click="handle">
@@ -350,6 +353,8 @@ import { useShareStore, type ShareRecord } from '@/stores/share'
 import { publishShare, revokeShare, type ShareBody } from '@/api/modules/share'
 import { BizError } from '@/types/api'
 import { DAO_LINE_MAX } from '@/config/dao'
+/* 分享总开关（2026-10-12 收口，提审被驳「社交-笔记」）—— 见 config/share.ts */
+import { SHARE_ENABLED } from '@/config/share'
 import { decorate, hasMarkup } from '@/utils/richText'
 import { useSkinClass } from '@/composables/useSkin'
 import { DEFAULT_VOICE, SPEECH_RATES, SPEECH_TEXT, TTS_VOICES } from '@/config/speech'
@@ -839,7 +844,10 @@ function openVideo(url?: string): void {
   if (url) copyThenTip(url, '视频链接已复制，去对应 App 或浏览器打开')
 }
 
-/* ---------------- 分享（2026-09-21） ----------------
+/* ---------------- 分享（2026-09-21 建立，2026-10-12 收口） ----------------
+ * 收口期（`SHARE_ENABLED=false`，见 config/share.ts）：入口不渲染、不发布、
+ * 转发卡片也不指向只读页 —— 下面这几个函数的判断都按这个前提写。
+ *
  * 入口只在这一页；两类出口共用服务器上的**同一份快照**：
  *   小程序卡片 → `subpkg-observe/share/index?t=<token>`（只读页，好友点开看全文）
  *   网页链接   → `https://wellwin.top/guanzhi/s/<token>`（发到任何地方 / 微信外也能读）
@@ -945,6 +953,8 @@ async function publishNow(): Promise<ShareRecord | null> {
 }
 
 async function openShare(): Promise<void> {
+  /* 第二道（第一道是入口不渲染）：收口期一律不发布 —— 见 config/share.ts */
+  if (!SHARE_ENABLED) return
   if (!item.value || !id.value) return
   /* 已经分享过：直接开面板（那条链接还在有效期内，不必再发一条） */
   if (sharedRecord.value) {
@@ -1005,7 +1015,12 @@ function doRevoke(): void {
  * 这种情况改指向「观」大厅 —— 落地成一个能用的页面，而不是一个死链。
  */
 onShareAppMessage(() => {
-  const rec = sharedRecord.value
+  /*
+   * 收口期**不让卡片指向只读分享页**：老用户本机还留着旧留痕，
+   * 若按老逻辑走，转发出去就又是一条"公开可读的内容"，与收口口径自相矛盾。
+   * 一律回落「观」大厅（"用微信自带能力转发"这件事本身留着）。
+   */
+  const rec = SHARE_ENABLED ? sharedRecord.value : null
   if (!rec) return { title: '观止知行 · 收下、处理、用上', path: ROUTES.tabObserve }
   return { title: shareTitle.value, path: `${ROUTES.observeShare}?t=${rec.token}` }
 })

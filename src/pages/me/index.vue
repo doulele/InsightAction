@@ -274,6 +274,8 @@ import { LEVEL_COUNT, LEVEL_NAMES, LEVEL_THRESHOLDS, levelIndexFromXp, levelProg
 import { FORM_STAGES, stageFromLevel } from '@/config/buddyForms'
 import { getItem, setItem } from '@/utils/storage'
 import { BADGE_RULES } from '@/config/badges'
+/* 回音壁的整块开关（2026-10-14 提审收口）：false 时「我」页不挂它的入口 —— 见 config/feedback.ts */
+import { FEEDBACK_ENABLED } from '@/config/feedback'
 import { useBadgeStore } from '@/stores/badges'
 import { badgeUnlockedCount, dayStats, monthActiveCount, syncBadgeLedger, yearStats } from '@/utils/growth'
 import { useContentStore } from '@/stores/content'
@@ -669,7 +671,7 @@ const headStats = computed(() => [
 ])
 
 /* 档案入口文案里的测评名随当前模式变化，故用 computed 保持即时刷新 */
-const moreEntries = computed<MoreEntry[]>(() => [
+const rawMoreEntries = computed<MoreEntry[]>(() => [
   /*
    * 今日日课卡：原先在列表外单独写了一个主色描边的 .dailytip 块（批次 D），
    * 统一进列表后放在**第一位**（2026-09-16）：这一列按「越往后越沉淀」排
@@ -816,6 +818,19 @@ const moreEntries = computed<MoreEntry[]>(() => [
     url: ROUTES.settings,
   },
 ])
+
+/**
+ * 「我」页那一列入口。
+ *
+ * 回音壁整块收口时不挂它（见 `config/feedback.ts` 的 `FEEDBACK_ENABLED`）：审核两次都拿
+ * 「回音壁 → 写一句」那一屏判我们"社交-笔记"，所以整条链先不在界面上出现、代码留着。
+ * 过滤写在这里而不是模板里：`v-if` 与 `v-for` 同元素时 Vue 3 会让 `v-if` 先求值、拿不到 `e`。
+ */
+const moreEntries = computed<MoreEntry[]>(() =>
+  FEEDBACK_ENABLED
+    ? rawMoreEntries.value
+    : rawMoreEntries.value.filter((e) => e.url !== ROUTES.meFeedback),
+)
 </script>
 
 <style lang="scss" scoped>

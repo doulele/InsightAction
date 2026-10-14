@@ -39,7 +39,12 @@
       <text class="count">{{ body.length }} / {{ FEEDBACK_LIMIT.body }}</text>
     </view>
 
-    <view class="card">
+    <!--
+      署名 / 允许回应（2026-10-12 收口期整块不渲染）。
+      审核驳回的截图就是这一屏，而这两个开关正是最直接的两处证据
+      （「允许回应」的说明写着"别人不能在这条下面说话"）—— 口径见 config/feedback.ts 的 FEEDBACK_PRIVATE。
+    -->
+    <view v-if="!FEEDBACK_PRIVATE" class="card">
       <view class="row">
         <view class="row__main">
           <text class="row__label">{{ words.signAs }}</text>
@@ -58,9 +63,7 @@
 
     <!-- 口径说明：先审后发这件事必须提前讲明白，别让人以为"发出去了没人理" -->
     <view class="note">
-      <text class="note__text">
-        发出去先落在「已送出 · 等回应」—— 这段时间只有你和我看得见；放出来之后，别人才看得到。
-      </text>
+      <text class="note__text">{{ noteLine }}</text>
     </view>
 
     <view class="submit" :class="{ 'is-busy': busy }" hover-class="gz-hover" @click="submit">
@@ -82,13 +85,17 @@
  *  2. 送不出去时**入本机队列**（stores/feedback.ts），下次进回音壁自动重发 ——
  *     写完丢字是这一页最不能接受的失败；
  *  3. 业务性失败（内容不合规 / 今天说太多）**不入队** —— 那是重试也没用的，
- *     入队只会让用户下次看到一个永远发不出去的"待发"。
+ *     入队只会让用户下次看到一个永远发不出去的"待发"；
+ *  4. **收口期（FEEDBACK_PRIVATE）没有署名与"允许回应"**，一律匿名、不让别人回应 ——
+ *     这一屏就是提审被判成"社交-笔记"的那张截图（口径见 config/feedback.ts）。
  */
 import { computed, ref } from 'vue'
 import { BizError } from '@/types/api'
 import { createFeedbackPost } from '@/api/modules/feedback'
 import {
+  FEEDBACK_CLOSURE_TEXT,
   FEEDBACK_LIMIT,
+  FEEDBACK_PRIVATE,
   FEEDBACK_TYPE_LABEL,
   FEEDBACK_TYPES,
   feedbackWords,
@@ -113,6 +120,11 @@ const skinClass = useSkinClass()
 
 const words = computed(() => feedbackWords(modeStore.id))
 const accent = computed(() => getSkin(modeStore.id).accent)
+
+/** 底部那句口径说明：收口期与非收口期各一句（原句里有"放出来之后，别人才看得到"） */
+const noteLine = computed(() =>
+  FEEDBACK_PRIVATE ? FEEDBACK_CLOSURE_TEXT.writeNote : FEEDBACK_CLOSURE_TEXT.writeNoteOpen,
+)
 const TYPE_LABEL = FEEDBACK_TYPE_LABEL
 
 const type = ref<FeedbackType>('idea')
@@ -171,9 +183,10 @@ async function submit(): Promise<void> {
     type: type.value,
     title: t || fallbackTitle(),
     body: b,
-    allowComment: allowComment.value,
-    name: sign.value ? myName.value : '',
-    tier: myTier.value,
+    /* 收口期：不允许别人回应、一律匿名、不带称号（见 config/feedback.ts 的 FEEDBACK_PRIVATE） */
+    allowComment: FEEDBACK_PRIVATE ? false : allowComment.value,
+    name: FEEDBACK_PRIVATE || !sign.value ? '' : myName.value,
+    tier: FEEDBACK_PRIVATE ? '' : myTier.value,
   }
 
   busy.value = true

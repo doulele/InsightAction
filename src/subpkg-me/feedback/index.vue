@@ -8,7 +8,7 @@
       三模式各一句，页面不写中文（那条注释里写了为什么用词要收敛）。
     -->
     <view class="intro">
-      <text class="intro__line">{{ words.intro }}</text>
+      <text class="intro__line">{{ introLine }}</text>
       <view v-if="store.pendingCount > 0" class="intro__pending" hover-class="gz-hover" @click="retryPending(false)">
         <text class="intro__pending-text">{{ store.pendingCount }} 条还没送出去 · 点这里重发</text>
       </view>
@@ -76,8 +76,9 @@
           <!--
             「我也想要」：路线图上的那一票。这一票是有用的 ——
             它决定下面这些事我先做哪个（页面刻意不做"热度榜"，只留这一颗按钮）。
+            收口期这一票不给（它也是"用户之间互相看见"的一种，见 config/feedback.ts 的 FEEDBACK_PRIVATE）。
           -->
-          <view class="road__foot">
+          <view v-if="!FEEDBACK_PRIVATE" class="road__foot">
             <view
               class="want"
               :class="{ 'is-on': myVote(routeKey(r.id)) === 1 }"
@@ -126,7 +127,7 @@
             {{ c.label }}
           </view>
         </view>
-        <view class="tools__row">
+        <view v-if="!FEEDBACK_PRIVATE" class="tools__row">
           <view class="sorts">
             <text
               v-for="s in FEEDBACK_SORTS"
@@ -149,7 +150,7 @@
       </view>
       <view v-else-if="!posts.length" class="empty">
         <text class="empty__title">{{ words.emptyVoices }}</text>
-        <text class="empty__text">{{ words.emptyVoicesHint }}</text>
+        <text class="empty__text">{{ emptyHint }}</text>
       </view>
 
       <view
@@ -171,8 +172,11 @@
           <text class="voice__who">{{ who(p) }}</text>
           <text class="voice__time">{{ when(p.createdAt) }}</text>
         </view>
-        <!-- 赞 / 踩：与"我也想要"同一颗心，只是这里还有另一面 -->
-        <view class="voice__acts">
+        <!--
+          赞 / 踩：与"我也想要"同一颗心，只是这里还有另一面。
+          收口期整行不渲染（提审口径见 config/feedback.ts 的 FEEDBACK_PRIVATE）。
+        -->
+        <view v-if="!FEEDBACK_PRIVATE" class="voice__acts">
           <view
             class="act"
             :class="{ 'is-on': myVote(postKey(p.id)) === 1 }"
@@ -200,7 +204,7 @@
     </view>
 
     <view class="foot">
-      <text class="foot__text">你写的每一句，都会有人看</text>
+      <text class="foot__text">{{ footLine }}</text>
     </view>
 
     <!-- 底部一条：写一句（fixed，页面底部留出同高的空位） -->
@@ -225,6 +229,10 @@
  * 界面刻意**不做**这些（见 config/feedback.ts 文件头第 1 条）：
  * 大图信息流、热度排行、个人主页、别人的昵称头像（除非他自己选择署名）。
  * 它是"开发者 ↔ 你"的一条线，不是人群之间的广场 —— 页面越像广场，过审越危险。
+ *
+ * 2026-10-12 收口（`FEEDBACK_PRIVATE`）：审核就是拿这一页判成"社交-笔记"的 ——
+ * 赞 / 踩、排序、只看我发的、路线图那一票在这里被逐个关掉，
+ * 列表也只取自己发的（服务端同步收口）。开关与口径见 `config/feedback.ts`。
  */
 import { computed, ref } from 'vue'
 import { onShow } from '@dcloudio/uni-app'
@@ -241,6 +249,9 @@ import {
   type FeedbackVoteCounts,
 } from '@/api/modules/feedback'
 import {
+  FEEDBACK_CLOSURE_TEXT,
+  FEEDBACK_ENABLED,
+  FEEDBACK_PRIVATE,
   FEEDBACK_SORTS,
   FEEDBACK_STATUS_LABEL,
   FEEDBACK_TYPE_LABEL,
@@ -267,6 +278,16 @@ const skinClass = useSkinClass()
 const words = computed(() => feedbackWords(modeStore.id))
 const tabs = computed(() => feedbackTabs(modeStore.id))
 
+/**
+ * 收口期的几处文案（见 config/feedback.ts 的 FEEDBACK_PRIVATE）。
+ * 收口与非收口是两条互斥的展示口径，在这里一次分好，模板里不再写判断。
+ */
+const introLine = computed(() => (FEEDBACK_PRIVATE ? FEEDBACK_CLOSURE_TEXT.intro : words.value.intro))
+const emptyHint = computed(() =>
+  FEEDBACK_PRIVATE ? FEEDBACK_CLOSURE_TEXT.emptyHint : words.value.emptyVoicesHint,
+)
+const footLine = computed(() => (FEEDBACK_PRIVATE ? FEEDBACK_CLOSURE_TEXT.foot : words.value.foot))
+
 const tab = ref<FeedbackTab>('updates')
 const board = ref<FeedbackBoard | null>(null)
 const posts = ref<FeedbackListItem[]>([])
@@ -280,7 +301,8 @@ const pendingReview = ref(0)
 /* 列表的筛选（服务端算，见 api/modules/feedback.ts） */
 const kw = ref('')
 const typeFilter = ref<FeedbackType | ''>('')
-const scope = ref<'all' | 'mine'>('all')
+/* 收口期只看得见自己的 —— 初值就落在 mine，不用等用户去点那个开关（那个开关同时也不渲染） */
+const scope = ref<'all' | 'mine'>(FEEDBACK_PRIVATE ? 'mine' : 'all')
 const sort = ref<'new' | 'hot'>('new')
 
 /* 更新日志的展开态：默认只摊开「本次」那一条 */
@@ -319,6 +341,17 @@ const typeChips = computed<TypeChip[]>(() => [
  * ------------------------------------------------------------------ */
 
 onShow(() => {
+  /*
+   * 整块收口（2026-10-14，见 config/feedback.ts 的 FEEDBACK_ENABLED）：
+   * 「我」页已经不挂这个入口了，这里是兜底 —— 万一被旧跳转 / 缓存的页面栈带进来，
+   * 立刻退回「我」页，**一帧输入界面都不渲染**。
+   */
+  if (!FEEDBACK_ENABLED) {
+    const pages = getCurrentPages()
+    if (pages.length > 1) uni.navigateBack()
+    else uni.switchTab({ url: ROUTES.tabMe })
+    return
+  }
   void boot()
 })
 
@@ -365,7 +398,7 @@ async function loadPosts(): Promise<void> {
     const data = await fetchFeedbackPosts(account.token || undefined, {
       q: kw.value.trim(),
       type: typeFilter.value,
-      scope: scope.value,
+      scope: FEEDBACK_PRIVATE ? 'mine' : scope.value,
       sort: sort.value,
     })
     posts.value = data.items

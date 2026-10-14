@@ -25,8 +25,8 @@
           <text class="post__time">{{ when(post.createdAt) }}</text>
         </view>
 
-        <!-- 赞 / 踩 -->
-        <view class="post__acts">
+        <!-- 赞 / 踩：收口期不渲染（见 config/feedback.ts 的 FEEDBACK_PRIVATE） -->
+        <view v-if="!FEEDBACK_PRIVATE" class="post__acts">
           <view
             class="act"
             :class="{ 'is-on': myVote === 1 }"
@@ -72,17 +72,18 @@
         <text class="admin__hint">「放出」之后别人才能看到这条；「不做」会附一句为什么</text>
       </view>
 
-      <!-- 回应 -->
-      <view class="sec">
+      <!--
+        回应。收口期只在开发者真的回过之后才出现这一块 ——
+        否则"回应 0 / 还没有人回应"这行字本身就在暗示"别人会来这里说话"。
+      -->
+      <view v-if="!FEEDBACK_PRIVATE || post.comments.length" class="sec">
         <view class="sec__head">
           <text class="sec__title">回应</text>
           <text class="sec__num">{{ post.comments.length }}</text>
         </view>
 
         <view v-if="!post.comments.length" class="empty empty--mini">
-          <text class="empty__text">
-            {{ post.allowComment ? '还没有人回应' : '作者关掉了这条的回应' }}
-          </text>
+          <text class="empty__text">{{ emptyReplyText }}</text>
         </view>
 
         <view
@@ -105,8 +106,12 @@
       </view>
     </template>
 
-    <!-- 底部：回一句 -->
-    <view class="bar">
+    <!--
+      底部：回一句。
+      收口期只对开发者渲染 —— 普通用户这一条只在他与开发者之间，用户之间的"回应"不成立
+      （见 config/feedback.ts 的 FEEDBACK_PRIVATE）。
+    -->
+    <view v-if="!FEEDBACK_PRIVATE || isAdmin" class="bar">
       <view
         class="bar__btn"
         :class="{ 'is-off': !canReply }"
@@ -159,6 +164,9 @@
  *
  * 回应一律**匿名**（显示成「道友 · 称号」）：回应是就事论事，不署名能少一层社交压力，
  * 也少一份要保护的隐私面。想让人知道是你说的，可以在自己那条里选择署名。
+ *
+ * 2026-10-12 收口（`FEEDBACK_PRIVATE`）：赞 / 踩不渲染；普通用户不给回应输入框
+ * （只有开发者能回，官方回应照旧显示）—— 提审被判成"社交-笔记"的直接原因就是这一处。
  */
 import { computed, ref } from 'vue'
 import { onLoad } from '@dcloudio/uni-app'
@@ -174,7 +182,9 @@ import {
   type FeedbackVoteCounts,
 } from '@/api/modules/feedback'
 import {
+  FEEDBACK_CLOSURE_TEXT,
   FEEDBACK_LIMIT,
+  FEEDBACK_PRIVATE,
   FEEDBACK_STATUS_LABEL,
   FEEDBACK_TYPE_LABEL,
   feedbackWords,
@@ -239,6 +249,12 @@ const replyLabel = computed(() => {
   if (!p.allowComment && !isAdmin.value) return '作者关掉了回应'
   if (!isAdmin.value && (p.status === 'pending' || p.status === 'rejected')) return '还没放出来，先等等'
   return words.value.reply
+})
+
+/** 回应区空态：收口期不存在"别人回应"这件事，说的只能是"我还没回" */
+const emptyReplyText = computed(() => {
+  if (FEEDBACK_PRIVATE) return FEEDBACK_CLOSURE_TEXT.noReply
+  return post.value?.allowComment ? '还没有人回应' : '作者关掉了这条的回应'
 })
 
 onLoad((query) => {
